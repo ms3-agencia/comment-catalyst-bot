@@ -8,24 +8,17 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Youtube, Plus, X, Loader2, MessageSquare, ThumbsUp, Sparkles } from 'lucide-react';
-import { Textarea } from '@/components/ui/textarea';
+import ReactMarkdown from 'react-markdown';
 
 type Comment = {
   author: string;
+  author_avatar: string;
   content: string;
   likes: number;
   published_at: string;
+  video_url: string;
   sentiment?: string;
 };
-
-const MOCK_COMMENTS: Comment[] = [
-  { author: 'João Silva', content: 'Excelente vídeo! Muito informativo e bem explicado.', likes: 42, published_at: '2024-01-15', sentiment: 'positivo' },
-  { author: 'Maria Santos', content: 'Poderia fazer um vídeo mais detalhado sobre esse tema?', likes: 18, published_at: '2024-01-14', sentiment: 'neutro' },
-  { author: 'Pedro Costa', content: 'Não concordo com o ponto 3, acho que tem outras formas de resolver.', likes: 7, published_at: '2024-01-13', sentiment: 'negativo' },
-  { author: 'Ana Oliveira', content: 'Simplesmente o melhor canal sobre esse assunto! 🔥', likes: 95, published_at: '2024-01-12', sentiment: 'positivo' },
-  { author: 'Carlos Mendes', content: 'Valeu pela dica, já apliquei e funcionou perfeitamente!', likes: 33, published_at: '2024-01-11', sentiment: 'positivo' },
-  { author: 'Lucas Ferreira', content: 'Achei o áudio um pouco baixo nesse vídeo.', likes: 5, published_at: '2024-01-10', sentiment: 'negativo' },
-];
 
 const Extract = () => {
   const { user, profile } = useAuth();
@@ -51,70 +44,84 @@ const Extract = () => {
     }
     setLoading(true);
 
-    // Create project
-    const { data: project, error } = await supabase.from('projects').insert({
-      user_id: user!.id,
-      name: projectName,
-      video_urls: validUrls,
-      status: 'completed',
-      total_comments: MOCK_COMMENTS.length,
-    }).select().single();
+    try {
+      // Call real YouTube API via edge function
+      const { data: fnData, error: fnError } = await supabase.functions.invoke('youtube-comments', {
+        body: { videoUrls: validUrls },
+      });
 
-    if (error) {
-      toast({ title: 'Erro ao criar projeto', description: error.message, variant: 'destructive' });
-      setLoading(false);
-      return;
+      if (fnError || fnData?.error) {
+        toast({ title: 'Erro na extração', description: fnData?.error || fnError?.message, variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+
+      const extractedComments: Comment[] = fnData.comments || [];
+
+      if (extractedComments.length === 0) {
+        toast({ title: 'Nenhum comentário encontrado', description: 'Verifique os links ou se os vídeos têm comentários habilitados.', variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+
+      // Create project
+      const { data: project, error } = await supabase.from('projects').insert({
+        user_id: user!.id,
+        name: projectName,
+        video_urls: validUrls,
+        status: 'completed',
+        total_comments: extractedComments.length,
+      }).select().single();
+
+      if (error) {
+        toast({ title: 'Erro ao criar projeto', description: error.message, variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+
+      // Insert comments in batches of 50
+      const commentsToInsert = extractedComments.map(c => ({
+        project_id: project.id,
+        video_url: c.video_url,
+        author: c.author,
+        author_avatar: c.author_avatar,
+        content: c.content,
+        likes: c.likes,
+        published_at: c.published_at,
+      }));
+
+      for (let i = 0; i < commentsToInsert.length; i += 50) {
+        await supabase.from('comments').insert(commentsToInsert.slice(i, i + 50));
+      }
+
+      setProjectId(project.id);
+      setComments(extractedComments);
+      toast({ title: 'Extração concluída!', description: `${extractedComments.length} comentários extraídos.` });
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     }
-
-    // Insert mock comments
-    const commentsToInsert = MOCK_COMMENTS.map(c => ({
-      project_id: project.id,
-      video_url: validUrls[0],
-      author: c.author,
-      content: c.content,
-      likes: c.likes,
-      published_at: c.published_at,
-      sentiment: c.sentiment,
-    }));
-
-    await supabase.from('comments').insert(commentsToInsert);
-
-    setProjectId(project.id);
-    setComments(MOCK_COMMENTS);
     setLoading(false);
-    toast({ title: 'Extração concluída!', description: `${MOCK_COMMENTS.length} comentários extraídos.` });
   };
 
   const handleGenerateAI = async () => {
     setAiLoading(true);
-    // Simulate AI profile generation
-    await new Promise(r => setTimeout(r, 2000));
-    const profile = `## 🎯 Perfil do Avatar da Audiência
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-profile', {
+        body: { comments: comments.map(c => ({ author: c.author, content: c.content, likes: c.likes })) },
+      });
 
-### Dados Demográficos
-- **Faixa etária estimada:** 18-35 anos
-- **Gênero predominante:** Misto
-- **Localização:** Brasil (PT-BR)
+      if (error || data?.error) {
+        toast({ title: 'Erro ao gerar perfil', description: data?.error || error?.message, variant: 'destructive' });
+        setAiLoading(false);
+        return;
+      }
 
-### Comportamento
-- **Engajamento:** Alto - média de 33 likes por comentário
-- **Sentimento geral:** 50% positivo, 33% negativo, 17% neutro
-- **Padrão de interação:** Audiência ativa que comenta e dá feedback construtivo
-
-### Interesses Identificados
-- Conteúdo educacional e informativo
-- Dicas práticas e aplicáveis
-- Discussões sobre métodos e abordagens
-
-### Recomendações
-1. Investir em conteúdo tutorial com passo-a-passo
-2. Melhorar qualidade de áudio
-3. Criar séries aprofundadas sobre temas populares
-4. Engajar com comentários negativos de forma construtiva`;
-
-    setAiProfile(profile);
-    if (projectId) {
-      await supabase.from('projects').update({ ai_profile: profile }).eq('id', projectId);
+      setAiProfile(data.profile);
+      if (projectId) {
+        await supabase.from('projects').update({ ai_profile: data.profile }).eq('id', projectId);
+      }
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     }
     setAiLoading(false);
   };
@@ -125,12 +132,17 @@ const Extract = () => {
     return 'text-muted-foreground';
   };
 
+  // Count sentiments (basic heuristic from content)
+  const positiveCount = comments.filter(c => c.likes >= 10).length;
+  const negativeCount = comments.filter(c => c.likes === 0 && c.content.length > 50).length;
+  const neutralCount = comments.length - positiveCount - negativeCount;
+
   return (
     <DashboardLayout>
       <div className="max-w-4xl space-y-8 animate-fade-in">
         <div>
           <h1 className="font-heading text-2xl font-bold flex items-center gap-2"><Youtube className="text-destructive" /> Extrair Comentários</h1>
-          <p className="text-muted-foreground mt-1">Cole os links dos vídeos para extrair e analisar comentários</p>
+          <p className="text-muted-foreground mt-1">Cole os links dos vídeos para extrair e analisar comentários via YouTube API</p>
         </div>
 
         {!comments.length ? (
@@ -153,7 +165,7 @@ const Extract = () => {
                 <Button type="button" variant="outline" size="sm" onClick={addUrl}><Plus className="mr-1" size={14} /> Adicionar URL</Button>
               </div>
               <Button type="submit" className="w-full glow-primary" disabled={loading}>
-                {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Extraindo...</> : 'Extrair Comentários'}
+                {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Extraindo via YouTube API...</> : 'Extrair Comentários'}
               </Button>
             </form>
           </Card>
@@ -162,35 +174,36 @@ const Extract = () => {
             {/* Stats */}
             <div className="grid gap-4 sm:grid-cols-3">
               <Card className="glass p-4 text-center">
-                <p className="text-2xl font-bold font-heading text-success">{comments.filter(c => c.sentiment === 'positivo').length}</p>
-                <p className="text-sm text-muted-foreground">Positivos</p>
+                <p className="text-2xl font-bold font-heading text-success">{positiveCount}</p>
+                <p className="text-sm text-muted-foreground">Engajados (10+ likes)</p>
               </Card>
               <Card className="glass p-4 text-center">
-                <p className="text-2xl font-bold font-heading text-muted-foreground">{comments.filter(c => c.sentiment === 'neutro').length}</p>
-                <p className="text-sm text-muted-foreground">Neutros</p>
+                <p className="text-2xl font-bold font-heading text-muted-foreground">{neutralCount}</p>
+                <p className="text-sm text-muted-foreground">Regulares</p>
               </Card>
               <Card className="glass p-4 text-center">
-                <p className="text-2xl font-bold font-heading text-destructive">{comments.filter(c => c.sentiment === 'negativo').length}</p>
-                <p className="text-sm text-muted-foreground">Negativos</p>
+                <p className="text-2xl font-bold font-heading text-primary">{comments.length}</p>
+                <p className="text-sm text-muted-foreground">Total</p>
               </Card>
             </div>
 
             {/* Comments list */}
-            <Card className="glass divide-y divide-border">
+            <Card className="glass divide-y divide-border max-h-[500px] overflow-y-auto">
               {comments.map((c, i) => (
                 <div key={i} className="p-4 flex gap-4">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm">
-                    {c.author.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{c.author}</span>
-                      <span className={`text-xs font-medium ${sentimentColor(c.sentiment)}`}>{c.sentiment}</span>
+                  {c.author_avatar ? (
+                    <img src={c.author_avatar} alt={c.author} className="h-10 w-10 shrink-0 rounded-full" />
+                  ) : (
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-sm">
+                      {c.author?.charAt(0) || '?'}
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">{c.content}</p>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-sm">{c.author}</span>
+                    <p className="text-sm text-muted-foreground mt-1" dangerouslySetInnerHTML={{ __html: c.content }} />
                     <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1"><ThumbsUp size={12} /> {c.likes}</span>
-                      <span>{c.published_at}</span>
+                      <span>{new Date(c.published_at).toLocaleDateString('pt-BR')}</span>
                     </div>
                   </div>
                 </div>
@@ -203,14 +216,14 @@ const Extract = () => {
                 <div className="text-center">
                   <Sparkles className="mx-auto text-warning" size={32} />
                   <h3 className="font-heading text-lg font-bold mt-3">Gerar Perfil de Avatar com IA</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Análise inteligente do perfil da sua audiência</p>
+                  <p className="text-sm text-muted-foreground mt-1">Análise inteligente real do perfil da sua audiência</p>
                   <Button onClick={handleGenerateAI} className="mt-4 glow-primary" disabled={aiLoading}>
-                    {aiLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando...</> : <><Sparkles className="mr-2 h-4 w-4" /> Gerar com IA</>}
+                    {aiLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando com IA...</> : <><Sparkles className="mr-2 h-4 w-4" /> Gerar com IA</>}
                   </Button>
                 </div>
               ) : (
                 <div className="prose prose-invert prose-sm max-w-none">
-                  <div className="whitespace-pre-wrap text-sm text-foreground">{aiProfile}</div>
+                  <ReactMarkdown>{aiProfile}</ReactMarkdown>
                 </div>
               )}
             </Card>
