@@ -2,12 +2,13 @@ import { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Youtube, Settings, Shield, LogOut, Menu, X, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, Youtube, Settings, Shield, LogOut, Menu, X, ChevronDown, FolderOpen } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/dashboard/extract', icon: Youtube, label: 'Extrair Comentários' },
+  { to: '/dashboard/projects', icon: FolderOpen, label: 'Meus Projetos' },
   { to: '/dashboard/settings', icon: Settings, label: 'Configurações' },
 ];
 
