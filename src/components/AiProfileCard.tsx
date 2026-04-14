@@ -44,7 +44,7 @@ export const AiProfileCard = ({ profile, projectName }: AiProfileCardProps) => {
       if (!element) return;
 
       const opt = {
-        margin: [15, 15, 15, 15],
+        margin: [15, 15, 15, 15] as [number, number, number, number],
         filename: `${projectName || 'perfil-avatar'}-commentiq.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0a0c10' },
