@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Youtube, Plus, X, Loader2, MessageSquare, ThumbsUp, Sparkles } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { AiProfileCard } from '@/components/AiProfileCard';
 
 type Comment = {
   author: string;
@@ -210,7 +210,7 @@ const Extract = () => {
               ))}
             </Card>
 
-            {/* AI Profile button */}
+            {/* AI Profile */}
             <Card className="glass p-6">
               {!aiProfile ? (
                 <div className="text-center">
@@ -222,9 +222,7 @@ const Extract = () => {
                   </Button>
                 </div>
               ) : (
-                <div className="prose prose-invert prose-sm max-w-none">
-                  <ReactMarkdown>{aiProfile}</ReactMarkdown>
-                </div>
+                <AiProfileCard profile={aiProfile} projectName={projectName} />
               )}
             </Card>
 

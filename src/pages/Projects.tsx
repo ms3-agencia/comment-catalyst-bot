@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { FolderOpen, MessageSquare, ThumbsUp, Sparkles, ChevronDown, ChevronUp, Trash2, Loader2, Calendar } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { AiProfileCard } from '@/components/AiProfileCard';
 
 type Project = {
   id: string;
@@ -145,12 +145,7 @@ const Projects = () => {
 
                     {/* AI Profile */}
                     {project.ai_profile && (
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Perfil de Avatar IA</p>
-                        <div className="prose prose-invert prose-sm max-w-none bg-secondary/30 rounded-lg p-4">
-                          <ReactMarkdown>{project.ai_profile}</ReactMarkdown>
-                        </div>
-                      </div>
+                      <AiProfileCard profile={project.ai_profile} projectName={project.name} />
                     )}
 
                     {/* Comments */}
