@@ -32,26 +32,124 @@ const getIconForHeading = (text: string) => {
   return <Sparkles className="h-5 w-5 text-primary" />;
 };
 
+// Emoji mapping for PDF sections (since lucide icons won't render in pdf clone)
+const getSectionEmoji = (text: string): string => {
+  const lower = text.toLowerCase();
+  if (lower.includes('perfil do avatar') || lower.includes('perfil')) return '🎯';
+  if (lower.includes('demográficos')) return '👥';
+  if (lower.includes('comportamento') || lower.includes('engajamento')) return '📊';
+  if (lower.includes('interesses') || lower.includes('temas')) return '❤️';
+  if (lower.includes('dores') || lower.includes('necessidades')) return '💡';
+  if (lower.includes('linguagem') || lower.includes('tom')) return '💬';
+  if (lower.includes('recomendações') || lower.includes('estratégicas')) return '✨';
+  return '📌';
+};
+
+const buildPdfHtml = (profile: string, projectName?: string): string => {
+  const date = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  // Parse markdown into simple HTML with inline styles
+  const contentHtml = profile
+    // h2
+    .replace(/^## (.+)$/gm, (_m, t) => {
+      const emoji = getSectionEmoji(t);
+      return `<div style="display:flex;align-items:center;gap:10px;margin-top:28px;margin-bottom:8px;">
+        <span style="font-size:20px;">${emoji}</span>
+        <h2 style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:#e8ecf0;">${t.replace(/[🎯👥📊❤️💡💬✨📌]/g, '').trim()}</h2>
+      </div>`;
+    })
+    // h3
+    .replace(/^### (.+)$/gm, (_m, t) => {
+      const emoji = getSectionEmoji(t);
+      return `<div style="display:flex;align-items:center;gap:8px;margin-top:20px;padding-bottom:6px;border-bottom:1px solid #1e2433;margin-bottom:8px;">
+        <span style="font-size:16px;">${emoji}</span>
+        <h3 style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;color:#d0d6e0;">${t.replace(/[🎯👥📊❤️💡💬✨📌]/g, '').trim()}</h3>
+      </div>`;
+    })
+    // bold
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#e8ecf0;font-weight:600;">$1</strong>')
+    // bullet lists
+    .replace(/^- (.+)$/gm, (_m, t) =>
+      `<div style="display:flex;align-items:flex-start;gap:8px;padding:3px 0 3px 8px;">
+        <span style="margin-top:6px;width:6px;height:6px;min-width:6px;border-radius:50%;background:#17c5e8;display:inline-block;"></span>
+        <span style="font-size:13px;line-height:1.6;color:#8b95a8;">${t}</span>
+      </div>`)
+    // paragraphs (lines that aren't already wrapped)
+    .replace(/^(?!<)((?!<div|<h[23]).+)$/gm, '<p style="font-size:13px;line-height:1.7;color:#8b95a8;margin:4px 0 4px 4px;">$1</p>');
+
+  return `
+<div style="font-family:'Inter','Segoe UI',sans-serif;background:#0a0c10;color:#e8ecf0;min-height:100%;padding:0;">
+  <!-- Header -->
+  <div style="background:linear-gradient(135deg,#0d1117 0%,#111827 100%);padding:32px 40px;border-bottom:2px solid #17c5e8;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#17c5e8,#3b82f6);display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:22px;">🧠</span>
+        </div>
+        <div>
+          <h1 style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.5px;">
+            <span style="background:linear-gradient(135deg,#17c5e8,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">CommentIQ</span>
+          </h1>
+          <p style="margin:2px 0 0;font-size:11px;color:#8b95a8;letter-spacing:0.5px;text-transform:uppercase;">Análise de Audiência com Inteligência Artificial</p>
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <p style="margin:0;font-size:11px;color:#6b7280;">Relatório gerado em</p>
+        <p style="margin:2px 0 0;font-size:13px;color:#d0d6e0;font-weight:500;">${date}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Project Title Bar -->
+  <div style="background:#111827;padding:16px 40px;border-bottom:1px solid #1e2433;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:14px;">📁</span>
+      <span style="font-size:13px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Projeto:</span>
+      <span style="font-size:14px;color:#e8ecf0;font-weight:600;">${projectName || 'Análise de Avatar'}</span>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div style="padding:24px 40px 40px;">
+    ${contentHtml}
+  </div>
+
+  <!-- Footer -->
+  <div style="background:#111827;padding:20px 40px;border-top:1px solid #1e2433;display:flex;align-items:center;justify-content:space-between;">
+    <p style="margin:0;font-size:11px;color:#6b7280;">Gerado por <strong style="color:#17c5e8;">CommentIQ</strong> — Análise inteligente de audiência</p>
+    <p style="margin:0;font-size:11px;color:#6b7280;">commentiq.com</p>
+  </div>
+</div>`;
+};
+
 export const AiProfileCard = ({ profile, projectName }: AiProfileCardProps) => {
   const [exporting, setExporting] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const handleExportPDF = async () => {
     setExporting(true);
     try {
       const { default: html2pdf } = await import('html2pdf.js');
-      const element = contentRef.current;
-      if (!element) return;
+
+      // Create a temporary off-screen container with the PDF-specific layout
+      const container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.left = '-9999px';
+      container.style.top = '0';
+      container.style.width = '210mm';
+      container.innerHTML = buildPdfHtml(profile, projectName);
+      document.body.appendChild(container);
 
       const opt = {
-        margin: [15, 15, 15, 15] as [number, number, number, number],
+        margin: [0, 0, 0, 0] as [number, number, number, number],
         filename: `${projectName || 'perfil-avatar'}-commentiq.pdf`,
         image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0a0c10' },
+        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0a0c10', width: 794 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
       };
 
-      await html2pdf().set(opt).from(element).save();
+      await html2pdf().set(opt).from(container).save();
+      document.body.removeChild(container);
     } catch (err) {
       console.error('PDF export error:', err);
     }
@@ -87,7 +185,7 @@ export const AiProfileCard = ({ profile, projectName }: AiProfileCardProps) => {
       </div>
 
       {/* Content */}
-      <div ref={contentRef} className="ai-profile-content p-6 space-y-1">
+      <div className="ai-profile-content p-6 space-y-1">
         <ReactMarkdown
           components={{
             h2: ({ children }) => (
