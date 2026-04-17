@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Download, Loader2, Target, Users, Heart, MessageCircle, Lightbulb, BarChart3 } from 'lucide-react';
+import { Sparkles, Download, Loader2, Target, Users, Heart, MessageCircle, Lightbulb, BarChart3, Briefcase, Rocket } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface AiProfileCardProps {
   profile: string;
@@ -20,6 +21,10 @@ const sectionIcons: Record<string, React.ReactNode> = {
   'necessidades': <Lightbulb className="h-5 w-5 text-warning" />,
   'linguagem': <MessageCircle className="h-5 w-5 text-primary" />,
   'tom': <MessageCircle className="h-5 w-5 text-primary" />,
+  'insights': <Briefcase className="h-5 w-5 text-warning" />,
+  'criação de produtos': <Briefcase className="h-5 w-5 text-warning" />,
+  'top produtos': <Rocket className="h-5 w-5 text-warning" />,
+  'potencial de venda': <Rocket className="h-5 w-5 text-warning" />,
   'recomendações': <Sparkles className="h-5 w-5 text-warning" />,
   'estratégicas': <Sparkles className="h-5 w-5 text-warning" />,
 };
@@ -32,7 +37,6 @@ const getIconForHeading = (text: string) => {
   return <Sparkles className="h-5 w-5 text-primary" />;
 };
 
-// Emoji mapping for PDF sections (since lucide icons won't render in pdf clone)
 const getSectionEmoji = (text: string): string => {
   const lower = text.toLowerCase();
   if (lower.includes('perfil do avatar') || lower.includes('perfil')) return '🎯';
@@ -47,67 +51,237 @@ const getSectionEmoji = (text: string): string => {
   return '📌';
 };
 
+// ----- Markdown → HTML for PDF (light theme, print-friendly) -----
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+const renderInline = (text: string): string => {
+  let t = escapeHtml(text);
+  t = t.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#0f172a;font-weight:700;">$1</strong>');
+  t = t.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  t = t.replace(/`([^`]+)`/g, '<code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;font-family:\'SFMono-Regular\',Consolas,monospace;font-size:11px;color:#0f172a;">$1</code>');
+  return t;
+};
+
+const isTableSeparator = (line: string) =>
+  /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+
+const splitTableRow = (line: string): string[] => {
+  let l = line.trim();
+  if (l.startsWith('|')) l = l.slice(1);
+  if (l.endsWith('|')) l = l.slice(0, -1);
+  return l.split('|').map((c) => c.trim());
+};
+
+const renderTable = (header: string[], rows: string[][]): string => {
+  const ths = header
+    .map(
+      (h) =>
+        `<th style="background:linear-gradient(135deg,#0ea5e9,#3b82f6);color:#fff;padding:10px 12px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;border:1px solid #0284c7;">${renderInline(h)}</th>`
+    )
+    .join('');
+  const trs = rows
+    .map(
+      (r, i) =>
+        `<tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">${r
+          .map(
+            (c) =>
+              `<td style="padding:9px 12px;font-size:12px;color:#334155;border:1px solid #e2e8f0;vertical-align:top;line-height:1.5;">${renderInline(c)}</td>`
+          )
+          .join('')}</tr>`
+    )
+    .join('');
+  return `<table style="width:100%;border-collapse:collapse;margin:12px 0 16px;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06);"><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+};
+
+const renderProductCard = (num: string, content: string): string => {
+  // Try to extract product name from first **bold** segment
+  const nameMatch = content.match(/\*\*(.+?)\*\*/);
+  const productName = nameMatch ? nameMatch[1] : `Item ${num}`;
+  const body = renderInline(content.replace(/^\*\*.+?\*\*\s*[—\-:]?\s*/, ''));
+  return `<div style="display:flex;gap:14px;background:#ffffff;border:1px solid #e2e8f0;border-left:4px solid #0ea5e9;border-radius:10px;padding:14px 16px;margin:10px 0;box-shadow:0 1px 2px rgba(0,0,0,0.04);page-break-inside:avoid;">
+    <div style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#0ea5e9,#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;">${num}</div>
+    <div style="flex:1;">
+      <div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:4px;">${escapeHtml(productName)}</div>
+      <div style="font-size:12px;color:#475569;line-height:1.6;">${body}</div>
+    </div>
+  </div>`;
+};
+
+const markdownToPdfHtml = (md: string): string => {
+  const lines = md.split('\n');
+  const out: string[] = [];
+  let i = 0;
+  let inList = false;
+  let inOrdered = false;
+  let isProductSection = false;
+
+  const closeList = () => {
+    if (inList) {
+      out.push('</ul>');
+      inList = false;
+    }
+    if (inOrdered) {
+      out.push('</ol>');
+      inOrdered = false;
+    }
+  };
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // Empty
+    if (!trimmed) {
+      closeList();
+      i++;
+      continue;
+    }
+
+    // H2
+    if (/^##\s+/.test(trimmed)) {
+      closeList();
+      const text = trimmed.replace(/^##\s+/, '').replace(/[🎯👥📊❤️💡💬✨📌💼🚀]/g, '').trim();
+      const emoji = getSectionEmoji(text);
+      isProductSection = /top\s+produtos|potencial\s+de\s+venda/i.test(text);
+      out.push(
+        `<div style="display:flex;align-items:center;gap:12px;margin:28px 0 14px;padding:14px 18px;background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-radius:10px;border-left:4px solid #0ea5e9;page-break-after:avoid;">
+          <span style="font-size:22px;">${emoji}</span>
+          <h2 style="margin:0;font-family:'Space Grotesk','Inter',sans-serif;font-size:18px;font-weight:700;color:#0c4a6e;letter-spacing:-0.2px;">${escapeHtml(text)}</h2>
+        </div>`
+      );
+      i++;
+      continue;
+    }
+
+    // H3
+    if (/^###\s+/.test(trimmed)) {
+      closeList();
+      const text = trimmed.replace(/^###\s+/, '').replace(/[🎯👥📊❤️💡💬✨📌💼🚀]/g, '').trim();
+      const emoji = getSectionEmoji(text);
+      isProductSection = /top\s+produtos|potencial\s+de\s+venda/i.test(text);
+      out.push(
+        `<div style="display:flex;align-items:center;gap:8px;margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid #e0f2fe;page-break-after:avoid;">
+          <span style="font-size:15px;">${emoji}</span>
+          <h3 style="margin:0;font-family:'Space Grotesk','Inter',sans-serif;font-size:14px;font-weight:600;color:#0f172a;">${escapeHtml(text)}</h3>
+        </div>`
+      );
+      i++;
+      continue;
+    }
+
+    // Table
+    if (trimmed.includes('|') && i + 1 < lines.length && isTableSeparator(lines[i + 1])) {
+      closeList();
+      const header = splitTableRow(line);
+      i += 2;
+      const rows: string[][] = [];
+      while (i < lines.length && lines[i].trim().includes('|') && !isTableSeparator(lines[i])) {
+        rows.push(splitTableRow(lines[i]));
+        i++;
+      }
+      out.push(renderTable(header, rows));
+      continue;
+    }
+
+    // Ordered list (1. 2. 3.) — render as product cards in product section
+    const orderedMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
+    if (orderedMatch) {
+      if (inList) {
+        out.push('</ul>');
+        inList = false;
+      }
+      const num = orderedMatch[1];
+      let content = orderedMatch[2];
+      // Collect continuation lines (indented or sub-bullets)
+      let j = i + 1;
+      while (j < lines.length) {
+        const next = lines[j];
+        if (!next.trim()) break;
+        if (/^(\d+)\.\s+/.test(next.trim()) || /^##/.test(next.trim()) || /^-\s+/.test(next.trim())) break;
+        content += ' ' + next.trim();
+        j++;
+      }
+      if (isProductSection) {
+        out.push(renderProductCard(num, content));
+      } else {
+        if (!inOrdered) {
+          out.push('<ol style="margin:8px 0 12px 4px;padding-left:24px;">');
+          inOrdered = true;
+        }
+        out.push(
+          `<li style="font-size:12px;line-height:1.7;color:#334155;margin:4px 0;">${renderInline(content)}</li>`
+        );
+      }
+      i = j;
+      continue;
+    }
+
+    // Bullet list
+    if (/^-\s+/.test(trimmed)) {
+      if (inOrdered) {
+        out.push('</ol>');
+        inOrdered = false;
+      }
+      if (!inList) {
+        out.push('<ul style="list-style:none;margin:6px 0 12px;padding:0;">');
+        inList = true;
+      }
+      const content = trimmed.replace(/^-\s+/, '');
+      out.push(
+        `<li style="display:flex;align-items:flex-start;gap:10px;padding:5px 0 5px 4px;font-size:12px;line-height:1.65;color:#334155;">
+          <span style="margin-top:7px;width:6px;height:6px;min-width:6px;border-radius:50%;background:linear-gradient(135deg,#0ea5e9,#3b82f6);display:inline-block;"></span>
+          <span style="flex:1;">${renderInline(content)}</span>
+        </li>`
+      );
+      i++;
+      continue;
+    }
+
+    // Paragraph
+    closeList();
+    out.push(
+      `<p style="font-size:12px;line-height:1.7;color:#475569;margin:6px 4px;">${renderInline(trimmed)}</p>`
+    );
+    i++;
+  }
+
+  closeList();
+  return out.join('');
+};
+
 const buildPdfHtml = (profile: string, projectName?: string): string => {
   const date = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-
-  // Parse markdown into simple HTML with inline styles
-  const contentHtml = profile
-    // h2
-    .replace(/^## (.+)$/gm, (_m, t) => {
-      const emoji = getSectionEmoji(t);
-      return `<div style="display:flex;align-items:center;gap:10px;margin-top:28px;margin-bottom:8px;">
-        <span style="font-size:20px;">${emoji}</span>
-        <h2 style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:#e8ecf0;">${t.replace(/[🎯👥📊❤️💡💬✨📌]/g, '').trim()}</h2>
-      </div>`;
-    })
-    // h3
-    .replace(/^### (.+)$/gm, (_m, t) => {
-      const emoji = getSectionEmoji(t);
-      return `<div style="display:flex;align-items:center;gap:8px;margin-top:20px;padding-bottom:6px;border-bottom:1px solid #1e2433;margin-bottom:8px;">
-        <span style="font-size:16px;">${emoji}</span>
-        <h3 style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;color:#d0d6e0;">${t.replace(/[🎯👥📊❤️💡💬✨📌]/g, '').trim()}</h3>
-      </div>`;
-    })
-    // bold
-    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#e8ecf0;font-weight:600;">$1</strong>')
-    // bullet lists
-    .replace(/^- (.+)$/gm, (_m, t) =>
-      `<div style="display:flex;align-items:flex-start;gap:8px;padding:3px 0 3px 8px;">
-        <span style="margin-top:6px;width:6px;height:6px;min-width:6px;border-radius:50%;background:#17c5e8;display:inline-block;"></span>
-        <span style="font-size:13px;line-height:1.6;color:#8b95a8;">${t}</span>
-      </div>`)
-    // paragraphs (lines that aren't already wrapped)
-    .replace(/^(?!<)((?!<div|<h[23]).+)$/gm, '<p style="font-size:13px;line-height:1.7;color:#8b95a8;margin:4px 0 4px 4px;">$1</p>');
+  const contentHtml = markdownToPdfHtml(profile);
 
   return `
-<div style="font-family:'Inter','Segoe UI',sans-serif;background:#0a0c10;color:#e8ecf0;min-height:100%;padding:0;">
+<div style="font-family:'Inter','Segoe UI',Arial,sans-serif;background:#ffffff;color:#0f172a;width:794px;">
   <!-- Header -->
-  <div style="background:linear-gradient(135deg,#0d1117 0%,#111827 100%);padding:32px 40px;border-bottom:2px solid #17c5e8;">
+  <div style="background:linear-gradient(135deg,#0c4a6e 0%,#1e3a8a 100%);padding:28px 40px;color:#fff;">
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div style="display:flex;align-items:center;gap:14px;">
-        <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#17c5e8,#3b82f6);display:flex;align-items:center;justify-content:center;">
-          <span style="font-size:22px;">🧠</span>
+        <div style="width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.2);">
+          <span style="font-size:24px;">🧠</span>
         </div>
         <div>
-          <h1 style="margin:0;font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.5px;">
-            <span style="background:linear-gradient(135deg,#17c5e8,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">CommentIQ</span>
-          </h1>
-          <p style="margin:2px 0 0;font-size:11px;color:#8b95a8;letter-spacing:0.5px;text-transform:uppercase;">Análise de Audiência com Inteligência Artificial</p>
+          <h1 style="margin:0;font-family:'Space Grotesk','Inter',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.5px;color:#fff;">CommentIQ</h1>
+          <p style="margin:3px 0 0;font-size:11px;color:#bae6fd;letter-spacing:0.6px;text-transform:uppercase;font-weight:500;">Análise de Audiência com IA</p>
         </div>
       </div>
       <div style="text-align:right;">
-        <p style="margin:0;font-size:11px;color:#6b7280;">Relatório gerado em</p>
-        <p style="margin:2px 0 0;font-size:13px;color:#d0d6e0;font-weight:500;">${date}</p>
+        <p style="margin:0;font-size:10px;color:#bae6fd;text-transform:uppercase;letter-spacing:0.5px;">Gerado em</p>
+        <p style="margin:3px 0 0;font-size:13px;color:#fff;font-weight:600;">${date}</p>
       </div>
     </div>
   </div>
 
   <!-- Project Title Bar -->
-  <div style="background:#111827;padding:16px 40px;border-bottom:1px solid #1e2433;">
-    <div style="display:flex;align-items:center;gap:8px;">
+  <div style="background:#f8fafc;padding:14px 40px;border-bottom:1px solid #e2e8f0;">
+    <div style="display:flex;align-items:center;gap:10px;">
       <span style="font-size:14px;">📁</span>
-      <span style="font-size:13px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Projeto:</span>
-      <span style="font-size:14px;color:#e8ecf0;font-weight:600;">${projectName || 'Análise de Avatar'}</span>
+      <span style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.6px;font-weight:600;">Projeto</span>
+      <span style="color:#cbd5e1;">›</span>
+      <span style="font-size:14px;color:#0f172a;font-weight:600;">${escapeHtml(projectName || 'Análise de Avatar')}</span>
     </div>
   </div>
 
@@ -117,45 +291,91 @@ const buildPdfHtml = (profile: string, projectName?: string): string => {
   </div>
 
   <!-- Footer -->
-  <div style="background:#111827;padding:20px 40px;border-top:1px solid #1e2433;display:flex;align-items:center;justify-content:space-between;">
-    <p style="margin:0;font-size:11px;color:#6b7280;">Gerado por <strong style="color:#17c5e8;">CommentIQ</strong> — Análise inteligente de audiência</p>
-    <p style="margin:0;font-size:11px;color:#6b7280;">commentiq.com</p>
+  <div style="background:#0c4a6e;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;color:#bae6fd;">
+    <p style="margin:0;font-size:10px;">Gerado por <strong style="color:#fff;">CommentIQ</strong> — Análise inteligente de audiência</p>
+    <p style="margin:0;font-size:10px;">commentiq.com</p>
   </div>
 </div>`;
 };
 
 export const AiProfileCard = ({ profile, projectName }: AiProfileCardProps) => {
   const [exporting, setExporting] = useState(false);
-  const printRef = useRef<HTMLDivElement>(null);
 
   const handleExportPDF = async () => {
     setExporting(true);
+    const container = document.createElement('div');
     try {
-      const { default: html2pdf } = await import('html2pdf.js');
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas'),
+      ]);
 
-      // Create a temporary off-screen container with the PDF-specific layout
-      const container = document.createElement('div');
       container.style.position = 'fixed';
-      container.style.left = '-9999px';
+      container.style.left = '-10000px';
       container.style.top = '0';
-      container.style.width = '210mm';
+      container.style.width = '794px';
+      container.style.background = '#ffffff';
       container.innerHTML = buildPdfHtml(profile, projectName);
       document.body.appendChild(container);
 
-      const opt = {
-        margin: [0, 0, 0, 0] as [number, number, number, number],
-        filename: `${projectName || 'perfil-avatar'}-commentiq.pdf`,
-        image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0a0c10', width: 794 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
-      };
+      // Wait a tick for layout
+      await new Promise((r) => setTimeout(r, 100));
 
-      await html2pdf().set(opt).from(container).save();
-      document.body.removeChild(container);
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        windowWidth: 794,
+      });
+
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      const pageWidth = pdf.internal.pageSize.getWidth(); // 210mm
+      const pageHeight = pdf.internal.pageSize.getHeight(); // 297mm
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      // Slice the canvas across multiple pages
+      const pxPerMm = canvas.width / pageWidth;
+      const pageHeightPx = pageHeight * pxPerMm;
+      let renderedPx = 0;
+      let pageIndex = 0;
+
+      while (renderedPx < canvas.height) {
+        const sliceHeight = Math.min(pageHeightPx, canvas.height - renderedPx);
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = sliceHeight;
+        const ctx = pageCanvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          ctx.drawImage(
+            canvas,
+            0,
+            renderedPx,
+            canvas.width,
+            sliceHeight,
+            0,
+            0,
+            canvas.width,
+            sliceHeight
+          );
+        }
+        const imgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+        if (pageIndex > 0) pdf.addPage();
+        const sliceHeightMm = sliceHeight / pxPerMm;
+        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, sliceHeightMm);
+        renderedPx += sliceHeight;
+        pageIndex++;
+      }
+
+      pdf.save(`${projectName || 'perfil-avatar'}-commentiq.pdf`);
     } catch (err) {
       console.error('PDF export error:', err);
+    } finally {
+      if (container.parentNode) container.parentNode.removeChild(container);
+      setExporting(false);
     }
-    setExporting(false);
   };
 
   return (
@@ -189,6 +409,7 @@ export const AiProfileCard = ({ profile, projectName }: AiProfileCardProps) => {
       {/* Content */}
       <div className="ai-profile-content p-6 space-y-1">
         <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
           components={{
             h2: ({ children }) => (
               <div className="flex items-center gap-3 pt-4 pb-2 first:pt-0">
@@ -208,14 +429,46 @@ export const AiProfileCard = ({ profile, projectName }: AiProfileCardProps) => {
             ul: ({ children }) => (
               <ul className="space-y-1.5 pl-2 py-1">{children}</ul>
             ),
-            li: ({ children }) => (
-              <li className="flex items-start gap-2 text-sm text-muted-foreground">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                <span className="leading-relaxed">{children}</span>
-              </li>
+            ol: ({ children }) => (
+              <ol className="space-y-2 pl-6 py-1 list-decimal marker:text-primary marker:font-bold">{children}</ol>
             ),
+            li: ({ children, ...props }) => {
+              // Ordered list items get card style
+              if ((props as { ordered?: boolean }).ordered) {
+                return (
+                  <li className="text-sm text-muted-foreground leading-relaxed pl-2">
+                    <span className="block bg-secondary/40 border-l-2 border-primary rounded-r-md px-3 py-2">
+                      {children}
+                    </span>
+                  </li>
+                );
+              }
+              return (
+                <li className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                  <span className="leading-relaxed">{children}</span>
+                </li>
+              );
+            },
             strong: ({ children }) => (
               <strong className="font-semibold text-foreground">{children}</strong>
+            ),
+            table: ({ children }) => (
+              <div className="my-4 overflow-x-auto rounded-lg border border-border">
+                <table className="w-full text-sm">{children}</table>
+              </div>
+            ),
+            thead: ({ children }) => (
+              <thead className="bg-primary/10">{children}</thead>
+            ),
+            th: ({ children }) => (
+              <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-foreground border-b border-border">{children}</th>
+            ),
+            td: ({ children }) => (
+              <td className="px-3 py-2 text-sm text-muted-foreground border-b border-border/50 align-top">{children}</td>
+            ),
+            tr: ({ children }) => (
+              <tr className="even:bg-muted/30">{children}</tr>
             ),
           }}
         >
