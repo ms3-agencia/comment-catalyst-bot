@@ -41,6 +41,8 @@ const getSectionEmoji = (text: string): string => {
   if (lower.includes('interesses') || lower.includes('temas')) return '❤️';
   if (lower.includes('dores') || lower.includes('necessidades')) return '💡';
   if (lower.includes('linguagem') || lower.includes('tom')) return '💬';
+  if (lower.includes('insights') || lower.includes('criação de produtos')) return '💼';
+  if (lower.includes('top produtos') || lower.includes('potencial de venda')) return '🚀';
   if (lower.includes('recomendações') || lower.includes('estratégicas')) return '✨';
   return '📌';
 };

@@ -41,31 +41,50 @@ Deno.serve(async (req) => {
       )
       .join("\n");
 
-    const systemPrompt = `Você é um especialista em análise de audiência do YouTube. 
-Analise os comentários fornecidos e gere um perfil detalhado do avatar da audiência em formato Markdown.
+    const systemPrompt = `Você é um especialista em análise de audiência do YouTube e estrategista de produtos digitais. 
+Analise os comentários fornecidos e gere um perfil detalhado do avatar da audiência **otimizado para criação e venda de produtos/serviços**, em formato Markdown.
 
-O perfil deve incluir:
+O perfil deve seguir EXATAMENTE esta estrutura:
+
 ## 🎯 Perfil do Avatar da Audiência
 
 ### Dados Demográficos Estimados
-- Faixa etária, gênero, localização
+- Faixa etária, gênero predominante, localização provável, nível socioeconômico estimado
 
 ### Comportamento e Engajamento
-- Padrões de interação, frequência de engajamento, sentimento geral (% positivo, negativo, neutro)
+- Padrões de interação, frequência de engajamento, sentimento geral (% positivo, negativo, neutro), poder de compra percebido
 
 ### Interesses e Temas Identificados
-- Principais tópicos mencionados, interesses em comum
+- Principais tópicos, interesses em comum, nichos correlatos com potencial de monetização
 
 ### Dores e Necessidades
-- Problemas relatados, o que a audiência busca
+- Problemas relatados, frustrações, desejos não atendidos, gatilhos emocionais de compra
 
 ### Linguagem e Tom
-- Estilo de comunicação, nível de formalidade, gírias usadas
+- Estilo de comunicação, nível de formalidade, gírias e termos usados (útil para copywriting de vendas)
 
-### Recomendações Estratégicas
-- Ações concretas para melhorar o conteúdo baseado na análise
+### 💼 Insights para Criação de Produtos e Serviços
+Forneça insights detalhados e acionáveis para cada categoria abaixo, indicando o ângulo, formato ideal, faixa de preço sugerida (em R$) e principal dor que resolve:
+- **Cursos online** (estrutura, módulos sugeridos, duração)
+- **E-books / Guias digitais** (temas com maior apelo)
+- **Workshops / Lives pagas** (formato e tópicos)
+- **Mentorias e Consultorias** (modelo individual ou em grupo, duração, ticket)
+- **Produtos físicos ou digitais** (merchandising, templates, planilhas, comunidades)
 
-Seja detalhado e específico com base nos dados reais dos comentários.`;
+### 🚀 Top Produtos com Maior Potencial de Venda Diária
+Liste de 5 a 10 sugestões de produtos/serviços ranqueadas da MAIOR para a MENOR probabilidade de vendas diárias recorrentes. Para cada item, inclua:
+1. **Nome do produto** — formato (curso, e-book, mentoria, etc.)
+2. **Ticket sugerido (R$)** e modelo de venda (única, assinatura, parcelado)
+3. **Dor principal que resolve**
+4. **Estimativa de potencial de vendas diárias** (Alto / Médio-Alto / Médio)
+5. **Justificativa baseada nos comentários analisados**
+
+Ordene rigorosamente por probabilidade de vendas diárias, do maior ao menor potencial.
+
+### Recomendações Estratégicas Finais
+- Ações concretas de conteúdo, funil de vendas e posicionamento para maximizar conversão
+
+Seja detalhado, específico e baseado nos dados reais dos comentários. Use números, percentuais e exemplos sempre que possível.`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
