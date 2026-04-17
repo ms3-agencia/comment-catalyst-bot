@@ -22,6 +22,41 @@ type UserProfile = {
   created_at: string;
 };
 
+type AiProvider = {
+  id: string;
+  provider: string;
+  model: string;
+  priority: number;
+  enabled: boolean;
+};
+
+const PROVIDER_META: Record<string, { label: string; secretName: string; docsUrl: string; defaultModels: string[] }> = {
+  lovable: {
+    label: 'Lovable AI Gateway',
+    secretName: 'LOVABLE_API_KEY',
+    docsUrl: 'https://docs.lovable.dev/features/ai',
+    defaultModels: ['google/gemini-3-flash-preview', 'google/gemini-2.5-flash', 'google/gemini-2.5-pro', 'openai/gpt-5-mini', 'openai/gpt-5'],
+  },
+  openai: {
+    label: 'OpenAI',
+    secretName: 'OPENAI_API_KEY',
+    docsUrl: 'https://platform.openai.com/api-keys',
+    defaultModels: ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1'],
+  },
+  openrouter: {
+    label: 'OpenRouter',
+    secretName: 'OPENROUTER_API_KEY',
+    docsUrl: 'https://openrouter.ai/keys',
+    defaultModels: ['google/gemini-2.0-flash-exp:free', 'meta-llama/llama-3.3-70b-instruct:free', 'anthropic/claude-3.5-sonnet'],
+  },
+  gemini: {
+    label: 'Google Gemini',
+    secretName: 'GEMINI_API_KEY',
+    docsUrl: 'https://aistudio.google.com/app/apikey',
+    defaultModels: ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'],
+  },
+};
+
 const Admin = () => {
   const { toast } = useToast();
   const [users, setUsers] = useState<UserProfile[]>([]);
