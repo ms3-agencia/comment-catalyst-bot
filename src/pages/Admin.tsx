@@ -92,7 +92,34 @@ const Admin = () => {
       setApiKeySaved(true);
     }
 
+    // Fetch AI providers
+    const { data: provs } = await supabase.from('ai_providers').select('*').order('priority', { ascending: true });
+    setProviders((provs as AiProvider[]) || []);
+
     setLoading(false);
+  };
+
+  const updateProvider = async (id: string, updates: Partial<AiProvider>) => {
+    setProviders(prev => prev.map(p => (p.id === id ? { ...p, ...updates } : p)));
+    const { error } = await supabase.from('ai_providers').update(updates).eq('id', id);
+    if (error) toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+  };
+
+  const moveProvider = async (id: string, direction: 'up' | 'down') => {
+    const sorted = [...providers].sort((a, b) => a.priority - b.priority);
+    const idx = sorted.findIndex(p => p.id === id);
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+    const a = sorted[idx];
+    const b = sorted[swapIdx];
+    setProvidersLoading(true);
+    await Promise.all([
+      supabase.from('ai_providers').update({ priority: b.priority }).eq('id', a.id),
+      supabase.from('ai_providers').update({ priority: a.priority }).eq('id', b.id),
+    ]);
+    const { data: provs } = await supabase.from('ai_providers').select('*').order('priority', { ascending: true });
+    setProviders((provs as AiProvider[]) || []);
+    setProvidersLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
