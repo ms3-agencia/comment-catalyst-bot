@@ -73,6 +73,10 @@ const Admin = () => {
   const [apiKeySaved, setApiKeySaved] = useState(false);
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
 
+  // AI Providers state
+  const [providers, setProviders] = useState<AiProvider[]>([]);
+  const [providersLoading, setProvidersLoading] = useState(false);
+
   const fetchData = async () => {
     setLoading(true);
     const { data: profiles } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
