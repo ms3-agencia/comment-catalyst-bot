@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, Power } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -19,6 +20,41 @@ type UserProfile = {
   email: string | null;
   plan: string;
   created_at: string;
+};
+
+type AiProvider = {
+  id: string;
+  provider: string;
+  model: string;
+  priority: number;
+  enabled: boolean;
+};
+
+const PROVIDER_META: Record<string, { label: string; secretName: string; docsUrl: string; defaultModels: string[] }> = {
+  lovable: {
+    label: 'Lovable AI Gateway',
+    secretName: 'LOVABLE_API_KEY',
+    docsUrl: 'https://docs.lovable.dev/features/ai',
+    defaultModels: ['google/gemini-3-flash-preview', 'google/gemini-2.5-flash', 'google/gemini-2.5-pro', 'openai/gpt-5-mini', 'openai/gpt-5'],
+  },
+  openai: {
+    label: 'OpenAI',
+    secretName: 'OPENAI_API_KEY',
+    docsUrl: 'https://platform.openai.com/api-keys',
+    defaultModels: ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1'],
+  },
+  openrouter: {
+    label: 'OpenRouter',
+    secretName: 'OPENROUTER_API_KEY',
+    docsUrl: 'https://openrouter.ai/keys',
+    defaultModels: ['google/gemini-2.0-flash-exp:free', 'meta-llama/llama-3.3-70b-instruct:free', 'anthropic/claude-3.5-sonnet'],
+  },
+  gemini: {
+    label: 'Google Gemini',
+    secretName: 'GEMINI_API_KEY',
+    docsUrl: 'https://aistudio.google.com/app/apikey',
+    defaultModels: ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'],
+  },
 };
 
 const Admin = () => {
@@ -37,6 +73,10 @@ const Admin = () => {
   const [apiKeySaved, setApiKeySaved] = useState(false);
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
 
+  // AI Providers state
+  const [providers, setProviders] = useState<AiProvider[]>([]);
+  const [providersLoading, setProvidersLoading] = useState(false);
+
   const fetchData = async () => {
     setLoading(true);
     const { data: profiles } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
@@ -52,7 +92,34 @@ const Admin = () => {
       setApiKeySaved(true);
     }
 
+    // Fetch AI providers
+    const { data: provs } = await supabase.from('ai_providers').select('*').order('priority', { ascending: true });
+    setProviders((provs as AiProvider[]) || []);
+
     setLoading(false);
+  };
+
+  const updateProvider = async (id: string, updates: Partial<AiProvider>) => {
+    setProviders(prev => prev.map(p => (p.id === id ? { ...p, ...updates } : p)));
+    const { error } = await supabase.from('ai_providers').update(updates).eq('id', id);
+    if (error) toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+  };
+
+  const moveProvider = async (id: string, direction: 'up' | 'down') => {
+    const sorted = [...providers].sort((a, b) => a.priority - b.priority);
+    const idx = sorted.findIndex(p => p.id === id);
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+    const a = sorted[idx];
+    const b = sorted[swapIdx];
+    setProvidersLoading(true);
+    await Promise.all([
+      supabase.from('ai_providers').update({ priority: b.priority }).eq('id', a.id),
+      supabase.from('ai_providers').update({ priority: a.priority }).eq('id', b.id),
+    ]);
+    const { data: provs } = await supabase.from('ai_providers').select('*').order('priority', { ascending: true });
+    setProviders((provs as AiProvider[]) || []);
+    setProvidersLoading(false);
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -283,6 +350,94 @@ const Admin = () => {
                   <p className="text-xs text-success flex items-center gap-1">
                     <CheckCircle2 size={12} /> Chave da API configurada e ativa
                   </p>
+                )}
+              </div>
+            </Card>
+
+            {/* AI Providers */}
+            <Card className="glass p-6 space-y-6 mt-6">
+              <div>
+                <h3 className="font-heading text-lg font-bold flex items-center gap-2">
+                  <Bot size={20} className="text-primary" /> Provedores de IA
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Configure os provedores, modelo e ordem de prioridade. O sistema tentará o de maior prioridade primeiro com fallback automático em caso de falha.
+                </p>
+              </div>
+
+              <Card className="bg-muted/30 border-primary/20 p-4">
+                <p className="text-sm">
+                  🔐 <strong>Chaves de API são armazenadas como secrets do backend</strong> para máxima segurança. Use os links abaixo para obter cada chave e adicione-as nas configurações de secrets do backend.
+                </p>
+              </Card>
+
+              <div className="space-y-3">
+                {[...providers].sort((a, b) => a.priority - b.priority).map((p, idx, arr) => {
+                  const meta = PROVIDER_META[p.provider] || { label: p.provider, secretName: '', docsUrl: '#', defaultModels: [] };
+                  return (
+                    <Card key={p.id} className="p-4 border border-border bg-card/50">
+                      <div className="flex items-start gap-4">
+                        <div className="flex flex-col gap-1">
+                          <Button size="icon" variant="outline" className="h-7 w-7" disabled={idx === 0 || providersLoading} onClick={() => moveProvider(p.id, 'up')}>
+                            <ArrowUp size={14} />
+                          </Button>
+                          <div className="text-center text-xs font-bold text-muted-foreground">#{idx + 1}</div>
+                          <Button size="icon" variant="outline" className="h-7 w-7" disabled={idx === arr.length - 1 || providersLoading} onClick={() => moveProvider(p.id, 'down')}>
+                            <ArrowDown size={14} />
+                          </Button>
+                        </div>
+
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-semibold">{meta.label}</h4>
+                              {p.enabled ? (
+                                <span className="text-xs bg-success/20 text-success px-2 py-0.5 rounded-full">Ativo</span>
+                              ) : (
+                                <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">Desativado</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Power size={14} className="text-muted-foreground" />
+                              <Switch checked={p.enabled} onCheckedChange={(v) => updateProvider(p.id, { enabled: v })} />
+                            </div>
+                          </div>
+
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Modelo</Label>
+                              <Select value={p.model} onValueChange={(v) => updateProvider(p.id, { model: v })}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {meta.defaultModels.map(m => (
+                                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                                  ))}
+                                  {!meta.defaultModels.includes(p.model) && (
+                                    <SelectItem value={p.model}>{p.model} (atual)</SelectItem>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Chave da API (secret)</Label>
+                              <div className="flex gap-2">
+                                <Input value={meta.secretName} readOnly className="font-mono text-xs bg-muted/50" />
+                                <Button asChild size="sm" variant="outline">
+                                  <a href={meta.docsUrl} target="_blank" rel="noopener noreferrer">
+                                    <Key size={14} className="mr-1" /> Obter
+                                  </a>
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+
+                {providers.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-6">Nenhum provedor configurado.</p>
                 )}
               </div>
             </Card>
