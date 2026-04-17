@@ -353,6 +353,94 @@ const Admin = () => {
                 )}
               </div>
             </Card>
+
+            {/* AI Providers */}
+            <Card className="glass p-6 space-y-6 mt-6">
+              <div>
+                <h3 className="font-heading text-lg font-bold flex items-center gap-2">
+                  <Bot size={20} className="text-primary" /> Provedores de IA
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Configure os provedores, modelo e ordem de prioridade. O sistema tentará o de maior prioridade primeiro com fallback automático em caso de falha.
+                </p>
+              </div>
+
+              <Card className="bg-muted/30 border-primary/20 p-4">
+                <p className="text-sm">
+                  🔐 <strong>Chaves de API são armazenadas como secrets do backend</strong> para máxima segurança. Use os links abaixo para obter cada chave e adicione-as nas configurações de secrets do backend.
+                </p>
+              </Card>
+
+              <div className="space-y-3">
+                {[...providers].sort((a, b) => a.priority - b.priority).map((p, idx, arr) => {
+                  const meta = PROVIDER_META[p.provider] || { label: p.provider, secretName: '', docsUrl: '#', defaultModels: [] };
+                  return (
+                    <Card key={p.id} className="p-4 border border-border bg-card/50">
+                      <div className="flex items-start gap-4">
+                        <div className="flex flex-col gap-1">
+                          <Button size="icon" variant="outline" className="h-7 w-7" disabled={idx === 0 || providersLoading} onClick={() => moveProvider(p.id, 'up')}>
+                            <ArrowUp size={14} />
+                          </Button>
+                          <div className="text-center text-xs font-bold text-muted-foreground">#{idx + 1}</div>
+                          <Button size="icon" variant="outline" className="h-7 w-7" disabled={idx === arr.length - 1 || providersLoading} onClick={() => moveProvider(p.id, 'down')}>
+                            <ArrowDown size={14} />
+                          </Button>
+                        </div>
+
+                        <div className="flex-1 space-y-3">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-semibold">{meta.label}</h4>
+                              {p.enabled ? (
+                                <span className="text-xs bg-success/20 text-success px-2 py-0.5 rounded-full">Ativo</span>
+                              ) : (
+                                <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">Desativado</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Power size={14} className="text-muted-foreground" />
+                              <Switch checked={p.enabled} onCheckedChange={(v) => updateProvider(p.id, { enabled: v })} />
+                            </div>
+                          </div>
+
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Modelo</Label>
+                              <Select value={p.model} onValueChange={(v) => updateProvider(p.id, { model: v })}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {meta.defaultModels.map(m => (
+                                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                                  ))}
+                                  {!meta.defaultModels.includes(p.model) && (
+                                    <SelectItem value={p.model}>{p.model} (atual)</SelectItem>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Chave da API (secret)</Label>
+                              <div className="flex gap-2">
+                                <Input value={meta.secretName} readOnly className="font-mono text-xs bg-muted/50" />
+                                <Button asChild size="sm" variant="outline">
+                                  <a href={meta.docsUrl} target="_blank" rel="noopener noreferrer">
+                                    <Key size={14} className="mr-1" /> Obter
+                                  </a>
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+
+                {providers.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-6">Nenhum provedor configurado.</p>
+                )}
+              </div>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
