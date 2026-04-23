@@ -64,6 +64,7 @@ const PROVIDER_META: Record<string, { label: string; secretName: string; docsUrl
 
 const Admin = () => {
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [stats, setStats] = useState({ users: 0, projects: 0, comments: 0 });
   const [search, setSearch] = useState('');
@@ -72,6 +73,15 @@ const Admin = () => {
   const [editName, setEditName] = useState('');
   const [editPlan, setEditPlan] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Password change
+  const [pwdUser, setPwdUser] = useState<UserProfile | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [pwdSaving, setPwdSaving] = useState(false);
+
+  // Delete confirmation
+  const [deleteUser, setDeleteUser] = useState<UserProfile | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // API Key state
   const [youtubeApiKey, setYoutubeApiKey] = useState('');
@@ -85,13 +95,16 @@ const Admin = () => {
   const fetchData = async () => {
     setLoading(true);
     const { data: profiles } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    const { data: roles } = await supabase.from('user_roles').select('user_id, role').eq('role', 'admin');
+    const adminIds = new Set((roles || []).map(r => r.user_id));
     const { count: pCount } = await supabase.from('projects').select('*', { count: 'exact', head: true });
     const { count: cCount } = await supabase.from('comments').select('*', { count: 'exact', head: true });
-    setUsers((profiles as UserProfile[]) || []);
+    const enriched = ((profiles as any[]) || []).map(p => ({ ...p, is_admin: adminIds.has(p.user_id) })) as UserProfile[];
+    setUsers(enriched);
     setStats({ users: profiles?.length ?? 0, projects: pCount ?? 0, comments: cCount ?? 0 });
 
     // Fetch YouTube API key
-    const { data: setting } = await supabase.from('app_settings').select('value').eq('key', 'youtube_api_key').single();
+    const { data: setting } = await supabase.from('app_settings').select('value').eq('key', 'youtube_api_key').maybeSingle();
     if (setting?.value) {
       setYoutubeApiKey(setting.value);
       setApiKeySaved(true);
