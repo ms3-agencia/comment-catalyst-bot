@@ -117,7 +117,58 @@ const Admin = () => {
     const { data: provs } = await supabase.from('ai_providers').select('*').order('priority', { ascending: true });
     setProviders((provs as AiProvider[]) || []);
 
+    // Fetch provider API keys stored in app_settings
+    const providerKeyNames = Object.keys(PROVIDER_META).map(k => `provider_key_${k}`);
+    const { data: keySettings } = await supabase.from('app_settings').select('key, value').in('key', providerKeyNames);
+    const keysMap: Record<string, string> = {};
+    const savedMap: Record<string, boolean> = {};
+    (keySettings || []).forEach(s => {
+      const provKey = s.key.replace('provider_key_', '');
+      keysMap[provKey] = s.value;
+      savedMap[provKey] = !!s.value;
+    });
+    setProviderKeys(keysMap);
+    setProviderKeySaved(savedMap);
+
     setLoading(false);
+  };
+
+  const saveProviderKey = async (providerId: string) => {
+    const value = (providerKeys[providerId] || '').trim();
+    if (!value) {
+      toast({ title: 'Informe a chave da API', variant: 'destructive' });
+      return;
+    }
+    setProviderKeySaving(prev => ({ ...prev, [providerId]: true }));
+    const key = `provider_key_${providerId}`;
+    const { data: existing } = await supabase.from('app_settings').select('id').eq('key', key).maybeSingle();
+    let error;
+    if (existing) {
+      ({ error } = await supabase.from('app_settings').update({ value }).eq('key', key));
+    } else {
+      ({ error } = await supabase.from('app_settings').insert({ key, value }));
+    }
+    setProviderKeySaving(prev => ({ ...prev, [providerId]: false }));
+    if (error) {
+      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: `Chave do ${PROVIDER_META[providerId]?.label || providerId} salva!` });
+      setProviderKeySaved(prev => ({ ...prev, [providerId]: true }));
+    }
+  };
+
+  const clearProviderKey = async (providerId: string) => {
+    setProviderKeySaving(prev => ({ ...prev, [providerId]: true }));
+    const key = `provider_key_${providerId}`;
+    const { error } = await supabase.from('app_settings').delete().eq('key', key);
+    setProviderKeySaving(prev => ({ ...prev, [providerId]: false }));
+    if (error) {
+      toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Chave removida' });
+      setProviderKeys(prev => ({ ...prev, [providerId]: '' }));
+      setProviderKeySaved(prev => ({ ...prev, [providerId]: false }));
+    }
   };
 
   const updateProvider = async (id: string, updates: Partial<AiProvider>) => {
