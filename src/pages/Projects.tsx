@@ -4,8 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { FolderOpen, MessageSquare, ThumbsUp, Sparkles, ChevronDown, ChevronUp, Trash2, Loader2, Calendar } from 'lucide-react';
+import { FolderOpen, MessageSquare, ThumbsUp, Sparkles, ChevronDown, ChevronUp, Trash2, Loader2, Calendar, Pencil, Check, X } from 'lucide-react';
 import { AiProfileCard } from '@/components/AiProfileCard';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 type Project = {
   id: string;
@@ -34,6 +36,60 @@ const Projects = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [loadingComments, setLoadingComments] = useState<string | null>(null);
+  const [editingNameId, setEditingNameId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+  const [editingProfile, setEditingProfile] = useState('');
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  const startEditName = (e: React.MouseEvent, p: Project) => {
+    e.stopPropagation();
+    setEditingNameId(p.id);
+    setEditingName(p.name);
+  };
+
+  const cancelEditName = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingNameId(null);
+    setEditingName('');
+  };
+
+  const saveName = async (e: React.MouseEvent, projectId: string) => {
+    e.stopPropagation();
+    const name = editingName.trim();
+    if (!name) {
+      toast({ title: 'Nome inválido', variant: 'destructive' });
+      return;
+    }
+    setSavingId(projectId);
+    const { error } = await supabase.from('projects').update({ name }).eq('id', projectId);
+    setSavingId(null);
+    if (error) {
+      toast({ title: 'Erro ao renomear', description: error.message, variant: 'destructive' });
+    } else {
+      setProjects(prev => prev.map(p => p.id === projectId ? { ...p, name } : p));
+      setEditingNameId(null);
+      toast({ title: 'Projeto renomeado' });
+    }
+  };
+
+  const startEditProfile = (p: Project) => {
+    setEditingProfileId(p.id);
+    setEditingProfile(p.ai_profile || '');
+  };
+
+  const saveProfile = async (projectId: string) => {
+    setSavingId(projectId);
+    const { error } = await supabase.from('projects').update({ ai_profile: editingProfile }).eq('id', projectId);
+    setSavingId(null);
+    if (error) {
+      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+    } else {
+      setProjects(prev => prev.map(p => p.id === projectId ? { ...p, ai_profile: editingProfile } : p));
+      setEditingProfileId(null);
+      toast({ title: 'Perfil atualizado' });
+    }
+  };
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -111,7 +167,33 @@ const Projects = () => {
                   className="w-full p-5 flex items-center justify-between text-left hover:bg-secondary/30 transition-colors"
                 >
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-heading font-bold text-lg truncate">{project.name}</h3>
+                    {editingNameId === project.id ? (
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Input
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          autoFocus
+                          className="h-9"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveName(e as any, project.id);
+                            if (e.key === 'Escape') cancelEditName(e as any);
+                          }}
+                        />
+                        <Button size="icon" variant="ghost" onClick={(e) => saveName(e, project.id)} disabled={savingId === project.id}>
+                          {savingId === project.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 text-success" />}
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={cancelEditName}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-heading font-bold text-lg truncate">{project.name}</h3>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={(e) => startEditName(e, project)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
                     <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <MessageSquare size={14} /> {project.total_comments ?? 0} comentários
@@ -144,8 +226,38 @@ const Projects = () => {
                     </div>
 
                     {/* AI Profile */}
-                    {project.ai_profile && (
-                      <AiProfileCard profile={project.ai_profile} projectName={project.name} />
+                    {editingProfileId === project.id ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase">Perfil IA</p>
+                        <Textarea
+                          value={editingProfile}
+                          onChange={(e) => setEditingProfile(e.target.value)}
+                          rows={12}
+                          className="font-mono text-xs"
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <Button size="sm" variant="ghost" onClick={() => setEditingProfileId(null)}>
+                            <X className="mr-1 h-4 w-4" /> Cancelar
+                          </Button>
+                          <Button size="sm" onClick={() => saveProfile(project.id)} disabled={savingId === project.id}>
+                            {savingId === project.id ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}
+                            Salvar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : project.ai_profile ? (
+                      <div className="space-y-2">
+                        <AiProfileCard profile={project.ai_profile} projectName={project.name} />
+                        <div className="flex justify-end">
+                          <Button size="sm" variant="outline" onClick={() => startEditProfile(project)}>
+                            <Pencil className="mr-1 h-3.5 w-3.5" /> Editar Perfil IA
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => startEditProfile(project)}>
+                        <Pencil className="mr-1 h-3.5 w-3.5" /> Adicionar Perfil IA
+                      </Button>
                     )}
 
                     {/* Comments */}
