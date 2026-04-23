@@ -91,6 +91,9 @@ const Admin = () => {
   // AI Providers state
   const [providers, setProviders] = useState<AiProvider[]>([]);
   const [providersLoading, setProvidersLoading] = useState(false);
+  const [providerKeys, setProviderKeys] = useState<Record<string, string>>({});
+  const [providerKeySaved, setProviderKeySaved] = useState<Record<string, boolean>>({});
+  const [providerKeySaving, setProviderKeySaving] = useState<Record<string, boolean>>({});
 
   const fetchData = async () => {
     setLoading(true);
