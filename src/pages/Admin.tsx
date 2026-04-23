@@ -328,56 +328,168 @@ const Admin = () => {
                       <TableHead>Nome</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Plano</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Papel</TableHead>
                       <TableHead>Criado em</TableHead>
-                      <TableHead>Ações</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.map(u => (
-                      <TableRow key={u.id}>
-                        <TableCell className="font-medium">{u.full_name || '—'}</TableCell>
-                        <TableCell className="text-muted-foreground">{u.email}</TableCell>
-                        <TableCell>{planBadge(u.plan)}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{new Date(u.created_at).toLocaleDateString('pt-BR')}</TableCell>
-                        <TableCell>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm" onClick={() => openEdit(u)}>Editar</Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader><DialogTitle>Editar Usuário</DialogTitle></DialogHeader>
-                              <div className="space-y-4 pt-4">
-                                <div className="space-y-2">
-                                  <Label>Nome</Label>
-                                  <Input value={editName} onChange={e => setEditName(e.target.value)} />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label>Plano</Label>
-                                  <Select value={editPlan} onValueChange={setEditPlan}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="free">Free</SelectItem>
-                                      <SelectItem value="pro">Pro</SelectItem>
-                                      <SelectItem value="enterprise">Enterprise</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <Button onClick={handleSave} className="w-full glow-primary" disabled={saving}>
-                                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Salvar
+                    {filtered.map(u => {
+                      const isSelf = currentUser?.id === u.user_id;
+                      const suspended = u.status === 'suspended';
+                      return (
+                        <TableRow key={u.id} className={suspended ? 'opacity-60' : ''}>
+                          <TableCell className="font-medium">{u.full_name || '—'}</TableCell>
+                          <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                          <TableCell>{planBadge(u.plan)}</TableCell>
+                          <TableCell>
+                            {suspended ? (
+                              <span className="inline-block rounded-full px-2 py-0.5 text-xs font-semibold uppercase bg-destructive/20 text-destructive">Suspenso</span>
+                            ) : (
+                              <span className="inline-block rounded-full px-2 py-0.5 text-xs font-semibold uppercase bg-success/20 text-success">Ativo</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {u.is_admin ? (
+                              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold uppercase bg-primary/20 text-primary">
+                                <ShieldCheck size={12} /> Admin
+                              </span>
+                            ) : (
+                              <span className="inline-block rounded-full px-2 py-0.5 text-xs font-semibold uppercase bg-muted text-muted-foreground">Usuário</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">{new Date(u.created_at).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreHorizontal size={16} />
                                 </Button>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-56 bg-popover">
+                                <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => openEdit(u)}>
+                                  <Save className="mr-2 h-4 w-4" /> Editar dados
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { setPwdUser(u); setNewPassword(''); }}>
+                                  <KeyRound className="mr-2 h-4 w-4" /> Mudar senha
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => toggleAdmin(u)} disabled={isSelf}>
+                                  {u.is_admin ? (
+                                    <><ShieldOff className="mr-2 h-4 w-4" /> Remover admin</>
+                                  ) : (
+                                    <><ShieldCheck className="mr-2 h-4 w-4" /> Tornar admin</>
+                                  )}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => toggleStatus(u)} disabled={isSelf}>
+                                  {suspended ? (
+                                    <><UserCheck className="mr-2 h-4 w-4" /> Ativar</>
+                                  ) : (
+                                    <><UserX className="mr-2 h-4 w-4" /> Suspender</>
+                                  )}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => setDeleteUser(u)}
+                                  disabled={isSelf}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" /> Excluir usuário
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {!filtered.length && (
-                      <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum usuário encontrado</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum usuário encontrado</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
               )}
             </Card>
+
+            {/* Edit user dialog */}
+            <Dialog open={!!editUser} onOpenChange={(open) => !open && setEditUser(null)}>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Editar Usuário</DialogTitle></DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label>Nome</Label>
+                    <Input value={editName} onChange={e => setEditName(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Plano</Label>
+                    <Select value={editPlan} onValueChange={setEditPlan}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="free">Free</SelectItem>
+                        <SelectItem value="pro">Pro</SelectItem>
+                        <SelectItem value="enterprise">Enterprise</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={handleSave} className="w-full glow-primary" disabled={saving}>
+                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Salvar
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Change password dialog */}
+            <Dialog open={!!pwdUser} onOpenChange={(open) => !open && setPwdUser(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Mudar senha</DialogTitle>
+                  <DialogDescription>
+                    Defina uma nova senha para <strong>{pwdUser?.email}</strong>. Mínimo de 6 caracteres.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <Label>Nova senha</Label>
+                    <Input
+                      type="password"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setPwdUser(null)}>Cancelar</Button>
+                  <Button onClick={handleChangePassword} disabled={pwdSaving} className="glow-primary">
+                    {pwdSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />} Alterar senha
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Delete confirmation */}
+            <AlertDialog open={!!deleteUser} onOpenChange={(open) => !open && setDeleteUser(null)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação é irreversível. <strong>{deleteUser?.email}</strong> e todos os dados relacionados serão removidos permanentemente.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={(e) => { e.preventDefault(); handleDeleteUser(); }}
+                    disabled={deleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />} Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </TabsContent>
 
           <TabsContent value="settings" className="mt-4">
