@@ -127,6 +127,8 @@ const Admin = () => {
       keysMap[provKey] = s.value;
       savedMap[provKey] = !!s.value;
     });
+    // Lovable AI Gateway uses LOVABLE_API_KEY auto-provisioned by the platform
+    savedMap['lovable'] = true;
     setProviderKeys(keysMap);
     setProviderKeySaved(savedMap);
 
@@ -677,30 +679,52 @@ const Admin = () => {
                             <div className="space-y-1.5">
                               <div className="flex items-center justify-between">
                                 <Label className="text-xs">Chave da API</Label>
-                                <a href={meta.docsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
-                                  <ExternalLink size={10} /> Obter chave
-                                </a>
-                              </div>
-                              <div className="flex gap-2">
-                                <Input
-                                  type="password"
-                                  placeholder={keySaved ? '••••••••••••' : 'Cole a chave aqui'}
-                                  value={keyValue}
-                                  onChange={(e) => {
-                                    setProviderKeys(prev => ({ ...prev, [p.provider]: e.target.value }));
-                                    setProviderKeySaved(prev => ({ ...prev, [p.provider]: false }));
-                                  }}
-                                  className="flex-1 font-mono text-xs"
-                                />
-                                <Button size="sm" onClick={() => saveProviderKey(p.provider)} disabled={keySaving} className="glow-primary">
-                                  {keySaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save size={14} />}
-                                </Button>
-                                {keySaved && (
-                                  <Button size="sm" variant="outline" onClick={() => clearProviderKey(p.provider)} disabled={keySaving} title="Remover chave">
-                                    <Trash2 size={14} />
-                                  </Button>
+                                {p.provider !== 'lovable' && (
+                                  <a href={meta.docsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                                    <ExternalLink size={10} /> Obter chave
+                                  </a>
                                 )}
                               </div>
+                              {p.provider === 'lovable' ? (
+                                <div className="flex gap-2 items-center">
+                                  <Input
+                                    type="password"
+                                    value="••••••••••••••••••••••••"
+                                    readOnly
+                                    disabled
+                                    className="flex-1 font-mono text-xs bg-muted/40"
+                                  />
+                                  <span className="text-xs text-success inline-flex items-center gap-1 whitespace-nowrap">
+                                    <CheckCircle2 size={12} /> Auto
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="flex gap-2">
+                                  <Input
+                                    type="password"
+                                    placeholder={keySaved ? '••••••••••••' : 'Cole a chave aqui'}
+                                    value={keyValue}
+                                    onChange={(e) => {
+                                      setProviderKeys(prev => ({ ...prev, [p.provider]: e.target.value }));
+                                      setProviderKeySaved(prev => ({ ...prev, [p.provider]: false }));
+                                    }}
+                                    className="flex-1 font-mono text-xs"
+                                  />
+                                  <Button size="sm" onClick={() => saveProviderKey(p.provider)} disabled={keySaving} className="glow-primary">
+                                    {keySaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save size={14} />}
+                                  </Button>
+                                  {keySaved && (
+                                    <Button size="sm" variant="outline" onClick={() => clearProviderKey(p.provider)} disabled={keySaving} title="Remover chave">
+                                      <Trash2 size={14} />
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                              {p.provider === 'lovable' && (
+                                <p className="text-[11px] text-muted-foreground">
+                                  Gerenciada automaticamente pelo Lovable Cloud — nenhuma ação necessária.
+                                </p>
+                              )}
                             </div>
                           </div>
                         </div>
