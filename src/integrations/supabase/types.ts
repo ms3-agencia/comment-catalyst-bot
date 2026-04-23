@@ -123,6 +123,7 @@ export type Database = {
           full_name: string | null
           id: string
           plan: Database["public"]["Enums"]["app_plan"]
+          status: string
           updated_at: string
           user_id: string
         }
@@ -133,6 +134,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           plan?: Database["public"]["Enums"]["app_plan"]
+          status?: string
           updated_at?: string
           user_id: string
         }
@@ -143,6 +145,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           plan?: Database["public"]["Enums"]["app_plan"]
+          status?: string
           updated_at?: string
           user_id?: string
         }
@@ -207,6 +210,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_user: { Args: { _user_id: string }; Returns: undefined }
+      admin_update_user_password: {
+        Args: { _new_password: string; _user_id: string }
+        Returns: undefined
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
