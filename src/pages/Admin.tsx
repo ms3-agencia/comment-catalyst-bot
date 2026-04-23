@@ -165,7 +165,69 @@ const Admin = () => {
     }
   };
 
-  const handleSaveApiKey = async () => {
+  const toggleStatus = async (u: UserProfile) => {
+    const next = u.status === 'suspended' ? 'active' : 'suspended';
+    const { error } = await supabase.from('profiles').update({ status: next }).eq('id', u.id);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: next } : x));
+      toast({ title: next === 'suspended' ? 'Usuário suspenso' : 'Usuário ativado' });
+    }
+  };
+
+  const toggleAdmin = async (u: UserProfile) => {
+    if (u.is_admin) {
+      const { error } = await supabase.from('user_roles').delete().eq('user_id', u.user_id).eq('role', 'admin');
+      if (error) {
+        toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+        return;
+      }
+      toast({ title: 'Permissão de admin removida' });
+    } else {
+      const { error } = await supabase.from('user_roles').insert({ user_id: u.user_id, role: 'admin' });
+      if (error) {
+        toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+        return;
+      }
+      toast({ title: 'Usuário promovido a admin' });
+    }
+    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_admin: !u.is_admin } : x));
+  };
+
+  const handleChangePassword = async () => {
+    if (!pwdUser || newPassword.length < 6) {
+      toast({ title: 'Senha precisa ter ao menos 6 caracteres', variant: 'destructive' });
+      return;
+    }
+    setPwdSaving(true);
+    const { error } = await supabase.rpc('admin_update_user_password', {
+      _user_id: pwdUser.user_id,
+      _new_password: newPassword,
+    });
+    setPwdSaving(false);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Senha alterada com sucesso' });
+      setPwdUser(null);
+      setNewPassword('');
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteUser) return;
+    setDeleting(true);
+    const { error } = await supabase.rpc('admin_delete_user', { _user_id: deleteUser.user_id });
+    setDeleting(false);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Usuário excluído' });
+      setUsers(prev => prev.filter(x => x.id !== deleteUser.id));
+      setDeleteUser(null);
+    }
+  };
     if (!youtubeApiKey.trim()) {
       toast({ title: 'Informe a chave da API', variant: 'destructive' });
       return;
