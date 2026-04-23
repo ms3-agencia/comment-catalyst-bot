@@ -127,6 +127,8 @@ const Admin = () => {
       keysMap[provKey] = s.value;
       savedMap[provKey] = !!s.value;
     });
+    // Lovable AI Gateway uses LOVABLE_API_KEY auto-provisioned by the platform
+    savedMap['lovable'] = true;
     setProviderKeys(keysMap);
     setProviderKeySaved(savedMap);
 
