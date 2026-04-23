@@ -91,6 +91,9 @@ const Admin = () => {
   // AI Providers state
   const [providers, setProviders] = useState<AiProvider[]>([]);
   const [providersLoading, setProvidersLoading] = useState(false);
+  const [providerKeys, setProviderKeys] = useState<Record<string, string>>({});
+  const [providerKeySaved, setProviderKeySaved] = useState<Record<string, boolean>>({});
+  const [providerKeySaving, setProviderKeySaving] = useState<Record<string, boolean>>({});
 
   const fetchData = async () => {
     setLoading(true);
@@ -114,7 +117,58 @@ const Admin = () => {
     const { data: provs } = await supabase.from('ai_providers').select('*').order('priority', { ascending: true });
     setProviders((provs as AiProvider[]) || []);
 
+    // Fetch provider API keys stored in app_settings
+    const providerKeyNames = Object.keys(PROVIDER_META).map(k => `provider_key_${k}`);
+    const { data: keySettings } = await supabase.from('app_settings').select('key, value').in('key', providerKeyNames);
+    const keysMap: Record<string, string> = {};
+    const savedMap: Record<string, boolean> = {};
+    (keySettings || []).forEach(s => {
+      const provKey = s.key.replace('provider_key_', '');
+      keysMap[provKey] = s.value;
+      savedMap[provKey] = !!s.value;
+    });
+    setProviderKeys(keysMap);
+    setProviderKeySaved(savedMap);
+
     setLoading(false);
+  };
+
+  const saveProviderKey = async (providerId: string) => {
+    const value = (providerKeys[providerId] || '').trim();
+    if (!value) {
+      toast({ title: 'Informe a chave da API', variant: 'destructive' });
+      return;
+    }
+    setProviderKeySaving(prev => ({ ...prev, [providerId]: true }));
+    const key = `provider_key_${providerId}`;
+    const { data: existing } = await supabase.from('app_settings').select('id').eq('key', key).maybeSingle();
+    let error;
+    if (existing) {
+      ({ error } = await supabase.from('app_settings').update({ value }).eq('key', key));
+    } else {
+      ({ error } = await supabase.from('app_settings').insert({ key, value }));
+    }
+    setProviderKeySaving(prev => ({ ...prev, [providerId]: false }));
+    if (error) {
+      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: `Chave do ${PROVIDER_META[providerId]?.label || providerId} salva!` });
+      setProviderKeySaved(prev => ({ ...prev, [providerId]: true }));
+    }
+  };
+
+  const clearProviderKey = async (providerId: string) => {
+    setProviderKeySaving(prev => ({ ...prev, [providerId]: true }));
+    const key = `provider_key_${providerId}`;
+    const { error } = await supabase.from('app_settings').delete().eq('key', key);
+    setProviderKeySaving(prev => ({ ...prev, [providerId]: false }));
+    if (error) {
+      toast({ title: 'Erro ao remover', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Chave removida' });
+      setProviderKeys(prev => ({ ...prev, [providerId]: '' }));
+      setProviderKeySaved(prev => ({ ...prev, [providerId]: false }));
+    }
   };
 
   const updateProvider = async (id: string, updates: Partial<AiProvider>) => {
@@ -561,13 +615,16 @@ const Admin = () => {
 
               <Card className="bg-muted/30 border-primary/20 p-4">
                 <p className="text-sm">
-                  🔐 <strong>Chaves de API são armazenadas como secrets do backend</strong> para máxima segurança. Use os links abaixo para obter cada chave e adicione-as nas configurações de secrets do backend.
+                  🔐 As chaves são armazenadas com segurança no banco e acessíveis apenas por administradores. Use os links abaixo para obtê-las em cada provedor.
                 </p>
               </Card>
 
               <div className="space-y-3">
                 {[...providers].sort((a, b) => a.priority - b.priority).map((p, idx, arr) => {
                   const meta = PROVIDER_META[p.provider] || { label: p.provider, secretName: '', docsUrl: '#', defaultModels: [] };
+                  const keyValue = providerKeys[p.provider] || '';
+                  const keySaved = providerKeySaved[p.provider];
+                  const keySaving = providerKeySaving[p.provider];
                   return (
                     <Card key={p.id} className="p-4 border border-border bg-card/50">
                       <div className="flex items-start gap-4">
@@ -589,6 +646,11 @@ const Admin = () => {
                                 <span className="text-xs bg-success/20 text-success px-2 py-0.5 rounded-full">Ativo</span>
                               ) : (
                                 <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">Desativado</span>
+                              )}
+                              {keySaved && (
+                                <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                                  <CheckCircle2 size={10} /> Chave configurada
+                                </span>
                               )}
                             </div>
                             <div className="flex items-center gap-2">
@@ -613,14 +675,31 @@ const Admin = () => {
                               </Select>
                             </div>
                             <div className="space-y-1.5">
-                              <Label className="text-xs">Chave da API (secret)</Label>
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs">Chave da API</Label>
+                                <a href={meta.docsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                                  <ExternalLink size={10} /> Obter chave
+                                </a>
+                              </div>
                               <div className="flex gap-2">
-                                <Input value={meta.secretName} readOnly className="font-mono text-xs bg-muted/50" />
-                                <Button asChild size="sm" variant="outline">
-                                  <a href={meta.docsUrl} target="_blank" rel="noopener noreferrer">
-                                    <Key size={14} className="mr-1" /> Obter
-                                  </a>
+                                <Input
+                                  type="password"
+                                  placeholder={keySaved ? '••••••••••••' : 'Cole a chave aqui'}
+                                  value={keyValue}
+                                  onChange={(e) => {
+                                    setProviderKeys(prev => ({ ...prev, [p.provider]: e.target.value }));
+                                    setProviderKeySaved(prev => ({ ...prev, [p.provider]: false }));
+                                  }}
+                                  className="flex-1 font-mono text-xs"
+                                />
+                                <Button size="sm" onClick={() => saveProviderKey(p.provider)} disabled={keySaving} className="glow-primary">
+                                  {keySaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save size={14} />}
                                 </Button>
+                                {keySaved && (
+                                  <Button size="sm" variant="outline" onClick={() => clearProviderKey(p.provider)} disabled={keySaving} title="Remover chave">
+                                    <Trash2 size={14} />
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           </div>
