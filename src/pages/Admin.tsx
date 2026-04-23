@@ -6,12 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, Power } from 'lucide-react';
+import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useAuth } from '@/hooks/useAuth';
 
 type UserProfile = {
   id: string;
@@ -19,7 +22,9 @@ type UserProfile = {
   full_name: string | null;
   email: string | null;
   plan: string;
+  status: string;
   created_at: string;
+  is_admin?: boolean;
 };
 
 type AiProvider = {
@@ -59,6 +64,7 @@ const PROVIDER_META: Record<string, { label: string; secretName: string; docsUrl
 
 const Admin = () => {
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [stats, setStats] = useState({ users: 0, projects: 0, comments: 0 });
   const [search, setSearch] = useState('');
@@ -67,6 +73,15 @@ const Admin = () => {
   const [editName, setEditName] = useState('');
   const [editPlan, setEditPlan] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Password change
+  const [pwdUser, setPwdUser] = useState<UserProfile | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [pwdSaving, setPwdSaving] = useState(false);
+
+  // Delete confirmation
+  const [deleteUser, setDeleteUser] = useState<UserProfile | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // API Key state
   const [youtubeApiKey, setYoutubeApiKey] = useState('');
@@ -80,13 +95,16 @@ const Admin = () => {
   const fetchData = async () => {
     setLoading(true);
     const { data: profiles } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    const { data: roles } = await supabase.from('user_roles').select('user_id, role').eq('role', 'admin');
+    const adminIds = new Set((roles || []).map(r => r.user_id));
     const { count: pCount } = await supabase.from('projects').select('*', { count: 'exact', head: true });
     const { count: cCount } = await supabase.from('comments').select('*', { count: 'exact', head: true });
-    setUsers((profiles as UserProfile[]) || []);
+    const enriched = ((profiles as any[]) || []).map(p => ({ ...p, is_admin: adminIds.has(p.user_id) })) as UserProfile[];
+    setUsers(enriched);
     setStats({ users: profiles?.length ?? 0, projects: pCount ?? 0, comments: cCount ?? 0 });
 
     // Fetch YouTube API key
-    const { data: setting } = await supabase.from('app_settings').select('value').eq('key', 'youtube_api_key').single();
+    const { data: setting } = await supabase.from('app_settings').select('value').eq('key', 'youtube_api_key').maybeSingle();
     if (setting?.value) {
       setYoutubeApiKey(setting.value);
       setApiKeySaved(true);
@@ -144,6 +162,70 @@ const Admin = () => {
       toast({ title: 'Usuário atualizado!' });
       setEditUser(null);
       fetchData();
+    }
+  };
+
+  const toggleStatus = async (u: UserProfile) => {
+    const next = u.status === 'suspended' ? 'active' : 'suspended';
+    const { error } = await supabase.from('profiles').update({ status: next }).eq('id', u.id);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, status: next } : x));
+      toast({ title: next === 'suspended' ? 'Usuário suspenso' : 'Usuário ativado' });
+    }
+  };
+
+  const toggleAdmin = async (u: UserProfile) => {
+    if (u.is_admin) {
+      const { error } = await supabase.from('user_roles').delete().eq('user_id', u.user_id).eq('role', 'admin');
+      if (error) {
+        toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+        return;
+      }
+      toast({ title: 'Permissão de admin removida' });
+    } else {
+      const { error } = await supabase.from('user_roles').insert({ user_id: u.user_id, role: 'admin' });
+      if (error) {
+        toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+        return;
+      }
+      toast({ title: 'Usuário promovido a admin' });
+    }
+    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_admin: !u.is_admin } : x));
+  };
+
+  const handleChangePassword = async () => {
+    if (!pwdUser || newPassword.length < 6) {
+      toast({ title: 'Senha precisa ter ao menos 6 caracteres', variant: 'destructive' });
+      return;
+    }
+    setPwdSaving(true);
+    const { error } = await supabase.rpc('admin_update_user_password', {
+      _user_id: pwdUser.user_id,
+      _new_password: newPassword,
+    });
+    setPwdSaving(false);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Senha alterada com sucesso' });
+      setPwdUser(null);
+      setNewPassword('');
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteUser) return;
+    setDeleting(true);
+    const { error } = await supabase.rpc('admin_delete_user', { _user_id: deleteUser.user_id });
+    setDeleting(false);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Usuário excluído' });
+      setUsers(prev => prev.filter(x => x.id !== deleteUser.id));
+      setDeleteUser(null);
     }
   };
 
@@ -248,56 +330,168 @@ const Admin = () => {
                       <TableHead>Nome</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Plano</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Papel</TableHead>
                       <TableHead>Criado em</TableHead>
-                      <TableHead>Ações</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.map(u => (
-                      <TableRow key={u.id}>
-                        <TableCell className="font-medium">{u.full_name || '—'}</TableCell>
-                        <TableCell className="text-muted-foreground">{u.email}</TableCell>
-                        <TableCell>{planBadge(u.plan)}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{new Date(u.created_at).toLocaleDateString('pt-BR')}</TableCell>
-                        <TableCell>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="sm" onClick={() => openEdit(u)}>Editar</Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader><DialogTitle>Editar Usuário</DialogTitle></DialogHeader>
-                              <div className="space-y-4 pt-4">
-                                <div className="space-y-2">
-                                  <Label>Nome</Label>
-                                  <Input value={editName} onChange={e => setEditName(e.target.value)} />
-                                </div>
-                                <div className="space-y-2">
-                                  <Label>Plano</Label>
-                                  <Select value={editPlan} onValueChange={setEditPlan}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="free">Free</SelectItem>
-                                      <SelectItem value="pro">Pro</SelectItem>
-                                      <SelectItem value="enterprise">Enterprise</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <Button onClick={handleSave} className="w-full glow-primary" disabled={saving}>
-                                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Salvar
+                    {filtered.map(u => {
+                      const isSelf = currentUser?.id === u.user_id;
+                      const suspended = u.status === 'suspended';
+                      return (
+                        <TableRow key={u.id} className={suspended ? 'opacity-60' : ''}>
+                          <TableCell className="font-medium">{u.full_name || '—'}</TableCell>
+                          <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                          <TableCell>{planBadge(u.plan)}</TableCell>
+                          <TableCell>
+                            {suspended ? (
+                              <span className="inline-block rounded-full px-2 py-0.5 text-xs font-semibold uppercase bg-destructive/20 text-destructive">Suspenso</span>
+                            ) : (
+                              <span className="inline-block rounded-full px-2 py-0.5 text-xs font-semibold uppercase bg-success/20 text-success">Ativo</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {u.is_admin ? (
+                              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold uppercase bg-primary/20 text-primary">
+                                <ShieldCheck size={12} /> Admin
+                              </span>
+                            ) : (
+                              <span className="inline-block rounded-full px-2 py-0.5 text-xs font-semibold uppercase bg-muted text-muted-foreground">Usuário</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">{new Date(u.created_at).toLocaleDateString('pt-BR')}</TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreHorizontal size={16} />
                                 </Button>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-56 bg-popover">
+                                <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => openEdit(u)}>
+                                  <Save className="mr-2 h-4 w-4" /> Editar dados
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { setPwdUser(u); setNewPassword(''); }}>
+                                  <KeyRound className="mr-2 h-4 w-4" /> Mudar senha
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => toggleAdmin(u)} disabled={isSelf}>
+                                  {u.is_admin ? (
+                                    <><ShieldOff className="mr-2 h-4 w-4" /> Remover admin</>
+                                  ) : (
+                                    <><ShieldCheck className="mr-2 h-4 w-4" /> Tornar admin</>
+                                  )}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => toggleStatus(u)} disabled={isSelf}>
+                                  {suspended ? (
+                                    <><UserCheck className="mr-2 h-4 w-4" /> Ativar</>
+                                  ) : (
+                                    <><UserX className="mr-2 h-4 w-4" /> Suspender</>
+                                  )}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => setDeleteUser(u)}
+                                  disabled={isSelf}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" /> Excluir usuário
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {!filtered.length && (
-                      <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum usuário encontrado</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum usuário encontrado</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
               )}
             </Card>
+
+            {/* Edit user dialog */}
+            <Dialog open={!!editUser} onOpenChange={(open) => !open && setEditUser(null)}>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Editar Usuário</DialogTitle></DialogHeader>
+                <div className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label>Nome</Label>
+                    <Input value={editName} onChange={e => setEditName(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Plano</Label>
+                    <Select value={editPlan} onValueChange={setEditPlan}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="free">Free</SelectItem>
+                        <SelectItem value="pro">Pro</SelectItem>
+                        <SelectItem value="enterprise">Enterprise</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button onClick={handleSave} className="w-full glow-primary" disabled={saving}>
+                    {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Salvar
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Change password dialog */}
+            <Dialog open={!!pwdUser} onOpenChange={(open) => !open && setPwdUser(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Mudar senha</DialogTitle>
+                  <DialogDescription>
+                    Defina uma nova senha para <strong>{pwdUser?.email}</strong>. Mínimo de 6 caracteres.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <Label>Nova senha</Label>
+                    <Input
+                      type="password"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      placeholder="••••••••"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setPwdUser(null)}>Cancelar</Button>
+                  <Button onClick={handleChangePassword} disabled={pwdSaving} className="glow-primary">
+                    {pwdSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />} Alterar senha
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Delete confirmation */}
+            <AlertDialog open={!!deleteUser} onOpenChange={(open) => !open && setDeleteUser(null)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir usuário?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação é irreversível. <strong>{deleteUser?.email}</strong> e todos os dados relacionados serão removidos permanentemente.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={(e) => { e.preventDefault(); handleDeleteUser(); }}
+                    disabled={deleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />} Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </TabsContent>
 
           <TabsContent value="settings" className="mt-4">
