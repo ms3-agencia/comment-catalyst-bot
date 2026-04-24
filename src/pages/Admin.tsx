@@ -760,6 +760,17 @@ const Admin = () => {
                       <Label className="text-xs">Descrição</Label>
                       <Input value={p.description || ''} onChange={e => updatePlan(p.id, { description: e.target.value })} />
                     </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Recursos (1 por linha)</Label>
+                      <Textarea
+                        rows={6}
+                        placeholder={'Ex.:\nPerfil de avatar com IA\nRelatórios em PDF\nSuporte prioritário'}
+                        value={(p.features || []).join('\n')}
+                        onChange={e => updatePlan(p.id, { features: e.target.value.split('\n') as any })}
+                        onBlur={e => updatePlan(p.id, { features: e.target.value.split('\n').map(s => s.trim()).filter(Boolean) as any })}
+                      />
+                      <p className="text-[11px] text-muted-foreground">Aparecem na landing page como benefícios do plano.</p>
+                    </div>
                   </Card>
                 ))}
               </div>
