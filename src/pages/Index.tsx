@@ -74,7 +74,12 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 lg:px-12 h-16 border-b border-border/50 sticky top-0 z-40 bg-background/80 backdrop-blur-md">
-        <span className="font-heading text-xl font-bold gradient-text">CommentIQ</span>
+        <div className="flex items-center gap-2.5 min-w-0">
+          {branding.logo_url && (
+            <img src={branding.logo_url} alt={branding.site_name} className="h-8 w-8 object-contain rounded" />
+          )}
+          <span className="font-heading text-xl font-bold gradient-text truncate">{branding.site_name}</span>
+        </div>
         <div className="flex gap-3">
           {user ? (
             <Link to="/dashboard"><Button size="sm" className="glow-primary">Ir para o painel</Button></Link>
