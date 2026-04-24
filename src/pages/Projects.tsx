@@ -127,7 +127,10 @@ const Projects = () => {
   };
 
   const handleDelete = async (projectId: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir este projeto? Esta ação não pode ser desfeita.')) return;
+    setSavingId(projectId);
     const { error } = await supabase.from('projects').delete().eq('id', projectId);
+    setSavingId(null);
     if (error) {
       toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
     } else {
