@@ -4,10 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { FolderOpen, MessageSquare, ThumbsUp, Sparkles, ChevronDown, ChevronUp, Trash2, Loader2, Calendar, Pencil, Check, X } from 'lucide-react';
+import { FolderOpen, MessageSquare, ThumbsUp, Sparkles, ChevronDown, ChevronUp, Trash2, Loader2, Calendar, Pencil, Check, X, RefreshCw } from 'lucide-react';
 import { AiProfileCard } from '@/components/AiProfileCard';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { useNavigate } from 'react-router-dom';
+import { useCredits } from '@/hooks/useCredits';
 
 type Project = {
   id: string;
@@ -31,6 +33,8 @@ type Comment = {
 
 const Projects = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { refresh: refreshCredits } = useCredits();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -41,6 +45,7 @@ const Projects = () => {
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
   const [editingProfile, setEditingProfile] = useState('');
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
 
   const startEditName = (e: React.MouseEvent, p: Project) => {
     e.stopPropagation();
@@ -137,6 +142,87 @@ const Projects = () => {
       setProjects(prev => prev.filter(p => p.id !== projectId));
       toast({ title: 'Projeto excluído' });
     }
+  };
+
+  const parseFnError = async (
+    error: unknown,
+    data: { error?: string; insufficient_credits?: boolean } | null
+  ): Promise<{ message: string; insufficient: boolean }> => {
+    if (data?.error) return { message: data.error, insufficient: !!data.insufficient_credits };
+    const ctx = (error as { context?: Response } | null)?.context;
+    if (ctx && typeof ctx.json === 'function') {
+      try {
+        const body = await ctx.clone().json();
+        if (body?.insufficient_credits || ctx.status === 402) {
+          return { message: body?.error || 'Você está sem créditos.', insufficient: true };
+        }
+        if (body?.error) return { message: body.error, insufficient: false };
+      } catch { /* ignore */ }
+      if (ctx.status === 402) return { message: 'Você está sem créditos.', insufficient: true };
+    }
+    return { message: (error as { message?: string } | null)?.message || 'Erro desconhecido', insufficient: false };
+  };
+
+  const handleGenerateAvatar = async (project: Project, isRegenerate: boolean) => {
+    if (isRegenerate && !window.confirm('Regenerar irá substituir o perfil atual e consumir créditos. Continuar?')) {
+      return;
+    }
+    setGeneratingId(project.id);
+    try {
+      // Fetch all comments for this project (limit 500 to keep payload reasonable)
+      const { data: cmts, error: cmtErr } = await supabase
+        .from('comments')
+        .select('author, content, likes')
+        .eq('project_id', project.id)
+        .order('likes', { ascending: false })
+        .limit(500);
+      if (cmtErr) throw cmtErr;
+      if (!cmts || cmts.length === 0) {
+        toast({ title: 'Sem comentários', description: 'Este projeto não tem comentários para análise.', variant: 'destructive' });
+        setGeneratingId(null);
+        return;
+      }
+
+      // Idempotency: regenerate uses fresh key, first generate is stable
+      const storageKey = `idem:ai_profile:${project.id}${isRegenerate ? `:${Date.now()}` : ''}`;
+      let idempotencyKey = localStorage.getItem(storageKey);
+      if (!idempotencyKey) {
+        idempotencyKey = (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+        localStorage.setItem(storageKey, idempotencyKey);
+      }
+
+      const { data, error } = await supabase.functions.invoke('ai-profile', {
+        body: {
+          comments: cmts.map(c => ({ author: c.author || '', content: c.content, likes: c.likes || 0 })),
+          idempotencyKey,
+        },
+      });
+
+      if (error || data?.error) {
+        const parsed = await parseFnError(error, data);
+        if (parsed.insufficient) {
+          toast({ title: 'Créditos insuficientes', description: `${parsed.message} Redirecionando…`, variant: 'destructive' });
+          setTimeout(() => navigate('/dashboard/credits'), 1200);
+        } else {
+          toast({ title: 'Erro ao gerar perfil', description: parsed.message, variant: 'destructive' });
+        }
+        setGeneratingId(null);
+        return;
+      }
+
+      const newProfile = data.profile as string;
+      await supabase.from('projects').update({ ai_profile: newProfile }).eq('id', project.id);
+      setProjects(prev => prev.map(p => p.id === project.id ? { ...p, ai_profile: newProfile } : p));
+      refreshCredits();
+      toast({
+        title: isRegenerate ? 'Perfil regenerado!' : 'Perfil gerado!',
+        description: data.credits_charged ? `${data.credits_charged} créditos consumidos.` : undefined,
+      });
+    } catch (err: unknown) {
+      const parsed = await parseFnError(err, null);
+      toast({ title: 'Erro', description: parsed.message, variant: 'destructive' });
+    }
+    setGeneratingId(null);
   };
 
   return (
@@ -256,23 +342,47 @@ const Projects = () => {
                           onDelete={() => handleDelete(project.id)}
                           deleting={savingId === project.id}
                         />
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-2">
                           <Button size="sm" variant="outline" onClick={() => startEditProfile(project)}>
                             <Pencil className="mr-1 h-3.5 w-3.5" /> Editar Perfil IA
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleGenerateAvatar(project, true)}
+                            disabled={generatingId === project.id}
+                            className="glow-primary"
+                          >
+                            {generatingId === project.id ? (
+                              <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> Regenerando…</>
+                            ) : (
+                              <><RefreshCw className="mr-1 h-3.5 w-3.5" /> Regenerar Avatar</>
+                            )}
                           </Button>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Button size="sm" variant="outline" onClick={() => startEditProfile(project)}>
                           <Pencil className="mr-1 h-3.5 w-3.5" /> Adicionar Perfil IA
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleGenerateAvatar(project, false)}
+                          disabled={generatingId === project.id}
+                          className="glow-primary"
+                        >
+                          {generatingId === project.id ? (
+                            <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> Gerando…</>
+                          ) : (
+                            <><Sparkles className="mr-1 h-3.5 w-3.5" /> Gerar Avatar</>
+                          )}
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleDelete(project.id)}
                           disabled={savingId === project.id}
-                          className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive ml-auto"
                           title="Excluir projeto"
                         >
                           {savingId === project.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
