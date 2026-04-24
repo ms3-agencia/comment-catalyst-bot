@@ -5,8 +5,9 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Youtube, MessageSquare, Sparkles, ArrowRight, Check, Zap, Crown, ShieldCheck,
-  Coins, Loader2, ShoppingCart, Flame, TrendingUp, Clock, Star, Users, Brain
+  Coins, Loader2, ShoppingCart, Flame, TrendingUp, Clock, Star, Users, Brain, HelpCircle
 } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
