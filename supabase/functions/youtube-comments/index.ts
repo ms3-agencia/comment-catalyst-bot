@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { videoUrls } = await req.json();
+    const { videoUrls, idempotencyKey } = await req.json();
     if (!videoUrls || !Array.isArray(videoUrls) || videoUrls.length === 0) {
       return new Response(
         JSON.stringify({ error: "videoUrls is required (array)" }),
@@ -45,6 +45,28 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
+    }
+
+    // ---- Idempotency: replay cached response if same key was processed already
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    if (idempotencyKey) {
+      const { data: existing } = await admin
+        .from("idempotency_keys")
+        .select("response")
+        .eq("user_id", user.id)
+        .eq("action_key", "extract_video")
+        .eq("client_key", String(idempotencyKey))
+        .maybeSingle();
+      if (existing?.response) {
+        return new Response(
+          JSON.stringify({ ...existing.response, replayed: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // ---- Pre-check credit cost: 1 per video (action: extract_video)
