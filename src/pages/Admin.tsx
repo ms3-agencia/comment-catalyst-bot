@@ -220,7 +220,7 @@ const Admin = () => {
 
   const openNewPkg = () => {
     setEditPkg(null);
-    setPkgForm({ name: '', credits: 100, price_brl: 0, is_active: true, sort_order: packages.length });
+    setPkgForm({ name: '', credits: 100, price_brl: 0, is_active: true, sort_order: packages.length, features: '' });
     setNewPkg(true);
   };
 
