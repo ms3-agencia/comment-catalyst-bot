@@ -362,9 +362,6 @@ const Projects = () => {
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Button size="sm" variant="outline" onClick={() => startEditProfile(project)}>
-                          <Pencil className="mr-1 h-3.5 w-3.5" /> Adicionar Perfil IA
-                        </Button>
                         <Button
                           size="sm"
                           onClick={() => handleGenerateAvatar(project, false)}
