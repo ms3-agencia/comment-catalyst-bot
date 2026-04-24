@@ -263,9 +263,21 @@ const Projects = () => {
                         </div>
                       </div>
                     ) : (
-                      <Button size="sm" variant="outline" onClick={() => startEditProfile(project)}>
-                        <Pencil className="mr-1 h-3.5 w-3.5" /> Adicionar Perfil IA
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => startEditProfile(project)}>
+                          <Pencil className="mr-1 h-3.5 w-3.5" /> Adicionar Perfil IA
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDelete(project.id)}
+                          disabled={savingId === project.id}
+                          className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          title="Excluir projeto"
+                        >
+                          {savingId === project.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                      </div>
                     )}
 
                     {/* Comments */}
