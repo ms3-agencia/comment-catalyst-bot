@@ -12,7 +12,6 @@ interface AiProfileCardProps {
   onDelete?: () => void;
   deleting?: boolean;
 }
-}
 
 const sectionIcons: Record<string, React.ReactNode> = {
   'perfil do avatar': <Target className="h-5 w-5 text-primary" />,
