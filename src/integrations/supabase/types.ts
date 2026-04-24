@@ -366,6 +366,51 @@ export type Database = {
         }
         Relationships: []
       }
+      testimonials: {
+        Row: {
+          author_name: string
+          author_role: string | null
+          avatar_url: string | null
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_featured: boolean
+          rating: number
+          result_metric: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          author_name: string
+          author_role?: string | null
+          avatar_url?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_featured?: boolean
+          rating?: number
+          result_metric?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          author_name?: string
+          author_role?: string | null
+          avatar_url?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_featured?: boolean
+          rating?: number
+          result_metric?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_credits: {
         Row: {
           balance: number
