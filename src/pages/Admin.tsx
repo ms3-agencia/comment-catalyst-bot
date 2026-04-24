@@ -193,7 +193,15 @@ const Admin = () => {
   };
 
   const savePackage = async () => {
-    const payload = { ...pkgForm, price_brl: Number(pkgForm.price_brl), credits: Number(pkgForm.credits), sort_order: Number(pkgForm.sort_order) };
+    const featuresArr = pkgForm.features.split('\n').map(s => s.trim()).filter(Boolean);
+    const payload = {
+      name: pkgForm.name,
+      credits: Number(pkgForm.credits),
+      price_brl: Number(pkgForm.price_brl),
+      is_active: pkgForm.is_active,
+      sort_order: Number(pkgForm.sort_order),
+      features: featuresArr,
+    };
     if (!payload.name || payload.credits <= 0 || payload.price_brl < 0) {
       toast({ title: 'Preencha todos os campos válidos', variant: 'destructive' });
       return;
