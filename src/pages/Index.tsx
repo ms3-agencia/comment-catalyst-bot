@@ -192,10 +192,12 @@ const Index = () => {
                   {p.description && <p className="text-sm text-muted-foreground mt-1">{p.description}</p>}
                   <ul className="mt-5 space-y-2 text-sm">
                     <li className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> <strong>{p.monthly_credits.toLocaleString('pt-BR')}</strong> créditos por mês</li>
-                    <li className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> Extração de comentários do YouTube</li>
-                    <li className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> Perfil de avatar com IA</li>
-                    <li className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> Relatórios e análise de sentimento</li>
-                    {p.plan !== 'free' && <li className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> Recargas avulsas com desconto</li>}
+                    {(p.features && p.features.length > 0
+                      ? p.features
+                      : ['Extração de comentários do YouTube', 'Perfil de avatar com IA', 'Relatórios e análise de sentimento']
+                    ).map((feat, i) => (
+                      <li key={i} className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> {feat}</li>
+                    ))}
                   </ul>
                   <Link to="/register">
                     <Button className={`w-full mt-6 ${popular ? 'glow-primary' : ''}`} variant={popular ? 'default' : 'outline'}>
