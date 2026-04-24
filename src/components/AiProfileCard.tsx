@@ -260,19 +260,91 @@ type PdfBranding = {
   logo_url: string | null;
 };
 
+// ----- Avatar chart: extract section sizes from markdown to draw a bar chart -----
+type ChartItem = { label: string; value: number; color: string };
+
+const buildAvatarChartData = (md: string): ChartItem[] => {
+  const lines = md.split('\n');
+  const buckets: Record<string, { count: number; color: string; emoji: string }> = {
+    'Demográficos': { count: 0, color: '#6366f1', emoji: '👥' },
+    'Comportamento': { count: 0, color: '#0ea5e9', emoji: '📊' },
+    'Interesses': { count: 0, color: '#ec4899', emoji: '❤️' },
+    'Dores & Necessidades': { count: 0, color: '#f59e0b', emoji: '💡' },
+    'Linguagem & Tom': { count: 0, color: '#10b981', emoji: '💬' },
+    'Insights de Produto': { count: 0, color: '#8b5cf6', emoji: '💼' },
+  };
+  const matchBucket = (heading: string): string | null => {
+    const l = heading.toLowerCase();
+    if (l.includes('demográfic')) return 'Demográficos';
+    if (l.includes('comportamento') || l.includes('engajamento')) return 'Comportamento';
+    if (l.includes('interesse') || l.includes('tema')) return 'Interesses';
+    if (l.includes('dor') || l.includes('necessidade')) return 'Dores & Necessidades';
+    if (l.includes('linguagem') || l.includes('tom')) return 'Linguagem & Tom';
+    if (l.includes('insight') || l.includes('produto') || l.includes('venda') || l.includes('recomenda')) return 'Insights de Produto';
+    return null;
+  };
+  let current: string | null = null;
+  for (const raw of lines) {
+    const line = raw.trim();
+    const h = line.match(/^#{2,3}\s+(.+)$/);
+    if (h) {
+      current = matchBucket(h[1]);
+      continue;
+    }
+    if (!current) continue;
+    if (/^[-*]\s+/.test(line) || /^\d+\.\s+/.test(line)) {
+      buckets[current].count += 1;
+    } else if (line.length > 30 && !/^\|/.test(line)) {
+      // long paragraph counts as half an insight
+      buckets[current].count += 0.5;
+    }
+  }
+  return Object.entries(buckets)
+    .map(([label, v]) => ({ label: `${v.emoji} ${label}`, value: Math.round(v.count), color: v.color }))
+    .filter((x) => x.value > 0);
+};
+
+const renderAvatarChartHtml = (data: ChartItem[]): string => {
+  if (data.length === 0) return '';
+  const max = Math.max(...data.map((d) => d.value), 1);
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const rows = data
+    .map((d) => {
+      const pct = (d.value / max) * 100;
+      const share = total > 0 ? Math.round((d.value / total) * 100) : 0;
+      return `
+        <div style="display:flex;align-items:center;gap:12px;margin:8px 0;">
+          <div style="width:180px;font-size:12px;color:#0f172a;font-weight:600;">${escapeHtml(d.label)}</div>
+          <div style="flex:1;background:#f1f5f9;border-radius:6px;height:22px;position:relative;overflow:hidden;">
+            <div style="width:${pct.toFixed(1)}%;height:100%;background:linear-gradient(90deg,${d.color},${d.color}cc);border-radius:6px;"></div>
+            <div style="position:absolute;right:8px;top:0;bottom:0;display:flex;align-items:center;font-size:11px;color:#0f172a;font-weight:700;">${d.value} · ${share}%</div>
+          </div>
+        </div>`;
+    })
+    .join('');
+  return `
+    <div data-pdf-section style="margin:20px 40px;padding:18px 20px;background:linear-gradient(135deg,#f0f9ff,#eef2ff);border-radius:12px;border:1px solid #e0e7ff;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <span style="font-size:18px;">📈</span>
+        <h2 style="margin:0;font-family:'Space Grotesk','Inter',sans-serif;font-size:16px;font-weight:700;color:#0c4a6e;">Mapa de Insights do Avatar</h2>
+      </div>
+      <p style="margin:0 0 10px;font-size:11px;color:#475569;">Distribuição de informações coletadas por dimensão do perfil.</p>
+      ${rows}
+    </div>`;
+};
+
 const buildPdfHtml = (profile: string, projectName: string | undefined, branding: PdfBranding): string => {
   const date = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
   const contentHtml = markdownToPdfHtml(profile);
+  const chartHtml = renderAvatarChartHtml(buildAvatarChartData(profile));
   const siteName = escapeHtml(branding.site_name || 'YCaptura');
   const tagline = escapeHtml(branding.tagline || 'Análise de Audiência com IA');
-  const footerText = escapeHtml(branding.footer_text || 'Gerado por YCaptura — Análise inteligente de audiência');
   const logoMark = branding.logo_url
     ? `<img src="${escapeHtml(branding.logo_url)}" alt="" crossorigin="anonymous" style="max-width:48px;max-height:48px;object-fit:contain;display:block;" />`
     : `<span style="font-size:24px;">🧠</span>`;
 
   return `
 <div style="font-family:'Inter','Segoe UI',Arial,sans-serif;background:#ffffff;color:#0f172a;width:794px;">
-  <!-- Header (section) -->
   <div data-pdf-section style="background:linear-gradient(135deg,#0c4a6e 0%,#1e3a8a 100%);padding:28px 40px;color:#fff;">
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div style="display:flex;align-items:center;gap:14px;">
@@ -291,7 +363,6 @@ const buildPdfHtml = (profile: string, projectName: string | undefined, branding
     </div>
   </div>
 
-  <!-- Project Title Bar (section) -->
   <div data-pdf-section style="background:#f8fafc;padding:14px 40px;border-bottom:1px solid #e2e8f0;">
     <div style="display:flex;align-items:center;gap:10px;">
       <span style="font-size:14px;">📁</span>
@@ -301,15 +372,10 @@ const buildPdfHtml = (profile: string, projectName: string | undefined, branding
     </div>
   </div>
 
-  <!-- Content (each top-level child becomes a section) -->
+  ${chartHtml}
+
   <div data-pdf-content style="padding:24px 40px 40px;">
     ${contentHtml}
-  </div>
-
-  <!-- Footer (section) -->
-  <div data-pdf-section style="background:#0c4a6e;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;color:#bae6fd;">
-    <p style="margin:0;font-size:10px;">${footerText}</p>
-    <p style="margin:0;font-size:10px;">${siteName}</p>
   </div>
 </div>`;
 };
@@ -335,12 +401,11 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
       container.innerHTML = buildPdfHtml(profile, projectName, branding);
       document.body.appendChild(container);
 
-      // Wait a tick for layout
-      await new Promise((r) => setTimeout(r, 120));
+      // Wait for layout + any images
+      await new Promise((r) => setTimeout(r, 150));
 
-      // Build the ordered list of sections: structural sections + each top-level
-      // child of the content block (so paragraphs/tables/cards/headings are
-      // their own atomic units, never sliced mid-element).
+      // Atomic sections: structural blocks + each direct child of content block.
+      // Capturing small atomic units guarantees nothing is sliced mid-line.
       const structural = Array.from(
         container.querySelectorAll('[data-pdf-section]')
       ) as HTMLElement[];
@@ -349,54 +414,50 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
         ? (Array.from(contentBlock.children) as HTMLElement[])
         : [];
 
-      // Order: header, project bar, ...content children..., footer.
-      const [headerEl, projectBarEl, footerEl] = structural;
-      const sections: HTMLElement[] = [
-        headerEl,
-        projectBarEl,
-        ...contentChildren,
-        footerEl,
-      ].filter(Boolean);
+      // Insertion order matches DOM order (header, project bar, chart, ...content).
+      const sections: HTMLElement[] = [...structural, ...contentChildren];
 
       // PDF layout (A4 portrait, mm)
-      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-      const PAGE_W = pdf.internal.pageSize.getWidth();   // 210
-      const PAGE_H = pdf.internal.pageSize.getHeight();  // 297
-      const MARGIN_TOP = 15;
-      const MARGIN_BOTTOM = 18; // extra room for page number
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+      const PAGE_W = pdf.internal.pageSize.getWidth();
+      const PAGE_H = pdf.internal.pageSize.getHeight();
+      const MARGIN_TOP = 14;
+      const MARGIN_BOTTOM = 22; // reserved for footer + page number
       const MARGIN_X = 12;
       const CONTENT_W = PAGE_W - MARGIN_X * 2;
-      const SECTION_GAP = 3;
+      const SECTION_GAP = 2.5;
       const USABLE_H = PAGE_H - MARGIN_TOP - MARGIN_BOTTOM;
+      const SCALE = 1.5; // lower than 2 → much faster, still crisp
 
       let cursorY = MARGIN_TOP;
       let isFirstOnPage = true;
 
       const renderSection = async (el: HTMLElement) => {
+        // Skip empty/zero-size elements
+        if (!el || el.offsetHeight < 2) return;
+
         const canvas = await html2canvas(el, {
-          scale: 2,
+          scale: SCALE,
           useCORS: true,
           backgroundColor: '#ffffff',
           windowWidth: 794,
+          logging: false,
         });
-        const ratio = CONTENT_W / (canvas.width / 2); // canvas captured at 2x
         const widthMm = CONTENT_W;
-        const fullHeightMm = (canvas.height / 2) * ratio;
-        const imgData = canvas.toDataURL('image/jpeg', 0.92);
+        const pxPerMm = canvas.width / widthMm;
+        const fullHeightMm = canvas.height / pxPerMm;
+        const imgData = canvas.toDataURL('image/jpeg', 0.85);
 
-        // If the section is taller than a full page, slice it across pages.
+        // Section taller than a full page → must slice. We keep it as a fallback,
+        // but our atomic granularity (per paragraph/list/table) makes this rare.
         if (fullHeightMm > USABLE_H) {
-          // start fresh page if not already at top
           if (!isFirstOnPage) {
             pdf.addPage();
             cursorY = MARGIN_TOP;
             isFirstOnPage = true;
           }
-
-          const pxPerMm = canvas.width / widthMm;
           const pageSlicePx = USABLE_H * pxPerMm;
           let renderedPx = 0;
-
           while (renderedPx < canvas.height) {
             const sliceHeightPx = Math.min(pageSlicePx, canvas.height - renderedPx);
             const sliceCanvas = document.createElement('canvas');
@@ -406,13 +467,9 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
             if (ctx) {
               ctx.fillStyle = '#ffffff';
               ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-              ctx.drawImage(
-                canvas,
-                0, renderedPx, canvas.width, sliceHeightPx,
-                0, 0, canvas.width, sliceHeightPx
-              );
+              ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
             }
-            const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.92);
+            const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.85);
             const sliceMm = sliceHeightPx / pxPerMm;
             pdf.addImage(sliceData, 'JPEG', MARGIN_X, MARGIN_TOP, widthMm, sliceMm);
             renderedPx += sliceHeightPx;
@@ -428,14 +485,13 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
           return;
         }
 
-        // Normal section: page-break if it doesn't fit
+        // Atomic section fits in a page → break to next page if it won't fit current.
         const remaining = PAGE_H - MARGIN_BOTTOM - cursorY;
         if (fullHeightMm > remaining && !isFirstOnPage) {
           pdf.addPage();
           cursorY = MARGIN_TOP;
           isFirstOnPage = true;
         }
-
         pdf.addImage(imgData, 'JPEG', MARGIN_X, cursorY, widthMm, fullHeightMm);
         cursorY += fullHeightMm + SECTION_GAP;
         isFirstOnPage = false;
@@ -445,23 +501,29 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
         await renderSection(section);
       }
 
-      // Page numbers — added after all content so we know the total
+      // Footer drawn natively on EVERY page at a fixed bottom Y
+      // (so it always sits at the end of the sheet, even with white space above on the last page).
+      const footerText = branding.footer_text || 'Gerado por YCaptura — Análise inteligente de audiência';
+      const siteName = branding.site_name || 'YCaptura';
       const total = pdf.getNumberOfPages();
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(9);
-      pdf.setTextColor(120, 120, 120);
       for (let p = 1; p <= total; p++) {
         pdf.setPage(p);
-        const label = `Página ${p} de ${total}`;
-        const textWidth = pdf.getTextWidth(label);
-        pdf.text(label, (PAGE_W - textWidth) / 2, PAGE_H - 8);
+        // Footer band
+        pdf.setFillColor(12, 74, 110); // #0c4a6e
+        pdf.rect(0, PAGE_H - 14, PAGE_W, 14, 'F');
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        pdf.setTextColor(186, 230, 253); // #bae6fd
+        pdf.text(footerText, MARGIN_X, PAGE_H - 5.5);
+        const right = `${siteName}  ·  Página ${p}/${total}`;
+        const rightW = pdf.getTextWidth(right);
+        pdf.text(right, PAGE_W - MARGIN_X - rightW, PAGE_H - 5.5);
       }
 
       const fileName = `${(projectName || 'perfil-avatar').replace(/[^\w\-]+/g, '_')}-ycaptura.pdf`;
       try {
         pdf.save(fileName);
       } catch (saveErr) {
-        // Fallback: blob download (works in iframes/sandboxes where save() can fail silently)
         const blob = pdf.output('blob');
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
