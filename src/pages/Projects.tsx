@@ -4,10 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { FolderOpen, MessageSquare, ThumbsUp, Sparkles, ChevronDown, ChevronUp, Trash2, Loader2, Calendar, Pencil, Check, X } from 'lucide-react';
+import { FolderOpen, MessageSquare, ThumbsUp, Sparkles, ChevronDown, ChevronUp, Trash2, Loader2, Calendar, Pencil, Check, X, RefreshCw } from 'lucide-react';
 import { AiProfileCard } from '@/components/AiProfileCard';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { useNavigate } from 'react-router-dom';
+import { useCredits } from '@/hooks/useCredits';
 
 type Project = {
   id: string;
@@ -31,6 +33,8 @@ type Comment = {
 
 const Projects = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { refresh: refreshCredits } = useCredits();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -41,6 +45,7 @@ const Projects = () => {
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
   const [editingProfile, setEditingProfile] = useState('');
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [generatingId, setGeneratingId] = useState<string | null>(null);
 
   const startEditName = (e: React.MouseEvent, p: Project) => {
     e.stopPropagation();
