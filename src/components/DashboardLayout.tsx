@@ -11,7 +11,6 @@ const navItems = [
   { to: '/dashboard/extract', icon: Youtube, label: 'Extrair Comentários' },
   { to: '/dashboard/projects', icon: FolderOpen, label: 'Meus Projetos' },
   { to: '/dashboard/credits', icon: Coins, label: 'Créditos & Planos' },
-  { to: '/dashboard/settings', icon: Settings, label: 'Configurações' },
 ];
 
 const adminItems = [
@@ -55,7 +54,14 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
               </Link>
             ))}
           </nav>
-          <div className="border-t border-border p-4">
+          <div className="border-t border-border p-4 space-y-2">
+            <Link
+              to="/dashboard/settings"
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${location.pathname === '/dashboard/settings' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
+            >
+              <Settings size={18} />
+              Configurações
+            </Link>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-secondary transition-colors">
