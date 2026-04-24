@@ -118,9 +118,18 @@ const Extract = () => {
 
   const handleGenerateAI = async () => {
     setAiLoading(true);
+
+    // Idempotency: stable per project so a retry doesn't burn credits twice.
+    const storageKey = `idem:ai_profile:${projectId ?? 'no-project'}`;
+    let idempotencyKey = localStorage.getItem(storageKey);
+    if (!idempotencyKey) {
+      idempotencyKey = (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+      localStorage.setItem(storageKey, idempotencyKey);
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke('ai-profile', {
-        body: { comments: comments.map(c => ({ author: c.author, content: c.content, likes: c.likes })) },
+        body: { comments: comments.map(c => ({ author: c.author, content: c.content, likes: c.likes })), idempotencyKey },
       });
 
       if (error || data?.error) {
