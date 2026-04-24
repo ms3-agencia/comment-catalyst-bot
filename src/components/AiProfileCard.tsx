@@ -9,6 +9,9 @@ import { fetchBranding } from '@/hooks/useBranding';
 interface AiProfileCardProps {
   profile: string;
   projectName?: string;
+  onDelete?: () => void;
+  deleting?: boolean;
+}
 }
 
 const sectionIcons: Record<string, React.ReactNode> = {
