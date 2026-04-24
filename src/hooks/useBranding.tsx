@@ -10,15 +10,15 @@ export type Branding = {
 
 const DEFAULTS: Record<'landing' | 'pdf', Branding> = {
   landing: {
-    site_name: 'CommentIQ',
+    site_name: 'YCaptura',
     tagline: 'Análise de Audiência com IA',
-    footer_text: '© 2026 CommentIQ. Todos os direitos reservados.',
+    footer_text: '© 2026 YCaptura. Todos os direitos reservados.',
     logo_url: null,
   },
   pdf: {
-    site_name: 'CommentIQ',
+    site_name: 'YCaptura',
     tagline: 'Análise de Audiência com IA',
-    footer_text: 'Gerado por CommentIQ — Análise inteligente de audiência',
+    footer_text: 'Gerado por YCaptura — Análise inteligente de audiência',
     logo_url: null,
   },
 };
