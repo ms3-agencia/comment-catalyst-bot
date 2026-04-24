@@ -100,6 +100,22 @@ const Admin = () => {
   const [providerKeySaved, setProviderKeySaved] = useState<Record<string, boolean>>({});
   const [providerKeySaving, setProviderKeySaving] = useState<Record<string, boolean>>({});
 
+  // Plans
+  const [plans, setPlans] = useState<PlanConfig[]>([]);
+  // Packages
+  const [packages, setPackages] = useState<CreditPackage[]>([]);
+  const [editPkg, setEditPkg] = useState<CreditPackage | null>(null);
+  const [newPkg, setNewPkg] = useState(false);
+  const [pkgForm, setPkgForm] = useState({ name: '', credits: 100, price_brl: 0, is_active: true, sort_order: 0 });
+  // Action costs
+  const [actionCosts, setActionCosts] = useState<ActionCost[]>([]);
+  // Mercado Pago
+  const [mpAccessToken, setMpAccessToken] = useState('');
+  const [mpPublicKey, setMpPublicKey] = useState('');
+  const [mpBaseUrl, setMpBaseUrl] = useState('');
+  const [mpSaved, setMpSaved] = useState({ token: false, pub: false, url: false });
+  const [mpSaving, setMpSaving] = useState(false);
+
   const fetchData = async () => {
     setLoading(true);
     const { data: profiles } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
