@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Sparkles, Download, Loader2, Target, Users, Heart, MessageCircle, Lightbulb, BarChart3, Briefcase, Rocket } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { fetchBranding } from '@/hooks/useBranding';
 
 interface AiProfileCardProps {
   profile: string;
@@ -328,7 +329,8 @@ export const AiProfileCard = ({ profile, projectName }: AiProfileCardProps) => {
       container.style.top = '0';
       container.style.width = '794px';
       container.style.background = '#ffffff';
-      container.innerHTML = buildPdfHtml(profile, projectName);
+      const branding = await fetchBranding('pdf');
+      container.innerHTML = buildPdfHtml(profile, projectName, branding);
       document.body.appendChild(container);
 
       // Wait a tick for layout
