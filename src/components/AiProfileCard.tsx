@@ -457,9 +457,24 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
         pdf.text(label, (PAGE_W - textWidth) / 2, PAGE_H - 8);
       }
 
-      pdf.save(`${projectName || 'perfil-avatar'}-ycaptura.pdf`);
+      const fileName = `${(projectName || 'perfil-avatar').replace(/[^\w\-]+/g, '_')}-ycaptura.pdf`;
+      try {
+        pdf.save(fileName);
+      } catch (saveErr) {
+        // Fallback: blob download (works in iframes/sandboxes where save() can fail silently)
+        const blob = pdf.output('blob');
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
     } catch (err) {
       console.error('PDF export error:', err);
+      alert('Erro ao gerar PDF: ' + (err instanceof Error ? err.message : 'desconhecido'));
     } finally {
       if (container.parentNode) container.parentNode.removeChild(container);
       setExporting(false);
