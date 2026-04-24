@@ -295,12 +295,6 @@ const Projects = () => {
                       )}
                     </div>
 
-                    {/* Delete */}
-                    <div className="flex justify-end">
-                      <Button variant="destructive" size="sm" onClick={() => handleDelete(project.id)}>
-                        <Trash2 className="mr-1 h-4 w-4" /> Excluir Projeto
-                      </Button>
-                    </div>
                   </div>
                 )}
               </Card>
