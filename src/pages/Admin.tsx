@@ -36,6 +36,10 @@ type AiProvider = {
   enabled: boolean;
 };
 
+type PlanConfig = { id: string; plan: 'free' | 'pro' | 'enterprise'; display_name: string; monthly_credits: number; price_brl: number; description: string | null };
+type CreditPackage = { id: string; name: string; credits: number; price_brl: number; is_active: boolean; sort_order: number };
+type ActionCost = { id: string; action_key: string; display_name: string; cost: number; description: string | null };
+
 const PROVIDER_META: Record<string, { label: string; secretName: string; docsUrl: string; defaultModels: string[] }> = {
   lovable: {
     label: 'Lovable AI Gateway',
