@@ -182,6 +182,7 @@ export type Database = {
         Row: {
           created_at: string
           credits: number
+          features: string[]
           id: string
           is_active: boolean
           name: string
@@ -192,6 +193,7 @@ export type Database = {
         Insert: {
           created_at?: string
           credits: number
+          features?: string[]
           id?: string
           is_active?: boolean
           name: string
@@ -202,6 +204,7 @@ export type Database = {
         Update: {
           created_at?: string
           credits?: number
+          features?: string[]
           id?: string
           is_active?: boolean
           name?: string
@@ -299,6 +302,7 @@ export type Database = {
           created_at: string
           description: string | null
           display_name: string
+          features: string[]
           id: string
           monthly_credits: number
           plan: Database["public"]["Enums"]["app_plan"]
@@ -309,6 +313,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_name: string
+          features?: string[]
           id?: string
           monthly_credits?: number
           plan: Database["public"]["Enums"]["app_plan"]
@@ -319,6 +324,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_name?: string
+          features?: string[]
           id?: string
           monthly_credits?: number
           plan?: Database["public"]["Enums"]["app_plan"]

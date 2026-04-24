@@ -14,8 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 import { TestimonialsCarousel } from '@/components/TestimonialsCarousel';
 import { useBranding } from '@/hooks/useBranding';
 
-type Pkg = { id: string; name: string; credits: number; price_brl: number; sort_order: number };
-type Plan = { plan: 'free' | 'pro' | 'enterprise'; display_name: string; monthly_credits: number; price_brl: number; description: string | null };
+type Pkg = { id: string; name: string; credits: number; price_brl: number; sort_order: number; features: string[] | null };
+type Plan = { plan: 'free' | 'pro' | 'enterprise'; display_name: string; monthly_credits: number; price_brl: number; description: string | null; features: string[] | null };
 
 const features = [
   { icon: Youtube, title: 'Extração em segundos', desc: 'Cole os links e nós trazemos centenas de comentários para você analisar.' },
@@ -192,10 +192,12 @@ const Index = () => {
                   {p.description && <p className="text-sm text-muted-foreground mt-1">{p.description}</p>}
                   <ul className="mt-5 space-y-2 text-sm">
                     <li className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> <strong>{p.monthly_credits.toLocaleString('pt-BR')}</strong> créditos por mês</li>
-                    <li className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> Extração de comentários do YouTube</li>
-                    <li className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> Perfil de avatar com IA</li>
-                    <li className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> Relatórios e análise de sentimento</li>
-                    {p.plan !== 'free' && <li className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> Recargas avulsas com desconto</li>}
+                    {(p.features && p.features.length > 0
+                      ? p.features
+                      : ['Extração de comentários do YouTube', 'Perfil de avatar com IA', 'Relatórios e análise de sentimento']
+                    ).map((feat, i) => (
+                      <li key={i} className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> {feat}</li>
+                    ))}
                   </ul>
                   <Link to="/register">
                     <Button className={`w-full mt-6 ${popular ? 'glow-primary' : ''}`} variant={popular ? 'default' : 'outline'}>
@@ -241,6 +243,13 @@ const Index = () => {
                     <p className="font-heading text-2xl font-bold">R$ {Number(pkg.price_brl).toFixed(2).replace('.', ',')}</p>
                     <p className="text-xs text-muted-foreground">≈ R$ {pricePerCredit.toFixed(3).replace('.', ',')} por crédito</p>
                   </div>
+                  {pkg.features && pkg.features.length > 0 && (
+                    <ul className="mt-4 space-y-1.5 text-sm">
+                      {pkg.features.map((feat, i) => (
+                        <li key={i} className="flex gap-2"><Check size={14} className="text-success shrink-0 mt-1" /> <span className="text-muted-foreground">{feat}</span></li>
+                      ))}
+                    </ul>
+                  )}
                   <Button
                     className={`w-full mt-5 ${featured ? 'glow-primary' : ''}`}
                     variant={featured ? 'default' : 'outline'}

@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2, CreditCard, Package, Coins, Wallet, Plus, Pencil, Palette } from 'lucide-react';
 import { BrandingTab } from '@/components/admin/BrandingTab';
@@ -37,8 +38,8 @@ type AiProvider = {
   enabled: boolean;
 };
 
-type PlanConfig = { id: string; plan: 'free' | 'pro' | 'enterprise'; display_name: string; monthly_credits: number; price_brl: number; description: string | null };
-type CreditPackage = { id: string; name: string; credits: number; price_brl: number; is_active: boolean; sort_order: number };
+type PlanConfig = { id: string; plan: 'free' | 'pro' | 'enterprise'; display_name: string; monthly_credits: number; price_brl: number; description: string | null; features: string[] | null };
+type CreditPackage = { id: string; name: string; credits: number; price_brl: number; is_active: boolean; sort_order: number; features: string[] | null };
 type ActionCost = { id: string; action_key: string; display_name: string; cost: number; description: string | null };
 
 const PROVIDER_META: Record<string, { label: string; secretName: string; docsUrl: string; defaultModels: string[] }> = {
@@ -108,7 +109,7 @@ const Admin = () => {
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   const [editPkg, setEditPkg] = useState<CreditPackage | null>(null);
   const [newPkg, setNewPkg] = useState(false);
-  const [pkgForm, setPkgForm] = useState({ name: '', credits: 100, price_brl: 0, is_active: true, sort_order: 0 });
+  const [pkgForm, setPkgForm] = useState<{ name: string; credits: number; price_brl: number; is_active: boolean; sort_order: number; features: string }>({ name: '', credits: 100, price_brl: 0, is_active: true, sort_order: 0, features: '' });
   // Action costs
   const [actionCosts, setActionCosts] = useState<ActionCost[]>([]);
   // Mercado Pago
@@ -192,7 +193,15 @@ const Admin = () => {
   };
 
   const savePackage = async () => {
-    const payload = { ...pkgForm, price_brl: Number(pkgForm.price_brl), credits: Number(pkgForm.credits), sort_order: Number(pkgForm.sort_order) };
+    const featuresArr = pkgForm.features.split('\n').map(s => s.trim()).filter(Boolean);
+    const payload = {
+      name: pkgForm.name,
+      credits: Number(pkgForm.credits),
+      price_brl: Number(pkgForm.price_brl),
+      is_active: pkgForm.is_active,
+      sort_order: Number(pkgForm.sort_order),
+      features: featuresArr,
+    };
     if (!payload.name || payload.credits <= 0 || payload.price_brl < 0) {
       toast({ title: 'Preencha todos os campos válidos', variant: 'destructive' });
       return;
@@ -211,13 +220,13 @@ const Admin = () => {
 
   const openNewPkg = () => {
     setEditPkg(null);
-    setPkgForm({ name: '', credits: 100, price_brl: 0, is_active: true, sort_order: packages.length });
+    setPkgForm({ name: '', credits: 100, price_brl: 0, is_active: true, sort_order: packages.length, features: '' });
     setNewPkg(true);
   };
 
   const openEditPkg = (p: CreditPackage) => {
     setEditPkg(p);
-    setPkgForm({ name: p.name, credits: p.credits, price_brl: Number(p.price_brl), is_active: p.is_active, sort_order: p.sort_order });
+    setPkgForm({ name: p.name, credits: p.credits, price_brl: Number(p.price_brl), is_active: p.is_active, sort_order: p.sort_order, features: (p.features || []).join('\n') });
     setNewPkg(true);
   };
 
@@ -751,6 +760,17 @@ const Admin = () => {
                       <Label className="text-xs">Descrição</Label>
                       <Input value={p.description || ''} onChange={e => updatePlan(p.id, { description: e.target.value })} />
                     </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Recursos (1 por linha)</Label>
+                      <Textarea
+                        rows={6}
+                        placeholder={'Ex.:\nPerfil de avatar com IA\nRelatórios em PDF\nSuporte prioritário'}
+                        value={(p.features || []).join('\n')}
+                        onChange={e => updatePlan(p.id, { features: e.target.value.split('\n') as any })}
+                        onBlur={e => updatePlan(p.id, { features: e.target.value.split('\n').map(s => s.trim()).filter(Boolean) as any })}
+                      />
+                      <p className="text-[11px] text-muted-foreground">Aparecem na landing page como benefícios do plano.</p>
+                    </div>
                   </Card>
                 ))}
               </div>
@@ -816,6 +836,16 @@ const Admin = () => {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5"><Label>Ordem</Label><Input type="number" value={pkgForm.sort_order} onChange={e => setPkgForm({ ...pkgForm, sort_order: Number(e.target.value) })} /></div>
                     <div className="space-y-1.5 flex flex-col"><Label>Ativo</Label><div className="pt-2"><Switch checked={pkgForm.is_active} onCheckedChange={v => setPkgForm({ ...pkgForm, is_active: v })} /></div></div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Recursos (1 por linha)</Label>
+                    <Textarea
+                      rows={5}
+                      placeholder={'Ex.:\nCréditos não expiram\nLiberação imediata após pagamento\nPagamento via Pix, cartão ou boleto'}
+                      value={pkgForm.features}
+                      onChange={e => setPkgForm({ ...pkgForm, features: e.target.value })}
+                    />
+                    <p className="text-[11px] text-muted-foreground">Aparecem como benefícios no card do pacote na landing page.</p>
                   </div>
                 </div>
                 <DialogFooter>
