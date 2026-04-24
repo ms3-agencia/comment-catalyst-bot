@@ -107,8 +107,12 @@ const Extract = () => {
       });
 
       if (fnError || fnData?.error) {
-        const desc = fnData?.error || fnError?.message;
-        toast({ title: fnData?.insufficient_credits ? 'Créditos insuficientes' : 'Erro na extração', description: desc, variant: 'destructive' });
+        const parsed = await parseFnError(fnError, fnData);
+        if (parsed.insufficient) {
+          handleInsufficient(parsed.message);
+        } else {
+          toast({ title: 'Erro na extração', description: parsed.message, variant: 'destructive' });
+        }
         setLoading(false);
         return;
       }
