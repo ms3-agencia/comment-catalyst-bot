@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +11,40 @@ import { useToast } from '@/hooks/use-toast';
 import { Youtube, Plus, X, Loader2, MessageSquare, ThumbsUp, Sparkles } from 'lucide-react';
 import { AiProfileCard } from '@/components/AiProfileCard';
 import { useCredits } from '@/hooks/useCredits';
+
+// Parse Supabase Edge Function errors. When status != 2xx, supabase-js throws a
+// FunctionsHttpError whose body is in `error.context` (a Response). We read it
+// to surface "insufficient credits" (402) and other structured errors.
+const parseFnError = async (
+  error: unknown,
+  data: { error?: string; insufficient_credits?: boolean } | null
+): Promise<{ message: string; insufficient: boolean }> => {
+  if (data?.error) {
+    return { message: data.error, insufficient: !!data.insufficient_credits };
+  }
+  const ctx = (error as { context?: Response } | null)?.context;
+  if (ctx && typeof ctx.json === 'function') {
+    try {
+      const body = await ctx.clone().json();
+      if (body?.insufficient_credits || ctx.status === 402) {
+        return {
+          message: body?.error || 'Você está sem créditos. Compre mais para continuar.',
+          insufficient: true,
+        };
+      }
+      if (body?.error) return { message: body.error, insufficient: false };
+    } catch {
+      // body wasn't JSON
+    }
+    if (ctx.status === 402) {
+      return { message: 'Você está sem créditos. Compre mais para continuar.', insufficient: true };
+    }
+  }
+  return {
+    message: (error as { message?: string } | null)?.message || 'Erro desconhecido',
+    insufficient: false,
+  };
+};
 
 type Comment = {
   author: string;
