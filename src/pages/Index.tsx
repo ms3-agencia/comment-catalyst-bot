@@ -243,6 +243,13 @@ const Index = () => {
                     <p className="font-heading text-2xl font-bold">R$ {Number(pkg.price_brl).toFixed(2).replace('.', ',')}</p>
                     <p className="text-xs text-muted-foreground">≈ R$ {pricePerCredit.toFixed(3).replace('.', ',')} por crédito</p>
                   </div>
+                  {pkg.features && pkg.features.length > 0 && (
+                    <ul className="mt-4 space-y-1.5 text-sm">
+                      {pkg.features.map((feat, i) => (
+                        <li key={i} className="flex gap-2"><Check size={14} className="text-success shrink-0 mt-1" /> <span className="text-muted-foreground">{feat}</span></li>
+                      ))}
+                    </ul>
+                  )}
                   <Button
                     className={`w-full mt-5 ${featured ? 'glow-primary' : ''}`}
                     variant={featured ? 'default' : 'outline'}
