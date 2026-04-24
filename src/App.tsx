@@ -13,6 +13,7 @@ import Extract from "./pages/Extract";
 import Projects from "./pages/Projects";
 import UserSettings from "./pages/UserSettings";
 import Admin from "./pages/Admin";
+import Credits from "./pages/Credits";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
