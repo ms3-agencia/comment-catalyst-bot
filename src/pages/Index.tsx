@@ -35,6 +35,7 @@ const Index = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { branding } = useBranding('landing');
   const [packages, setPackages] = useState<Pkg[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -340,7 +341,7 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="border-t border-border/50 px-6 lg:px-12 py-8 text-center text-sm text-muted-foreground">
-        <p>© 2026 CommentIQ. Todos os direitos reservados.</p>
+        <p>{branding.footer_text || '© 2026 CommentIQ. Todos os direitos reservados.'}</p>
       </footer>
     </div>
   );
