@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Download, Loader2, Target, Users, Heart, MessageCircle, Lightbulb, BarChart3, Briefcase, Rocket } from 'lucide-react';
+import { Sparkles, Download, Loader2, Target, Users, Heart, MessageCircle, Lightbulb, BarChart3, Briefcase, Rocket, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { fetchBranding } from '@/hooks/useBranding';
