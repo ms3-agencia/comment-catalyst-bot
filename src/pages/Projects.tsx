@@ -144,6 +144,87 @@ const Projects = () => {
     }
   };
 
+  const parseFnError = async (
+    error: unknown,
+    data: { error?: string; insufficient_credits?: boolean } | null
+  ): Promise<{ message: string; insufficient: boolean }> => {
+    if (data?.error) return { message: data.error, insufficient: !!data.insufficient_credits };
+    const ctx = (error as { context?: Response } | null)?.context;
+    if (ctx && typeof ctx.json === 'function') {
+      try {
+        const body = await ctx.clone().json();
+        if (body?.insufficient_credits || ctx.status === 402) {
+          return { message: body?.error || 'Você está sem créditos.', insufficient: true };
+        }
+        if (body?.error) return { message: body.error, insufficient: false };
+      } catch { /* ignore */ }
+      if (ctx.status === 402) return { message: 'Você está sem créditos.', insufficient: true };
+    }
+    return { message: (error as { message?: string } | null)?.message || 'Erro desconhecido', insufficient: false };
+  };
+
+  const handleGenerateAvatar = async (project: Project, isRegenerate: boolean) => {
+    if (isRegenerate && !window.confirm('Regenerar irá substituir o perfil atual e consumir créditos. Continuar?')) {
+      return;
+    }
+    setGeneratingId(project.id);
+    try {
+      // Fetch all comments for this project (limit 500 to keep payload reasonable)
+      const { data: cmts, error: cmtErr } = await supabase
+        .from('comments')
+        .select('author, content, likes')
+        .eq('project_id', project.id)
+        .order('likes', { ascending: false })
+        .limit(500);
+      if (cmtErr) throw cmtErr;
+      if (!cmts || cmts.length === 0) {
+        toast({ title: 'Sem comentários', description: 'Este projeto não tem comentários para análise.', variant: 'destructive' });
+        setGeneratingId(null);
+        return;
+      }
+
+      // Idempotency: regenerate uses fresh key, first generate is stable
+      const storageKey = `idem:ai_profile:${project.id}${isRegenerate ? `:${Date.now()}` : ''}`;
+      let idempotencyKey = localStorage.getItem(storageKey);
+      if (!idempotencyKey) {
+        idempotencyKey = (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+        localStorage.setItem(storageKey, idempotencyKey);
+      }
+
+      const { data, error } = await supabase.functions.invoke('ai-profile', {
+        body: {
+          comments: cmts.map(c => ({ author: c.author || '', content: c.content, likes: c.likes || 0 })),
+          idempotencyKey,
+        },
+      });
+
+      if (error || data?.error) {
+        const parsed = await parseFnError(error, data);
+        if (parsed.insufficient) {
+          toast({ title: 'Créditos insuficientes', description: `${parsed.message} Redirecionando…`, variant: 'destructive' });
+          setTimeout(() => navigate('/dashboard/credits'), 1200);
+        } else {
+          toast({ title: 'Erro ao gerar perfil', description: parsed.message, variant: 'destructive' });
+        }
+        setGeneratingId(null);
+        return;
+      }
+
+      const newProfile = data.profile as string;
+      await supabase.from('projects').update({ ai_profile: newProfile }).eq('id', project.id);
+      setProjects(prev => prev.map(p => p.id === project.id ? { ...p, ai_profile: newProfile } : p));
+      refreshCredits();
+      toast({
+        title: isRegenerate ? 'Perfil regenerado!' : 'Perfil gerado!',
+        description: data.credits_charged ? `${data.credits_charged} créditos consumidos.` : undefined,
+      });
+    } catch (err: unknown) {
+      const parsed = await parseFnError(err, null);
+      toast({ title: 'Erro', description: parsed.message, variant: 'destructive' });
+    }
+    setGeneratingId(null);
+  };
+
   return (
     <DashboardLayout>
       <div className="max-w-4xl space-y-6 animate-fade-in">
