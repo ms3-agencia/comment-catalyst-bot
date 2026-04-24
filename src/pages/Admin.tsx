@@ -691,6 +691,184 @@ const Admin = () => {
             </AlertDialog>
           </TabsContent>
 
+          {/* PLANOS */}
+          <TabsContent value="plans" className="mt-4 space-y-4">
+            <Card className="glass p-6">
+              <div className="flex items-center gap-2 mb-1">
+                <ShieldCheck size={20} className="text-primary" />
+                <h3 className="font-heading text-lg font-bold">Planos de assinatura</h3>
+              </div>
+              <p className="text-sm text-muted-foreground mb-5">Configure créditos mensais e preço de cada plano. Alterações entram em vigor imediatamente.</p>
+              <div className="grid gap-4 md:grid-cols-3">
+                {plans.map(p => (
+                  <Card key={p.id} className="p-4 border border-border bg-card/50 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="uppercase">{p.plan}</Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Nome de exibição</Label>
+                      <Input value={p.display_name} onChange={e => updatePlan(p.id, { display_name: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Créditos por mês</Label>
+                      <Input type="number" value={p.monthly_credits} onChange={e => updatePlan(p.id, { monthly_credits: Number(e.target.value) })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Preço (R$)</Label>
+                      <Input type="number" step="0.01" value={p.price_brl} onChange={e => updatePlan(p.id, { price_brl: Number(e.target.value) })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Descrição</Label>
+                      <Input value={p.description || ''} onChange={e => updatePlan(p.id, { description: e.target.value })} />
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* PACOTES */}
+          <TabsContent value="packages" className="mt-4 space-y-4">
+            <Card className="glass p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-heading text-lg font-bold flex items-center gap-2"><Package size={20} className="text-primary" /> Pacotes de créditos</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Pacotes avulsos disponíveis para os usuários comprarem via Mercado Pago.</p>
+                </div>
+                <Button onClick={openNewPkg} className="glow-primary"><Plus size={16} className="mr-1.5" />Novo pacote</Button>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Créditos</TableHead>
+                    <TableHead>Preço</TableHead>
+                    <TableHead>R$/crédito</TableHead>
+                    <TableHead>Ordem</TableHead>
+                    <TableHead>Ativo</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {packages.map(p => (
+                    <TableRow key={p.id}>
+                      <TableCell className="font-medium">{p.name}</TableCell>
+                      <TableCell>{p.credits.toLocaleString('pt-BR')}</TableCell>
+                      <TableCell>R$ {Number(p.price_brl).toFixed(2)}</TableCell>
+                      <TableCell className="text-muted-foreground">R$ {(Number(p.price_brl) / p.credits).toFixed(3)}</TableCell>
+                      <TableCell>{p.sort_order}</TableCell>
+                      <TableCell>
+                        <Switch checked={p.is_active} onCheckedChange={async (v) => {
+                          await supabase.from('credit_packages').update({ is_active: v }).eq('id', p.id);
+                          setPackages(prev => prev.map(x => x.id === p.id ? { ...x, is_active: v } : x));
+                        }} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button size="icon" variant="ghost" onClick={() => openEditPkg(p)}><Pencil size={14} /></Button>
+                        <Button size="icon" variant="ghost" className="text-destructive" onClick={() => deletePkg(p.id)}><Trash2 size={14} /></Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {!packages.length && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum pacote cadastrado</TableCell></TableRow>}
+                </TableBody>
+              </Table>
+            </Card>
+
+            <Dialog open={newPkg} onOpenChange={(o) => { if (!o) { setNewPkg(false); setEditPkg(null); } }}>
+              <DialogContent>
+                <DialogHeader><DialogTitle>{editPkg ? 'Editar pacote' : 'Novo pacote'}</DialogTitle></DialogHeader>
+                <div className="space-y-3 pt-2">
+                  <div className="space-y-1.5"><Label>Nome</Label><Input value={pkgForm.name} onChange={e => setPkgForm({ ...pkgForm, name: e.target.value })} /></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5"><Label>Créditos</Label><Input type="number" value={pkgForm.credits} onChange={e => setPkgForm({ ...pkgForm, credits: Number(e.target.value) })} /></div>
+                    <div className="space-y-1.5"><Label>Preço (R$)</Label><Input type="number" step="0.01" value={pkgForm.price_brl} onChange={e => setPkgForm({ ...pkgForm, price_brl: Number(e.target.value) })} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5"><Label>Ordem</Label><Input type="number" value={pkgForm.sort_order} onChange={e => setPkgForm({ ...pkgForm, sort_order: Number(e.target.value) })} /></div>
+                    <div className="space-y-1.5 flex flex-col"><Label>Ativo</Label><div className="pt-2"><Switch checked={pkgForm.is_active} onCheckedChange={v => setPkgForm({ ...pkgForm, is_active: v })} /></div></div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => { setNewPkg(false); setEditPkg(null); }}>Cancelar</Button>
+                  <Button onClick={savePackage} className="glow-primary"><Save size={14} className="mr-1.5" />Salvar</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </TabsContent>
+
+          {/* CUSTOS POR AÇÃO */}
+          <TabsContent value="costs" className="mt-4 space-y-4">
+            <Card className="glass p-6">
+              <h3 className="font-heading text-lg font-bold flex items-center gap-2"><Coins size={20} className="text-primary" /> Custos por ação</h3>
+              <p className="text-sm text-muted-foreground mt-1 mb-5">Defina quantos créditos cada operação consome do usuário.</p>
+              <div className="space-y-3">
+                {actionCosts.map(c => (
+                  <div key={c.id} className="flex items-center gap-4 p-4 rounded-lg border border-border bg-card/50">
+                    <div className="flex-1">
+                      <p className="font-semibold">{c.display_name}</p>
+                      <p className="text-xs text-muted-foreground">{c.description}</p>
+                      <code className="text-[10px] text-muted-foreground/70">{c.action_key}</code>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Input type="number" min={0} value={c.cost} onChange={e => updateCost(c.id, Number(e.target.value))} className="w-24 text-right font-bold" />
+                      <span className="text-sm text-muted-foreground">créditos</span>
+                    </div>
+                  </div>
+                ))}
+                {!actionCosts.length && <p className="text-sm text-muted-foreground text-center py-6">Nenhum custo configurado</p>}
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* MERCADO PAGO */}
+          <TabsContent value="payments" className="mt-4 space-y-4">
+            <Card className="glass p-6 space-y-5">
+              <div>
+                <h3 className="font-heading text-lg font-bold flex items-center gap-2"><Wallet size={20} className="text-primary" /> Integração Mercado Pago</h3>
+                <p className="text-sm text-muted-foreground mt-1">Configure as credenciais para processar pagamentos de pacotes de créditos.</p>
+              </div>
+              <Card className="bg-muted/30 border-primary/20 p-5 space-y-2">
+                <h4 className="font-semibold text-sm">📖 Como obter as credenciais</h4>
+                <ol className="text-sm text-muted-foreground space-y-1.5 list-decimal list-inside">
+                  <li>Acesse o <a href="https://www.mercadopago.com.br/developers/panel/app" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Painel de Desenvolvedores <ExternalLink size={12} /></a></li>
+                  <li>Crie uma aplicação (ou selecione uma existente)</li>
+                  <li>Em <strong>"Credenciais de produção"</strong>, copie o <strong>Access Token</strong> e a <strong>Public Key</strong></li>
+                  <li>Cole abaixo, salve e configure o webhook no painel do Mercado Pago.</li>
+                </ol>
+              </Card>
+              <div className="space-y-3">
+                <Label>Access Token (privado — server-side)</Label>
+                <div className="flex gap-2">
+                  <Input type="password" placeholder="APP_USR-..." value={mpAccessToken} onChange={e => { setMpAccessToken(e.target.value); setMpSaved(p => ({ ...p, token: false })); }} className="font-mono text-xs" />
+                  {mpSaved.token && <Badge variant="outline" className="border-success text-success self-center"><CheckCircle2 size={12} className="mr-1" />Configurado</Badge>}
+                </div>
+              </div>
+              <div className="space-y-3">
+                <Label>Public Key (frontend)</Label>
+                <div className="flex gap-2">
+                  <Input type="text" placeholder="APP_USR-..." value={mpPublicKey} onChange={e => { setMpPublicKey(e.target.value); setMpSaved(p => ({ ...p, pub: false })); }} className="font-mono text-xs" />
+                  {mpSaved.pub && <Badge variant="outline" className="border-success text-success self-center"><CheckCircle2 size={12} className="mr-1" />Configurado</Badge>}
+                </div>
+              </div>
+              <div className="space-y-3">
+                <Label>URL base da aplicação (para back_urls)</Label>
+                <Input type="url" placeholder="https://seuapp.lovable.app" value={mpBaseUrl} onChange={e => { setMpBaseUrl(e.target.value); setMpSaved(p => ({ ...p, url: false })); }} />
+                <p className="text-xs text-muted-foreground">Usada para redirecionar o usuário após pagamento.</p>
+              </div>
+              <div className="space-y-2 p-4 rounded-lg bg-muted/30 border border-border">
+                <Label className="text-xs">Webhook URL (configure no painel do Mercado Pago)</Label>
+                <code className="block text-xs break-all text-primary">
+                  {`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mp-webhook`}
+                </code>
+                <p className="text-[11px] text-muted-foreground">Em "Webhooks" do Mercado Pago, adicione esta URL e marque o evento <strong>Pagamentos</strong>.</p>
+              </div>
+              <Button onClick={saveMercadoPago} disabled={mpSaving} className="w-full glow-primary">
+                {mpSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Salvar configurações
+              </Button>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="settings" className="mt-4">
             <Card className="glass p-6 space-y-6">
               <div>
