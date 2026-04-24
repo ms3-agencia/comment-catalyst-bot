@@ -5,8 +5,9 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Youtube, MessageSquare, Sparkles, ArrowRight, Check, Zap, Crown, ShieldCheck,
-  Coins, Loader2, ShoppingCart, Flame, TrendingUp, Clock, Star, Users, Brain
+  Coins, Loader2, ShoppingCart, Flame, TrendingUp, Clock, Star, Users, Brain, HelpCircle
 } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -236,6 +237,67 @@ const Index = () => {
         <p className="text-center text-xs text-muted-foreground mt-6">
           🔒 Pagamento 100% seguro via Mercado Pago · Pix, cartão ou boleto
         </p>
+      </section>
+
+      {/* FAQ */}
+      <section className="px-6 lg:px-12 py-16 max-w-3xl mx-auto">
+        <div className="text-center mb-10">
+          <Badge variant="outline" className="mb-3 border-primary/40 text-primary"><HelpCircle size={12} className="mr-1" /> Perguntas frequentes</Badge>
+          <h2 className="font-heading text-3xl lg:text-4xl font-bold">Tire suas <span className="gradient-text">dúvidas</span></h2>
+          <p className="mt-3 text-muted-foreground">Tudo que você precisa saber sobre pacotes, créditos e cobrança.</p>
+        </div>
+        <Card className="glass p-2 md:p-6">
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="q1">
+              <AccordionTrigger className="text-left">Como funcionam os créditos?</AccordionTrigger>
+              <AccordionContent className="text-muted-foreground">
+                Cada ação na plataforma — extrair comentários de um vídeo, gerar perfil de avatar com IA, rodar análise de sentimento — consome uma quantidade específica de créditos. Você acompanha seu saldo em tempo real no painel e recebe alertas quando estiver acabando.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="q2">
+              <AccordionTrigger className="text-left">Qual a diferença entre planos mensais e pacotes avulsos?</AccordionTrigger>
+              <AccordionContent className="text-muted-foreground">
+                Os <strong>planos mensais</strong> renovam seus créditos automaticamente todo mês e têm o melhor custo-benefício para quem usa com frequência. Os <strong>pacotes avulsos</strong> são compras únicas, ideais para quem precisa de um reforço pontual ou ainda está testando. Você pode combinar os dois.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="q3">
+              <AccordionTrigger className="text-left">Os créditos expiram?</AccordionTrigger>
+              <AccordionContent className="text-muted-foreground">
+                Créditos de <strong>pacotes avulsos</strong> não expiram enquanto sua conta estiver ativa. Já os créditos do <strong>plano mensal</strong> são renovados a cada ciclo — o saldo do mês anterior não acumula, então use sem medo.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="q4">
+              <AccordionTrigger className="text-left">Posso cancelar meu plano a qualquer momento?</AccordionTrigger>
+              <AccordionContent className="text-muted-foreground">
+                Sim. Você cancela direto no painel, sem multa, sem burocracia e sem precisar falar com ninguém. Após o cancelamento, você continua usando até o fim do ciclo já pago.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="q5">
+              <AccordionTrigger className="text-left">Quais formas de pagamento são aceitas?</AccordionTrigger>
+              <AccordionContent className="text-muted-foreground">
+                Todo o pagamento é processado com segurança pelo <strong>Mercado Pago</strong>. Aceitamos Pix (aprovação na hora), cartão de crédito (parcelamento disponível) e boleto bancário.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="q6">
+              <AccordionTrigger className="text-left">Quando os créditos caem na minha conta após o pagamento?</AccordionTrigger>
+              <AccordionContent className="text-muted-foreground">
+                Pagamentos via Pix e cartão são creditados <strong>automaticamente em segundos</strong> após a confirmação. Boletos podem levar até 2 dias úteis para compensar.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="q7">
+              <AccordionTrigger className="text-left">Recebo nota fiscal?</AccordionTrigger>
+              <AccordionContent className="text-muted-foreground">
+                Sim. Toda compra gera comprovante via Mercado Pago. Para nota fiscal eletrônica, basta solicitar pelo suporte informando seus dados de faturamento.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="q8">
+              <AccordionTrigger className="text-left">Existe garantia ou reembolso?</AccordionTrigger>
+              <AccordionContent className="text-muted-foreground">
+                Você pode testar a plataforma <strong>gratuitamente</strong> com os créditos do cadastro antes de comprar. Por se tratar de serviço digital de uso imediato, créditos já consumidos não são reembolsáveis — mas nossa equipe está pronta para resolver qualquer problema.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </Card>
       </section>
 
       {/* CTA Final */}
