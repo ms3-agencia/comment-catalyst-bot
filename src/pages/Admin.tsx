@@ -153,7 +153,98 @@ const Admin = () => {
     setProviderKeys(keysMap);
     setProviderKeySaved(savedMap);
 
+    // Plans, packages, action costs
+    const [plansRes, pkgsRes, costsRes] = await Promise.all([
+      supabase.from('plan_configs').select('*').order('price_brl'),
+      supabase.from('credit_packages').select('*').order('sort_order'),
+      supabase.from('credit_action_costs').select('*').order('display_name'),
+    ]);
+    setPlans((plansRes.data as PlanConfig[]) || []);
+    setPackages((pkgsRes.data as CreditPackage[]) || []);
+    setActionCosts((costsRes.data as ActionCost[]) || []);
+
+    // Mercado Pago settings
+    const mpKeys = ['mercadopago_access_token', 'mercadopago_public_key', 'app_base_url'];
+    const { data: mpSettings } = await supabase.from('app_settings').select('key, value').in('key', mpKeys);
+    (mpSettings || []).forEach(s => {
+      if (s.key === 'mercadopago_access_token') { setMpAccessToken(s.value); setMpSaved(p => ({ ...p, token: !!s.value })); }
+      if (s.key === 'mercadopago_public_key') { setMpPublicKey(s.value); setMpSaved(p => ({ ...p, pub: !!s.value })); }
+      if (s.key === 'app_base_url') { setMpBaseUrl(s.value); setMpSaved(p => ({ ...p, url: !!s.value })); }
+    });
+
     setLoading(false);
+  };
+
+  const upsertSetting = async (key: string, value: string) => {
+    const { data: existing } = await supabase.from('app_settings').select('id').eq('key', key).maybeSingle();
+    if (existing) {
+      return supabase.from('app_settings').update({ value }).eq('key', key);
+    }
+    return supabase.from('app_settings').insert({ key, value });
+  };
+
+  const updatePlan = async (id: string, updates: Partial<PlanConfig>) => {
+    setPlans(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    const { error } = await supabase.from('plan_configs').update(updates).eq('id', id);
+    if (error) toast({ title: 'Erro ao salvar plano', description: error.message, variant: 'destructive' });
+  };
+
+  const savePackage = async () => {
+    const payload = { ...pkgForm, price_brl: Number(pkgForm.price_brl), credits: Number(pkgForm.credits), sort_order: Number(pkgForm.sort_order) };
+    if (!payload.name || payload.credits <= 0 || payload.price_brl < 0) {
+      toast({ title: 'Preencha todos os campos válidos', variant: 'destructive' });
+      return;
+    }
+    const { error } = editPkg
+      ? await supabase.from('credit_packages').update(payload).eq('id', editPkg.id)
+      : await supabase.from('credit_packages').insert(payload);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: editPkg ? 'Pacote atualizado' : 'Pacote criado' });
+      setEditPkg(null); setNewPkg(false);
+      fetchData();
+    }
+  };
+
+  const openNewPkg = () => {
+    setEditPkg(null);
+    setPkgForm({ name: '', credits: 100, price_brl: 0, is_active: true, sort_order: packages.length });
+    setNewPkg(true);
+  };
+
+  const openEditPkg = (p: CreditPackage) => {
+    setEditPkg(p);
+    setPkgForm({ name: p.name, credits: p.credits, price_brl: Number(p.price_brl), is_active: p.is_active, sort_order: p.sort_order });
+    setNewPkg(true);
+  };
+
+  const deletePkg = async (id: string) => {
+    const { error } = await supabase.from('credit_packages').delete().eq('id', id);
+    if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    else { toast({ title: 'Pacote removido' }); fetchData(); }
+  };
+
+  const updateCost = async (id: string, cost: number) => {
+    setActionCosts(prev => prev.map(c => c.id === id ? { ...c, cost } : c));
+    const { error } = await supabase.from('credit_action_costs').update({ cost }).eq('id', id);
+    if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+  };
+
+  const saveMercadoPago = async () => {
+    setMpSaving(true);
+    const tasks = [];
+    if (mpAccessToken.trim()) tasks.push(upsertSetting('mercadopago_access_token', mpAccessToken.trim()));
+    if (mpPublicKey.trim()) tasks.push(upsertSetting('mercadopago_public_key', mpPublicKey.trim()));
+    if (mpBaseUrl.trim()) tasks.push(upsertSetting('app_base_url', mpBaseUrl.trim()));
+    const results = await Promise.all(tasks);
+    setMpSaving(false);
+    const err = results.find((r: any) => r?.error)?.error;
+    if (err) toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' });
+    else {
+      toast({ title: 'Configurações do Mercado Pago salvas' });
+      setMpSaved({ token: !!mpAccessToken, pub: !!mpPublicKey, url: !!mpBaseUrl });
+    }
   };
 
   const saveProviderKey = async (providerId: string) => {
