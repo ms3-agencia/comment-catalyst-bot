@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Youtube, Plus, X, Loader2, MessageSquare, ThumbsUp, Sparkles } from 'lucide-react';
 import { AiProfileCard } from '@/components/AiProfileCard';
+import { useCredits } from '@/hooks/useCredits';
 
 type Comment = {
   author: string;
@@ -22,6 +23,7 @@ type Comment = {
 
 const Extract = () => {
   const { user, profile } = useAuth();
+  const { refresh: refreshCredits } = useCredits();
   const { toast } = useToast();
   const [urls, setUrls] = useState<string[]>(['']);
   const [projectName, setProjectName] = useState('');
@@ -51,7 +53,8 @@ const Extract = () => {
       });
 
       if (fnError || fnData?.error) {
-        toast({ title: 'Erro na extração', description: fnData?.error || fnError?.message, variant: 'destructive' });
+        const desc = fnData?.error || fnError?.message;
+        toast({ title: fnData?.insufficient_credits ? 'Créditos insuficientes' : 'Erro na extração', description: desc, variant: 'destructive' });
         setLoading(false);
         return;
       }
