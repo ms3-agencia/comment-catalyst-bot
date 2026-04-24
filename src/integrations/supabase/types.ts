@@ -68,6 +68,39 @@ export type Database = {
         }
         Relationships: []
       }
+      branding_settings: {
+        Row: {
+          context: string
+          created_at: string
+          footer_text: string | null
+          id: string
+          logo_url: string | null
+          site_name: string
+          tagline: string | null
+          updated_at: string
+        }
+        Insert: {
+          context: string
+          created_at?: string
+          footer_text?: string | null
+          id?: string
+          logo_url?: string | null
+          site_name?: string
+          tagline?: string | null
+          updated_at?: string
+        }
+        Update: {
+          context?: string
+          created_at?: string
+          footer_text?: string | null
+          id?: string
+          logo_url?: string | null
+          site_name?: string
+          tagline?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           author: string | null
