@@ -99,7 +99,8 @@ const Extract = () => {
 
       setProjectId(project.id);
       setComments(extractedComments);
-      toast({ title: 'Extração concluída!', description: `${extractedComments.length} comentários extraídos.` });
+      refreshCredits();
+      toast({ title: 'Extração concluída!', description: `${extractedComments.length} comentários extraídos.${fnData.credits_charged ? ` ${fnData.credits_charged} créditos consumidos.` : ''}` });
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     }
@@ -114,12 +115,16 @@ const Extract = () => {
       });
 
       if (error || data?.error) {
-        toast({ title: 'Erro ao gerar perfil', description: data?.error || error?.message, variant: 'destructive' });
+        toast({ title: data?.insufficient_credits ? 'Créditos insuficientes' : 'Erro ao gerar perfil', description: data?.error || error?.message, variant: 'destructive' });
         setAiLoading(false);
         return;
       }
 
       setAiProfile(data.profile);
+      refreshCredits();
+      if (data.credits_charged) {
+        toast({ title: 'Perfil gerado!', description: `${data.credits_charged} créditos consumidos.` });
+      }
       if (projectId) {
         await supabase.from('projects').update({ ai_profile: data.profile }).eq('id', projectId);
       }
