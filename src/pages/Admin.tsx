@@ -1088,6 +1088,11 @@ const Admin = () => {
               </div>
             </Card>
           </TabsContent>
+
+          {/* PERSONALIZAÇÃO */}
+          <TabsContent value="branding" className="mt-4">
+            <BrandingTab />
+          </TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
