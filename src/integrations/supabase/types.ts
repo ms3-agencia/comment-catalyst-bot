@@ -115,6 +115,185 @@ export type Database = {
           },
         ]
       }
+      credit_action_costs: {
+        Row: {
+          action_key: string
+          cost: number
+          created_at: string
+          description: string | null
+          display_name: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          action_key: string
+          cost?: number
+          created_at?: string
+          description?: string | null
+          display_name: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          action_key?: string
+          cost?: number
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      credit_packages: {
+        Row: {
+          created_at: string
+          credits: number
+          id: string
+          is_active: boolean
+          name: string
+          price_brl: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credits: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price_brl: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_brl?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      credit_transactions: {
+        Row: {
+          action_key: string | null
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          reference_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          action_key?: string | null
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          action_key?: string | null
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payment_orders: {
+        Row: {
+          amount_brl: number
+          created_at: string
+          credits: number
+          id: string
+          package_id: string | null
+          payment_id: string | null
+          preference_id: string | null
+          raw_payload: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_brl: number
+          created_at?: string
+          credits: number
+          id?: string
+          package_id?: string | null
+          payment_id?: string | null
+          preference_id?: string | null
+          raw_payload?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_brl?: number
+          created_at?: string
+          credits?: number
+          id?: string
+          package_id?: string | null
+          payment_id?: string | null
+          preference_id?: string | null
+          raw_payload?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_orders_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "credit_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_configs: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_name: string
+          id: string
+          monthly_credits: number
+          plan: Database["public"]["Enums"]["app_plan"]
+          price_brl: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_name: string
+          id?: string
+          monthly_credits?: number
+          plan: Database["public"]["Enums"]["app_plan"]
+          price_brl?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          id?: string
+          monthly_credits?: number
+          plan?: Database["public"]["Enums"]["app_plan"]
+          price_brl?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -187,6 +366,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_credits: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          monthly_allocation: number
+          monthly_reset_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          monthly_allocation?: number
+          monthly_reset_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          monthly_allocation?: number
+          monthly_reset_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -210,10 +419,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_add_credits: {
+        Args: { _amount: number; _description?: string; _user_id: string }
+        Returns: Json
+      }
       admin_delete_user: { Args: { _user_id: string }; Returns: undefined }
       admin_update_user_password: {
         Args: { _new_password: string; _user_id: string }
         Returns: undefined
+      }
+      consume_credits: {
+        Args: {
+          _action_key: string
+          _amount: number
+          _description?: string
+          _reference_id?: string
+        }
+        Returns: Json
       }
       has_role: {
         Args: {
