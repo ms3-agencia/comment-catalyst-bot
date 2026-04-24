@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { TestimonialsCarousel } from '@/components/TestimonialsCarousel';
+import { useBranding } from '@/hooks/useBranding';
 
 type Pkg = { id: string; name: string; credits: number; price_brl: number; sort_order: number };
 type Plan = { plan: 'free' | 'pro' | 'enterprise'; display_name: string; monthly_credits: number; price_brl: number; description: string | null };
