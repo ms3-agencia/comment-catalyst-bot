@@ -2,13 +2,15 @@ import { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Youtube, Settings, Shield, LogOut, Menu, X, ChevronDown, FolderOpen } from 'lucide-react';
+import { LayoutDashboard, Youtube, Settings, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { CreditsWidget } from '@/components/CreditsWidget';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/dashboard/extract', icon: Youtube, label: 'Extrair Comentários' },
   { to: '/dashboard/projects', icon: FolderOpen, label: 'Meus Projetos' },
+  { to: '/dashboard/credits', icon: Coins, label: 'Créditos & Planos' },
   { to: '/dashboard/settings', icon: Settings, label: 'Configurações' },
 ];
 
@@ -40,6 +42,9 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
           <div className="flex h-16 items-center justify-between px-6 border-b border-border">
             <Link to="/dashboard" className="font-heading text-xl font-bold gradient-text">CommentIQ</Link>
             <button className="lg:hidden text-muted-foreground" onClick={() => setSidebarOpen(false)}><X size={20} /></button>
+          </div>
+          <div className="px-4 pt-4">
+            <CreditsWidget />
           </div>
           <nav className="flex-1 space-y-1 p-4">
             {allItems.map(item => (
