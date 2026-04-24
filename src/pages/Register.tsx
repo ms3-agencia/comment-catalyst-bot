@@ -36,7 +36,7 @@ const Register = () => {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="glass w-full max-w-md rounded-2xl p-8 animate-fade-in">
         <div className="mb-8 text-center">
-          <h1 className="font-heading text-3xl font-bold gradient-text">CommentIQ</h1>
+          <h1 className="font-heading text-3xl font-bold gradient-text">YCaptura</h1>
           <p className="mt-2 text-muted-foreground">Crie sua conta</p>
         </div>
         <form onSubmit={handleRegister} className="space-y-5">

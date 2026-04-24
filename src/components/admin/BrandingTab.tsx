@@ -19,7 +19,7 @@ type Branding = {
 
 const empty = (ctx: 'landing' | 'pdf'): Branding => ({
   context: ctx,
-  site_name: 'CommentIQ',
+  site_name: 'YCaptura',
   tagline: '',
   footer_text: '',
   logo_url: '',
@@ -85,7 +85,7 @@ const BrandingForm = ({
       const { error } = await supabase
         .from('branding_settings')
         .update({
-          site_name: form.site_name.trim() || 'CommentIQ',
+          site_name: form.site_name.trim() || 'YCaptura',
           tagline: form.tagline?.trim() || null,
           footer_text: form.footer_text?.trim() || null,
           logo_url: form.logo_url?.trim() || null,
@@ -118,7 +118,7 @@ const BrandingForm = ({
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label>Nome do site / produto</Label>
-          <Input value={form.site_name} onChange={(e) => update({ site_name: e.target.value })} placeholder="CommentIQ" />
+          <Input value={form.site_name} onChange={(e) => update({ site_name: e.target.value })} placeholder="YCaptura" />
         </div>
         <div className="space-y-2">
           <Label>Subtítulo / Tagline</Label>
@@ -136,7 +136,7 @@ const BrandingForm = ({
           rows={2}
           value={form.footer_text ?? ''}
           onChange={(e) => update({ footer_text: e.target.value })}
-          placeholder={ctx === 'landing' ? '© 2026 CommentIQ. Todos os direitos reservados.' : 'Gerado por CommentIQ — Análise inteligente de audiência'}
+          placeholder={ctx === 'landing' ? '© 2026 YCaptura. Todos os direitos reservados.' : 'Gerado por YCaptura — Análise inteligente de audiência'}
         />
       </div>
 

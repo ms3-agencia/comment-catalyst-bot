@@ -39,7 +39,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r border-border bg-card transition-transform lg:translate-x-0 lg:static ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex h-full flex-col">
           <div className="flex h-16 items-center justify-between px-6 border-b border-border">
-            <Link to="/dashboard" className="font-heading text-xl font-bold gradient-text">CommentIQ</Link>
+            <Link to="/dashboard" className="font-heading text-xl font-bold gradient-text">YCaptura</Link>
             <button className="lg:hidden text-muted-foreground" onClick={() => setSidebarOpen(false)}><X size={20} /></button>
           </div>
           <div className="px-4 pt-4">

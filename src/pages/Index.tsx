@@ -326,7 +326,7 @@ const Index = () => {
       <section className="px-6 lg:px-12 py-20 max-w-4xl mx-auto text-center">
         <Card className="glass p-10 lg:p-14 border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card">
           <Sparkles className="mx-auto text-primary mb-4" size={32} />
-          <h2 className="font-heading text-3xl lg:text-4xl font-bold">Cada dia sem CommentIQ é um <span className="gradient-text">insight perdido</span></h2>
+          <h2 className="font-heading text-3xl lg:text-4xl font-bold">Cada dia sem {branding.site_name} é um <span className="gradient-text">insight perdido</span></h2>
           <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
             Seus concorrentes já estão usando IA para entender a audiência. Comece grátis hoje e descubra o que está deixando passar.
           </p>
@@ -341,7 +341,7 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="border-t border-border/50 px-6 lg:px-12 py-8 text-center text-sm text-muted-foreground">
-        <p>{branding.footer_text || '© 2026 CommentIQ. Todos os direitos reservados.'}</p>
+        <p>{branding.footer_text || '© 2026 YCaptura. Todos os direitos reservados.'}</p>
       </footer>
     </div>
   );

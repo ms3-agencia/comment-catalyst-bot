@@ -261,9 +261,9 @@ type PdfBranding = {
 const buildPdfHtml = (profile: string, projectName: string | undefined, branding: PdfBranding): string => {
   const date = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
   const contentHtml = markdownToPdfHtml(profile);
-  const siteName = escapeHtml(branding.site_name || 'CommentIQ');
+  const siteName = escapeHtml(branding.site_name || 'YCaptura');
   const tagline = escapeHtml(branding.tagline || 'Análise de Audiência com IA');
-  const footerText = escapeHtml(branding.footer_text || 'Gerado por CommentIQ — Análise inteligente de audiência');
+  const footerText = escapeHtml(branding.footer_text || 'Gerado por YCaptura — Análise inteligente de audiência');
   const logoMark = branding.logo_url
     ? `<img src="${escapeHtml(branding.logo_url)}" alt="" crossorigin="anonymous" style="max-width:48px;max-height:48px;object-fit:contain;display:block;" />`
     : `<span style="font-size:24px;">🧠</span>`;
@@ -455,7 +455,7 @@ export const AiProfileCard = ({ profile, projectName }: AiProfileCardProps) => {
         pdf.text(label, (PAGE_W - textWidth) / 2, PAGE_H - 8);
       }
 
-      pdf.save(`${projectName || 'perfil-avatar'}-commentiq.pdf`);
+      pdf.save(`${projectName || 'perfil-avatar'}-ycaptura.pdf`);
     } catch (err) {
       console.error('PDF export error:', err);
     } finally {
