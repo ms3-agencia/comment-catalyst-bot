@@ -256,11 +256,11 @@ const buildPdfHtml = (profile: string, projectName?: string): string => {
 
   return `
 <div style="font-family:'Inter','Segoe UI',Arial,sans-serif;background:#ffffff;color:#0f172a;width:794px;">
-  <!-- Header -->
-  <div style="background:linear-gradient(135deg,#0c4a6e 0%,#1e3a8a 100%);padding:28px 40px;color:#fff;">
+  <!-- Header (section) -->
+  <div data-pdf-section style="background:linear-gradient(135deg,#0c4a6e 0%,#1e3a8a 100%);padding:28px 40px;color:#fff;">
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div style="display:flex;align-items:center;gap:14px;">
-        <div style="width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.2);">
+        <div style="width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.2);">
           <span style="font-size:24px;">🧠</span>
         </div>
         <div>
@@ -275,8 +275,8 @@ const buildPdfHtml = (profile: string, projectName?: string): string => {
     </div>
   </div>
 
-  <!-- Project Title Bar -->
-  <div style="background:#f8fafc;padding:14px 40px;border-bottom:1px solid #e2e8f0;">
+  <!-- Project Title Bar (section) -->
+  <div data-pdf-section style="background:#f8fafc;padding:14px 40px;border-bottom:1px solid #e2e8f0;">
     <div style="display:flex;align-items:center;gap:10px;">
       <span style="font-size:14px;">📁</span>
       <span style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.6px;font-weight:600;">Projeto</span>
@@ -285,13 +285,13 @@ const buildPdfHtml = (profile: string, projectName?: string): string => {
     </div>
   </div>
 
-  <!-- Content -->
-  <div style="padding:24px 40px 40px;">
+  <!-- Content (each top-level child becomes a section) -->
+  <div data-pdf-content style="padding:24px 40px 40px;">
     ${contentHtml}
   </div>
 
-  <!-- Footer -->
-  <div style="background:#0c4a6e;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;color:#bae6fd;">
+  <!-- Footer (section) -->
+  <div data-pdf-section style="background:#0c4a6e;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;color:#bae6fd;">
     <p style="margin:0;font-size:10px;">Gerado por <strong style="color:#fff;">CommentIQ</strong> — Análise inteligente de audiência</p>
     <p style="margin:0;font-size:10px;">commentiq.com</p>
   </div>
