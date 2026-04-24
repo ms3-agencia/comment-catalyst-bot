@@ -109,7 +109,7 @@ const Admin = () => {
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   const [editPkg, setEditPkg] = useState<CreditPackage | null>(null);
   const [newPkg, setNewPkg] = useState(false);
-  const [pkgForm, setPkgForm] = useState({ name: '', credits: 100, price_brl: 0, is_active: true, sort_order: 0 });
+  const [pkgForm, setPkgForm] = useState<{ name: string; credits: number; price_brl: number; is_active: boolean; sort_order: number; features: string }>({ name: '', credits: 100, price_brl: 0, is_active: true, sort_order: 0, features: '' });
   // Action costs
   const [actionCosts, setActionCosts] = useState<ActionCost[]>([]);
   // Mercado Pago
