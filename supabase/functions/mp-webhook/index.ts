@@ -63,18 +63,29 @@ Deno.serve(async (req) => {
     }).eq("id", orderId);
 
     if (mappedStatus === "approved") {
-      // Credit user
-      await admin.rpc("admin_add_credits", {
-        _user_id: order.user_id,
-        _amount: order.credits,
-        _description: `Compra de ${order.credits} créditos via Mercado Pago`,
-      });
-      // Log purchase transaction explicitly
+      // Credit user directly using service role (bypass RLS, no auth.uid())
+      const { data: existing } = await admin
+        .from("user_credits")
+        .select("balance")
+        .eq("user_id", order.user_id)
+        .maybeSingle();
+
+      if (existing) {
+        await admin
+          .from("user_credits")
+          .update({ balance: existing.balance + order.credits })
+          .eq("user_id", order.user_id);
+      } else {
+        await admin
+          .from("user_credits")
+          .insert({ user_id: order.user_id, balance: order.credits });
+      }
+
       await admin.from("credit_transactions").insert({
         user_id: order.user_id,
         amount: order.credits,
         type: "purchase",
-        description: `Pagamento aprovado #${dataId}`,
+        description: `Pagamento aprovado MP #${dataId}`,
         reference_id: order.id,
       });
     }
