@@ -256,11 +256,11 @@ const buildPdfHtml = (profile: string, projectName?: string): string => {
 
   return `
 <div style="font-family:'Inter','Segoe UI',Arial,sans-serif;background:#ffffff;color:#0f172a;width:794px;">
-  <!-- Header -->
-  <div style="background:linear-gradient(135deg,#0c4a6e 0%,#1e3a8a 100%);padding:28px 40px;color:#fff;">
+  <!-- Header (section) -->
+  <div data-pdf-section style="background:linear-gradient(135deg,#0c4a6e 0%,#1e3a8a 100%);padding:28px 40px;color:#fff;">
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div style="display:flex;align-items:center;gap:14px;">
-        <div style="width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.2);">
+        <div style="width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.2);">
           <span style="font-size:24px;">🧠</span>
         </div>
         <div>
@@ -275,8 +275,8 @@ const buildPdfHtml = (profile: string, projectName?: string): string => {
     </div>
   </div>
 
-  <!-- Project Title Bar -->
-  <div style="background:#f8fafc;padding:14px 40px;border-bottom:1px solid #e2e8f0;">
+  <!-- Project Title Bar (section) -->
+  <div data-pdf-section style="background:#f8fafc;padding:14px 40px;border-bottom:1px solid #e2e8f0;">
     <div style="display:flex;align-items:center;gap:10px;">
       <span style="font-size:14px;">📁</span>
       <span style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.6px;font-weight:600;">Projeto</span>
@@ -285,13 +285,13 @@ const buildPdfHtml = (profile: string, projectName?: string): string => {
     </div>
   </div>
 
-  <!-- Content -->
-  <div style="padding:24px 40px 40px;">
+  <!-- Content (each top-level child becomes a section) -->
+  <div data-pdf-content style="padding:24px 40px 40px;">
     ${contentHtml}
   </div>
 
-  <!-- Footer -->
-  <div style="background:#0c4a6e;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;color:#bae6fd;">
+  <!-- Footer (section) -->
+  <div data-pdf-section style="background:#0c4a6e;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;color:#bae6fd;">
     <p style="margin:0;font-size:10px;">Gerado por <strong style="color:#fff;">CommentIQ</strong> — Análise inteligente de audiência</p>
     <p style="margin:0;font-size:10px;">commentiq.com</p>
   </div>
@@ -319,54 +319,125 @@ export const AiProfileCard = ({ profile, projectName }: AiProfileCardProps) => {
       document.body.appendChild(container);
 
       // Wait a tick for layout
-      await new Promise((r) => setTimeout(r, 100));
+      await new Promise((r) => setTimeout(r, 120));
 
-      const canvas = await html2canvas(container, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        windowWidth: 794,
-      });
+      // Build the ordered list of sections: structural sections + each top-level
+      // child of the content block (so paragraphs/tables/cards/headings are
+      // their own atomic units, never sliced mid-element).
+      const structural = Array.from(
+        container.querySelectorAll('[data-pdf-section]')
+      ) as HTMLElement[];
+      const contentBlock = container.querySelector('[data-pdf-content]') as HTMLElement | null;
+      const contentChildren = contentBlock
+        ? (Array.from(contentBlock.children) as HTMLElement[])
+        : [];
 
+      // Order: header, project bar, ...content children..., footer.
+      const [headerEl, projectBarEl, footerEl] = structural;
+      const sections: HTMLElement[] = [
+        headerEl,
+        projectBarEl,
+        ...contentChildren,
+        footerEl,
+      ].filter(Boolean);
+
+      // PDF layout (A4 portrait, mm)
       const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-      const pageWidth = pdf.internal.pageSize.getWidth(); // 210mm
-      const pageHeight = pdf.internal.pageSize.getHeight(); // 297mm
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const PAGE_W = pdf.internal.pageSize.getWidth();   // 210
+      const PAGE_H = pdf.internal.pageSize.getHeight();  // 297
+      const MARGIN_TOP = 15;
+      const MARGIN_BOTTOM = 18; // extra room for page number
+      const MARGIN_X = 12;
+      const CONTENT_W = PAGE_W - MARGIN_X * 2;
+      const SECTION_GAP = 3;
+      const USABLE_H = PAGE_H - MARGIN_TOP - MARGIN_BOTTOM;
 
-      // Slice the canvas across multiple pages
-      const pxPerMm = canvas.width / pageWidth;
-      const pageHeightPx = pageHeight * pxPerMm;
-      let renderedPx = 0;
-      let pageIndex = 0;
+      let cursorY = MARGIN_TOP;
+      let isFirstOnPage = true;
 
-      while (renderedPx < canvas.height) {
-        const sliceHeight = Math.min(pageHeightPx, canvas.height - renderedPx);
-        const pageCanvas = document.createElement('canvas');
-        pageCanvas.width = canvas.width;
-        pageCanvas.height = sliceHeight;
-        const ctx = pageCanvas.getContext('2d');
-        if (ctx) {
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-          ctx.drawImage(
-            canvas,
-            0,
-            renderedPx,
-            canvas.width,
-            sliceHeight,
-            0,
-            0,
-            canvas.width,
-            sliceHeight
-          );
+      const renderSection = async (el: HTMLElement) => {
+        const canvas = await html2canvas(el, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          windowWidth: 794,
+        });
+        const ratio = CONTENT_W / (canvas.width / 2); // canvas captured at 2x
+        const widthMm = CONTENT_W;
+        const fullHeightMm = (canvas.height / 2) * ratio;
+        const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+        // If the section is taller than a full page, slice it across pages.
+        if (fullHeightMm > USABLE_H) {
+          // start fresh page if not already at top
+          if (!isFirstOnPage) {
+            pdf.addPage();
+            cursorY = MARGIN_TOP;
+            isFirstOnPage = true;
+          }
+
+          const pxPerMm = canvas.width / widthMm;
+          const pageSlicePx = USABLE_H * pxPerMm;
+          let renderedPx = 0;
+
+          while (renderedPx < canvas.height) {
+            const sliceHeightPx = Math.min(pageSlicePx, canvas.height - renderedPx);
+            const sliceCanvas = document.createElement('canvas');
+            sliceCanvas.width = canvas.width;
+            sliceCanvas.height = sliceHeightPx;
+            const ctx = sliceCanvas.getContext('2d');
+            if (ctx) {
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+              ctx.drawImage(
+                canvas,
+                0, renderedPx, canvas.width, sliceHeightPx,
+                0, 0, canvas.width, sliceHeightPx
+              );
+            }
+            const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.92);
+            const sliceMm = sliceHeightPx / pxPerMm;
+            pdf.addImage(sliceData, 'JPEG', MARGIN_X, MARGIN_TOP, widthMm, sliceMm);
+            renderedPx += sliceHeightPx;
+            if (renderedPx < canvas.height) {
+              pdf.addPage();
+              cursorY = MARGIN_TOP;
+              isFirstOnPage = true;
+            } else {
+              cursorY = MARGIN_TOP + sliceMm + SECTION_GAP;
+              isFirstOnPage = false;
+            }
+          }
+          return;
         }
-        const imgData = pageCanvas.toDataURL('image/jpeg', 0.95);
-        if (pageIndex > 0) pdf.addPage();
-        const sliceHeightMm = sliceHeight / pxPerMm;
-        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, sliceHeightMm);
-        renderedPx += sliceHeight;
-        pageIndex++;
+
+        // Normal section: page-break if it doesn't fit
+        const remaining = PAGE_H - MARGIN_BOTTOM - cursorY;
+        if (fullHeightMm > remaining && !isFirstOnPage) {
+          pdf.addPage();
+          cursorY = MARGIN_TOP;
+          isFirstOnPage = true;
+        }
+
+        pdf.addImage(imgData, 'JPEG', MARGIN_X, cursorY, widthMm, fullHeightMm);
+        cursorY += fullHeightMm + SECTION_GAP;
+        isFirstOnPage = false;
+      };
+
+      for (const section of sections) {
+        await renderSection(section);
+      }
+
+      // Page numbers — added after all content so we know the total
+      const total = pdf.getNumberOfPages();
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(120, 120, 120);
+      for (let p = 1; p <= total; p++) {
+        pdf.setPage(p);
+        const label = `Página ${p} de ${total}`;
+        const textWidth = pdf.getTextWidth(label);
+        pdf.text(label, (PAGE_W - textWidth) / 2, PAGE_H - 8);
       }
 
       pdf.save(`${projectName || 'perfil-avatar'}-commentiq.pdf`);
