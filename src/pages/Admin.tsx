@@ -441,6 +441,20 @@ const Admin = () => {
                                 <DropdownMenuItem onClick={() => openEdit(u)}>
                                   <Save className="mr-2 h-4 w-4" /> Editar dados
                                 </DropdownMenuItem>
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>
+                                    <CreditCard className="mr-2 h-4 w-4" /> Mudar plano
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuPortal>
+                                    <DropdownMenuSubContent className="bg-popover">
+                                      <DropdownMenuRadioGroup value={u.plan} onValueChange={(v) => changePlan(u, v as 'free' | 'pro' | 'enterprise')}>
+                                        <DropdownMenuRadioItem value="free">Free</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="pro">Pro</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="enterprise">Enterprise</DropdownMenuRadioItem>
+                                      </DropdownMenuRadioGroup>
+                                    </DropdownMenuSubContent>
+                                  </DropdownMenuPortal>
+                                </DropdownMenuSub>
                                 <DropdownMenuItem onClick={() => { setPwdUser(u); setNewPassword(''); }}>
                                   <KeyRound className="mr-2 h-4 w-4" /> Mudar senha
                                 </DropdownMenuItem>
