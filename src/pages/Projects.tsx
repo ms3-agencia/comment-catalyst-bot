@@ -250,7 +250,12 @@ const Projects = () => {
                       </div>
                     ) : project.ai_profile ? (
                       <div className="space-y-2">
-                        <AiProfileCard profile={project.ai_profile} projectName={project.name} />
+                        <AiProfileCard
+                          profile={project.ai_profile}
+                          projectName={project.name}
+                          onDelete={() => handleDelete(project.id)}
+                          deleting={savingId === project.id}
+                        />
                         <div className="flex justify-end">
                           <Button size="sm" variant="outline" onClick={() => startEditProfile(project)}>
                             <Pencil className="mr-1 h-3.5 w-3.5" /> Editar Perfil IA
