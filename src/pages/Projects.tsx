@@ -342,23 +342,47 @@ const Projects = () => {
                           onDelete={() => handleDelete(project.id)}
                           deleting={savingId === project.id}
                         />
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-2">
                           <Button size="sm" variant="outline" onClick={() => startEditProfile(project)}>
                             <Pencil className="mr-1 h-3.5 w-3.5" /> Editar Perfil IA
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => handleGenerateAvatar(project, true)}
+                            disabled={generatingId === project.id}
+                            className="glow-primary"
+                          >
+                            {generatingId === project.id ? (
+                              <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> Regenerando…</>
+                            ) : (
+                              <><RefreshCw className="mr-1 h-3.5 w-3.5" /> Regenerar Avatar</>
+                            )}
                           </Button>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Button size="sm" variant="outline" onClick={() => startEditProfile(project)}>
                           <Pencil className="mr-1 h-3.5 w-3.5" /> Adicionar Perfil IA
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => handleGenerateAvatar(project, false)}
+                          disabled={generatingId === project.id}
+                          className="glow-primary"
+                        >
+                          {generatingId === project.id ? (
+                            <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> Gerando…</>
+                          ) : (
+                            <><Sparkles className="mr-1 h-3.5 w-3.5" /> Gerar Avatar</>
+                          )}
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleDelete(project.id)}
                           disabled={savingId === project.id}
-                          className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive ml-auto"
                           title="Excluir projeto"
                         >
                           {savingId === project.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
