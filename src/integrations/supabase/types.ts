@@ -424,6 +424,10 @@ export type Database = {
         Returns: Json
       }
       admin_delete_user: { Args: { _user_id: string }; Returns: undefined }
+      admin_update_user_email: {
+        Args: { _new_email: string; _user_id: string }
+        Returns: undefined
+      }
       admin_update_user_password: {
         Args: { _new_password: string; _user_id: string }
         Returns: undefined
