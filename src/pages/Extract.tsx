@@ -182,7 +182,12 @@ const Extract = () => {
       });
 
       if (error || data?.error) {
-        toast({ title: data?.insufficient_credits ? 'Créditos insuficientes' : 'Erro ao gerar perfil', description: data?.error || error?.message, variant: 'destructive' });
+        const parsed = await parseFnError(error, data);
+        if (parsed.insufficient) {
+          handleInsufficient(parsed.message);
+        } else {
+          toast({ title: 'Erro ao gerar perfil', description: parsed.message, variant: 'destructive' });
+        }
         setAiLoading(false);
         return;
       }
