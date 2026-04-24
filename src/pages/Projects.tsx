@@ -127,7 +127,10 @@ const Projects = () => {
   };
 
   const handleDelete = async (projectId: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir este projeto? Esta ação não pode ser desfeita.')) return;
+    setSavingId(projectId);
     const { error } = await supabase.from('projects').delete().eq('id', projectId);
+    setSavingId(null);
     if (error) {
       toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
     } else {
@@ -247,7 +250,12 @@ const Projects = () => {
                       </div>
                     ) : project.ai_profile ? (
                       <div className="space-y-2">
-                        <AiProfileCard profile={project.ai_profile} projectName={project.name} />
+                        <AiProfileCard
+                          profile={project.ai_profile}
+                          projectName={project.name}
+                          onDelete={() => handleDelete(project.id)}
+                          deleting={savingId === project.id}
+                        />
                         <div className="flex justify-end">
                           <Button size="sm" variant="outline" onClick={() => startEditProfile(project)}>
                             <Pencil className="mr-1 h-3.5 w-3.5" /> Editar Perfil IA
@@ -255,9 +263,21 @@ const Projects = () => {
                         </div>
                       </div>
                     ) : (
-                      <Button size="sm" variant="outline" onClick={() => startEditProfile(project)}>
-                        <Pencil className="mr-1 h-3.5 w-3.5" /> Adicionar Perfil IA
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => startEditProfile(project)}>
+                          <Pencil className="mr-1 h-3.5 w-3.5" /> Adicionar Perfil IA
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDelete(project.id)}
+                          disabled={savingId === project.id}
+                          className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          title="Excluir projeto"
+                        >
+                          {savingId === project.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                      </div>
                     )}
 
                     {/* Comments */}
@@ -295,12 +315,6 @@ const Projects = () => {
                       )}
                     </div>
 
-                    {/* Delete */}
-                    <div className="flex justify-end">
-                      <Button variant="destructive" size="sm" onClick={() => handleDelete(project.id)}>
-                        <Trash2 className="mr-1 h-4 w-4" /> Excluir Projeto
-                      </Button>
-                    </div>
                   </div>
                 )}
               </Card>
