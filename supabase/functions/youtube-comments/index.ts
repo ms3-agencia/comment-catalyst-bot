@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { videoUrls } = await req.json();
+    const { videoUrls, idempotencyKey } = await req.json();
     if (!videoUrls || !Array.isArray(videoUrls) || videoUrls.length === 0) {
       return new Response(
         JSON.stringify({ error: "videoUrls is required (array)" }),
@@ -47,11 +47,30 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ---- Pre-check credit cost: 1 per video (action: extract_video)
-    const adminClient = createClient(
+    // ---- Idempotency: replay cached response if same key was processed already
+    const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    if (idempotencyKey) {
+      const { data: existing } = await admin
+        .from("idempotency_keys")
+        .select("response")
+        .eq("user_id", user.id)
+        .eq("action_key", "extract_video")
+        .eq("client_key", String(idempotencyKey))
+        .maybeSingle();
+      if (existing?.response) {
+        return new Response(
+          JSON.stringify({ ...existing.response, replayed: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // ---- Pre-check credit cost: 1 per video (action: extract_video)
+    const adminClient = admin;
 
     const { data: costRow } = await adminClient
       .from("credit_action_costs")
@@ -172,12 +191,24 @@ Deno.serve(async (req) => {
       creditsCharged = totalCost;
     }
 
-    return new Response(
-      JSON.stringify({ comments: allComments, credits_charged: creditsCharged }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    const responsePayload = { comments: allComments, credits_charged: creditsCharged };
+
+    // Persist idempotency record so retries return the same response without re-charging
+    if (idempotencyKey) {
+      await admin.from("idempotency_keys").upsert(
+        {
+          user_id: user.id,
+          action_key: "extract_video",
+          client_key: String(idempotencyKey),
+          response: responsePayload,
+        },
+        { onConflict: "user_id,action_key,client_key" }
+      );
+    }
+
+    return new Response(JSON.stringify(responsePayload), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     console.error("youtube-comments error:", e);
     return new Response(

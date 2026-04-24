@@ -247,6 +247,36 @@ export type Database = {
         }
         Relationships: []
       }
+      idempotency_keys: {
+        Row: {
+          action_key: string
+          client_key: string
+          created_at: string
+          expires_at: string
+          id: string
+          response: Json | null
+          user_id: string
+        }
+        Insert: {
+          action_key: string
+          client_key: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          response?: Json | null
+          user_id: string
+        }
+        Update: {
+          action_key?: string
+          client_key?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          response?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       payment_orders: {
         Row: {
           amount_brl: number

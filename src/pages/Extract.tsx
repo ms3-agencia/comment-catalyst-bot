@@ -46,10 +46,19 @@ const Extract = () => {
     }
     setLoading(true);
 
+    // Stable idempotency key per (project name + urls). Persists across retries
+    // so reenvios after network failure return the cached response without re-charging.
+    const stableSeed = `extract:${projectName.trim()}|${validUrls.join('|')}`;
+    const storageKey = `idem:${stableSeed}`;
+    let idempotencyKey = localStorage.getItem(storageKey);
+    if (!idempotencyKey) {
+      idempotencyKey = (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+      localStorage.setItem(storageKey, idempotencyKey);
+    }
+
     try {
-      // Call real YouTube API via edge function
       const { data: fnData, error: fnError } = await supabase.functions.invoke('youtube-comments', {
-        body: { videoUrls: validUrls },
+        body: { videoUrls: validUrls, idempotencyKey },
       });
 
       if (fnError || fnData?.error) {
@@ -109,9 +118,18 @@ const Extract = () => {
 
   const handleGenerateAI = async () => {
     setAiLoading(true);
+
+    // Idempotency: stable per project so a retry doesn't burn credits twice.
+    const storageKey = `idem:ai_profile:${projectId ?? 'no-project'}`;
+    let idempotencyKey = localStorage.getItem(storageKey);
+    if (!idempotencyKey) {
+      idempotencyKey = (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+      localStorage.setItem(storageKey, idempotencyKey);
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke('ai-profile', {
-        body: { comments: comments.map(c => ({ author: c.author, content: c.content, likes: c.likes })) },
+        body: { comments: comments.map(c => ({ author: c.author, content: c.content, likes: c.likes })), idempotencyKey },
       });
 
       if (error || data?.error) {

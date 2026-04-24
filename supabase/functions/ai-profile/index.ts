@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { comments } = await req.json();
+    const { comments, idempotencyKey } = await req.json();
     if (!comments || !Array.isArray(comments) || comments.length === 0) {
       return new Response(
         JSON.stringify({ error: "comments array is required" }),
@@ -55,11 +55,29 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ---- Pre-check credit cost
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // ---- Idempotency: replay cached response if same key was processed already
+    if (idempotencyKey) {
+      const { data: existing } = await admin
+        .from("idempotency_keys")
+        .select("response")
+        .eq("user_id", user.id)
+        .eq("action_key", "ai_profile")
+        .eq("client_key", String(idempotencyKey))
+        .maybeSingle();
+      if (existing?.response) {
+        return new Response(
+          JSON.stringify({ ...existing.response, replayed: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // ---- Pre-check credit cost
     const { data: costRow } = await admin
       .from("credit_action_costs")
       .select("cost")
@@ -201,7 +219,21 @@ Seja detalhado, específico e baseado nos dados reais dos comentários. Use núm
       description: "Geração de perfil IA do avatar",
     });
 
-    return new Response(JSON.stringify({ profile, credits_charged: cost }), {
+    const responsePayload = { profile, credits_charged: cost };
+
+    if (idempotencyKey) {
+      await admin.from("idempotency_keys").upsert(
+        {
+          user_id: user.id,
+          action_key: "ai_profile",
+          client_key: String(idempotencyKey),
+          response: responsePayload,
+        },
+        { onConflict: "user_id,action_key,client_key" }
+      );
+    }
+
+    return new Response(JSON.stringify(responsePayload), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
