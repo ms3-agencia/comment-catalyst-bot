@@ -314,7 +314,7 @@ const buildPdfHtml = (profile: string, projectName: string | undefined, branding
 </div>`;
 };
 
-export const AiProfileCard = ({ profile, projectName }: AiProfileCardProps) => {
+export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiProfileCardProps) => {
   const [exporting, setExporting] = useState(false);
 
   const handleExportPDF = async () => {
