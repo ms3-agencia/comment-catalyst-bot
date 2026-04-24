@@ -479,19 +479,33 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
             {projectName && <p className="text-xs text-muted-foreground">{projectName}</p>}
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExportPDF}
-          disabled={exporting}
-          className="border-primary/30 hover:bg-primary/10"
-        >
-          {exporting ? (
-            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Exportando...</>
-          ) : (
-            <><Download className="mr-2 h-4 w-4" /> Exportar PDF</>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportPDF}
+            disabled={exporting}
+            className="border-primary/30 hover:bg-primary/10"
+          >
+            {exporting ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Exportando...</>
+            ) : (
+              <><Download className="mr-2 h-4 w-4" /> Exportar PDF</>
+            )}
+          </Button>
+          {onDelete && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onDelete}
+              disabled={deleting}
+              className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              title="Excluir projeto"
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            </Button>
           )}
-        </Button>
+        </div>
       </div>
 
       {/* Content */}
