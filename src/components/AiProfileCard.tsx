@@ -250,9 +250,22 @@ const markdownToPdfHtml = (md: string): string => {
   return out.join('');
 };
 
-const buildPdfHtml = (profile: string, projectName?: string): string => {
+type PdfBranding = {
+  site_name: string;
+  tagline: string | null;
+  footer_text: string | null;
+  logo_url: string | null;
+};
+
+const buildPdfHtml = (profile: string, projectName: string | undefined, branding: PdfBranding): string => {
   const date = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
   const contentHtml = markdownToPdfHtml(profile);
+  const siteName = escapeHtml(branding.site_name || 'CommentIQ');
+  const tagline = escapeHtml(branding.tagline || 'Análise de Audiência com IA');
+  const footerText = escapeHtml(branding.footer_text || 'Gerado por CommentIQ — Análise inteligente de audiência');
+  const logoMark = branding.logo_url
+    ? `<img src="${escapeHtml(branding.logo_url)}" alt="" crossorigin="anonymous" style="max-width:48px;max-height:48px;object-fit:contain;display:block;" />`
+    : `<span style="font-size:24px;">🧠</span>`;
 
   return `
 <div style="font-family:'Inter','Segoe UI',Arial,sans-serif;background:#ffffff;color:#0f172a;width:794px;">
@@ -260,12 +273,12 @@ const buildPdfHtml = (profile: string, projectName?: string): string => {
   <div data-pdf-section style="background:linear-gradient(135deg,#0c4a6e 0%,#1e3a8a 100%);padding:28px 40px;color:#fff;">
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div style="display:flex;align-items:center;gap:14px;">
-        <div style="width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.2);">
-          <span style="font-size:24px;">🧠</span>
+        <div style="width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.2);overflow:hidden;">
+          ${logoMark}
         </div>
         <div>
-          <h1 style="margin:0;font-family:'Space Grotesk','Inter',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.5px;color:#fff;">CommentIQ</h1>
-          <p style="margin:3px 0 0;font-size:11px;color:#bae6fd;letter-spacing:0.6px;text-transform:uppercase;font-weight:500;">Análise de Audiência com IA</p>
+          <h1 style="margin:0;font-family:'Space Grotesk','Inter',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.5px;color:#fff;">${siteName}</h1>
+          <p style="margin:3px 0 0;font-size:11px;color:#bae6fd;letter-spacing:0.6px;text-transform:uppercase;font-weight:500;">${tagline}</p>
         </div>
       </div>
       <div style="text-align:right;">
@@ -292,8 +305,8 @@ const buildPdfHtml = (profile: string, projectName?: string): string => {
 
   <!-- Footer (section) -->
   <div data-pdf-section style="background:#0c4a6e;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;color:#bae6fd;">
-    <p style="margin:0;font-size:10px;">Gerado por <strong style="color:#fff;">CommentIQ</strong> — Análise inteligente de audiência</p>
-    <p style="margin:0;font-size:10px;">commentiq.com</p>
+    <p style="margin:0;font-size:10px;">${footerText}</p>
+    <p style="margin:0;font-size:10px;">${siteName}</p>
   </div>
 </div>`;
 };
