@@ -2,7 +2,7 @@ import { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Youtube, Settings, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins } from 'lucide-react';
+import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins, UserCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CreditsWidget } from '@/components/CreditsWidget';
 
@@ -73,7 +73,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild className="cursor-pointer">
                   <Link to="/dashboard/settings">
-                    <Settings className="mr-2 h-4 w-4" /> Perfil
+                    <UserCircle className="mr-2 h-4 w-4" /> Perfil
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={signOut} className="text-destructive cursor-pointer">
