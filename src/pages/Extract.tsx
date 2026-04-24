@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Youtube, Plus, X, Loader2, MessageSquare, ThumbsUp, Sparkles } from 'lucide-react';
 import { AiProfileCard } from '@/components/AiProfileCard';
+import { useCredits } from '@/hooks/useCredits';
 
 type Comment = {
   author: string;
@@ -22,6 +23,7 @@ type Comment = {
 
 const Extract = () => {
   const { user, profile } = useAuth();
+  const { refresh: refreshCredits } = useCredits();
   const { toast } = useToast();
   const [urls, setUrls] = useState<string[]>(['']);
   const [projectName, setProjectName] = useState('');
@@ -51,7 +53,8 @@ const Extract = () => {
       });
 
       if (fnError || fnData?.error) {
-        toast({ title: 'Erro na extração', description: fnData?.error || fnError?.message, variant: 'destructive' });
+        const desc = fnData?.error || fnError?.message;
+        toast({ title: fnData?.insufficient_credits ? 'Créditos insuficientes' : 'Erro na extração', description: desc, variant: 'destructive' });
         setLoading(false);
         return;
       }
@@ -96,7 +99,8 @@ const Extract = () => {
 
       setProjectId(project.id);
       setComments(extractedComments);
-      toast({ title: 'Extração concluída!', description: `${extractedComments.length} comentários extraídos.` });
+      refreshCredits();
+      toast({ title: 'Extração concluída!', description: `${extractedComments.length} comentários extraídos.${fnData.credits_charged ? ` ${fnData.credits_charged} créditos consumidos.` : ''}` });
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     }
@@ -111,12 +115,16 @@ const Extract = () => {
       });
 
       if (error || data?.error) {
-        toast({ title: 'Erro ao gerar perfil', description: data?.error || error?.message, variant: 'destructive' });
+        toast({ title: data?.insufficient_credits ? 'Créditos insuficientes' : 'Erro ao gerar perfil', description: data?.error || error?.message, variant: 'destructive' });
         setAiLoading(false);
         return;
       }
 
       setAiProfile(data.profile);
+      refreshCredits();
+      if (data.credits_charged) {
+        toast({ title: 'Perfil gerado!', description: `${data.credits_charged} créditos consumidos.` });
+      }
       if (projectId) {
         await supabase.from('projects').update({ ai_profile: data.profile }).eq('id', projectId);
       }

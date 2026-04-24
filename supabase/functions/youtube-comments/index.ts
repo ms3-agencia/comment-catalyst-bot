@@ -47,11 +47,41 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get YouTube API key from app_settings
+    // ---- Pre-check credit cost: 1 per video (action: extract_video)
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    const { data: costRow } = await adminClient
+      .from("credit_action_costs")
+      .select("cost")
+      .eq("action_key", "extract_video")
+      .maybeSingle();
+    const costPerVideo = costRow?.cost ?? 1;
+    const totalCost = costPerVideo * videoUrls.length;
+
+    const { data: creditsRow } = await adminClient
+      .from("user_credits")
+      .select("balance")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const balance = creditsRow?.balance ?? 0;
+
+    if (balance < totalCost) {
+      return new Response(
+        JSON.stringify({
+          error: `Créditos insuficientes. Necessário: ${totalCost}, disponível: ${balance}.`,
+          insufficient_credits: true,
+          required: totalCost,
+          balance,
+        }),
+        {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     const { data: setting } = await adminClient
       .from("app_settings")
@@ -120,14 +150,34 @@ Deno.serve(async (req) => {
         }
 
         nextPageToken = data.nextPageToken;
-        // Limit to 500 comments per video
         if (allComments.filter((c) => c.video_url === url).length >= 500) break;
       } while (nextPageToken);
     }
 
-    return new Response(JSON.stringify({ comments: allComments }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // ---- Charge credits after successful extraction
+    let creditsCharged = 0;
+    if (allComments.length > 0) {
+      const newBalance = balance - totalCost;
+      await adminClient
+        .from("user_credits")
+        .update({ balance: newBalance })
+        .eq("user_id", user.id);
+      await adminClient.from("credit_transactions").insert({
+        user_id: user.id,
+        amount: -totalCost,
+        type: "consumption",
+        action_key: "extract_video",
+        description: `Extração de ${videoUrls.length} vídeo(s) do YouTube`,
+      });
+      creditsCharged = totalCost;
+    }
+
+    return new Response(
+      JSON.stringify({ comments: allComments, credits_charged: creditsCharged }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   } catch (e) {
     console.error("youtube-comments error:", e);
     return new Response(

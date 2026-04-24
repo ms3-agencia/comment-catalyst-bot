@@ -1,3 +1,5 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -21,6 +23,27 @@ Deno.serve(async (req) => {
       );
     }
 
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing authorization" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { comments } = await req.json();
     if (!comments || !Array.isArray(comments) || comments.length === 0) {
       return new Response(
@@ -32,7 +55,39 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Summarize comments for prompt (limit to 100)
+    // ---- Pre-check credit cost
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    const { data: costRow } = await admin
+      .from("credit_action_costs")
+      .select("cost")
+      .eq("action_key", "ai_profile")
+      .maybeSingle();
+    const cost = costRow?.cost ?? 5;
+
+    const { data: creditsRow } = await admin
+      .from("user_credits")
+      .select("balance")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const balance = creditsRow?.balance ?? 0;
+    if (balance < cost) {
+      return new Response(
+        JSON.stringify({
+          error: `Créditos insuficientes. Necessário: ${cost}, disponível: ${balance}.`,
+          insufficient_credits: true,
+          required: cost,
+          balance,
+        }),
+        {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const sample = comments.slice(0, 100);
     const commentsSummary = sample
       .map(
@@ -111,35 +166,21 @@ Seja detalhado, específico e baseado nos dados reais dos comentários. Use núm
       const status = response.status;
       if (status === 429) {
         return new Response(
-          JSON.stringify({
-            error: "Rate limit excedido. Tente novamente em alguns instantes.",
-          }),
-          {
-            status: 429,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          JSON.stringify({ error: "Rate limit excedido. Tente novamente em alguns instantes." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       if (status === 402) {
         return new Response(
-          JSON.stringify({
-            error:
-              "Créditos de IA insuficientes. Adicione créditos no workspace.",
-          }),
-          {
-            status: 402,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
+          JSON.stringify({ error: "Créditos de IA insuficientes. Adicione créditos no workspace." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       const errText = await response.text();
       console.error("AI gateway error:", status, errText);
       return new Response(
         JSON.stringify({ error: "Erro na geração do perfil IA" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -147,19 +188,27 @@ Seja detalhado, específico e baseado nos dados reais dos comentários. Use núm
     const profile =
       data.choices?.[0]?.message?.content || "Não foi possível gerar o perfil.";
 
-    return new Response(JSON.stringify({ profile }), {
+    // ---- Charge credits on success
+    await admin
+      .from("user_credits")
+      .update({ balance: balance - cost })
+      .eq("user_id", user.id);
+    await admin.from("credit_transactions").insert({
+      user_id: user.id,
+      amount: -cost,
+      type: "consumption",
+      action_key: "ai_profile",
+      description: "Geração de perfil IA do avatar",
+    });
+
+    return new Response(JSON.stringify({ profile, credits_charged: cost }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("ai-profile error:", e);
     return new Response(
-      JSON.stringify({
-        error: e instanceof Error ? e.message : "Unknown error",
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
