@@ -837,6 +837,16 @@ const Admin = () => {
                     <div className="space-y-1.5"><Label>Ordem</Label><Input type="number" value={pkgForm.sort_order} onChange={e => setPkgForm({ ...pkgForm, sort_order: Number(e.target.value) })} /></div>
                     <div className="space-y-1.5 flex flex-col"><Label>Ativo</Label><div className="pt-2"><Switch checked={pkgForm.is_active} onCheckedChange={v => setPkgForm({ ...pkgForm, is_active: v })} /></div></div>
                   </div>
+                  <div className="space-y-1.5">
+                    <Label>Recursos (1 por linha)</Label>
+                    <Textarea
+                      rows={5}
+                      placeholder={'Ex.:\nCréditos não expiram\nLiberação imediata após pagamento\nPagamento via Pix, cartão ou boleto'}
+                      value={pkgForm.features}
+                      onChange={e => setPkgForm({ ...pkgForm, features: e.target.value })}
+                    />
+                    <p className="text-[11px] text-muted-foreground">Aparecem como benefícios no card do pacote na landing page.</p>
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => { setNewPkg(false); setEditPkg(null); }}>Cancelar</Button>
