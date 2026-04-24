@@ -219,7 +219,21 @@ Seja detalhado, específico e baseado nos dados reais dos comentários. Use núm
       description: "Geração de perfil IA do avatar",
     });
 
-    return new Response(JSON.stringify({ profile, credits_charged: cost }), {
+    const responsePayload = { profile, credits_charged: cost };
+
+    if (idempotencyKey) {
+      await admin.from("idempotency_keys").upsert(
+        {
+          user_id: user.id,
+          action_key: "ai_profile",
+          client_key: String(idempotencyKey),
+          response: responsePayload,
+        },
+        { onConflict: "user_id,action_key,client_key" }
+      );
+    }
+
+    return new Response(JSON.stringify(responsePayload), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
