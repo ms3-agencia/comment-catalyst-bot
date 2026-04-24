@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +11,40 @@ import { useToast } from '@/hooks/use-toast';
 import { Youtube, Plus, X, Loader2, MessageSquare, ThumbsUp, Sparkles } from 'lucide-react';
 import { AiProfileCard } from '@/components/AiProfileCard';
 import { useCredits } from '@/hooks/useCredits';
+
+// Parse Supabase Edge Function errors. When status != 2xx, supabase-js throws a
+// FunctionsHttpError whose body is in `error.context` (a Response). We read it
+// to surface "insufficient credits" (402) and other structured errors.
+const parseFnError = async (
+  error: unknown,
+  data: { error?: string; insufficient_credits?: boolean } | null
+): Promise<{ message: string; insufficient: boolean }> => {
+  if (data?.error) {
+    return { message: data.error, insufficient: !!data.insufficient_credits };
+  }
+  const ctx = (error as { context?: Response } | null)?.context;
+  if (ctx && typeof ctx.json === 'function') {
+    try {
+      const body = await ctx.clone().json();
+      if (body?.insufficient_credits || ctx.status === 402) {
+        return {
+          message: body?.error || 'Você está sem créditos. Compre mais para continuar.',
+          insufficient: true,
+        };
+      }
+      if (body?.error) return { message: body.error, insufficient: false };
+    } catch {
+      // body wasn't JSON
+    }
+    if (ctx.status === 402) {
+      return { message: 'Você está sem créditos. Compre mais para continuar.', insufficient: true };
+    }
+  }
+  return {
+    message: (error as { message?: string } | null)?.message || 'Erro desconhecido',
+    insufficient: false,
+  };
+};
 
 type Comment = {
   author: string;
@@ -25,6 +60,16 @@ const Extract = () => {
   const { user, profile } = useAuth();
   const { refresh: refreshCredits } = useCredits();
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const handleInsufficient = (msg: string) => {
+    toast({
+      title: 'Créditos insuficientes',
+      description: `${msg} Redirecionando para a compra…`,
+      variant: 'destructive',
+    });
+    setTimeout(() => navigate('/dashboard/credits'), 1200);
+  };
   const [urls, setUrls] = useState<string[]>(['']);
   const [projectName, setProjectName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -62,8 +107,12 @@ const Extract = () => {
       });
 
       if (fnError || fnData?.error) {
-        const desc = fnData?.error || fnError?.message;
-        toast({ title: fnData?.insufficient_credits ? 'Créditos insuficientes' : 'Erro na extração', description: desc, variant: 'destructive' });
+        const parsed = await parseFnError(fnError, fnData);
+        if (parsed.insufficient) {
+          handleInsufficient(parsed.message);
+        } else {
+          toast({ title: 'Erro na extração', description: parsed.message, variant: 'destructive' });
+        }
         setLoading(false);
         return;
       }
@@ -133,7 +182,12 @@ const Extract = () => {
       });
 
       if (error || data?.error) {
-        toast({ title: data?.insufficient_credits ? 'Créditos insuficientes' : 'Erro ao gerar perfil', description: data?.error || error?.message, variant: 'destructive' });
+        const parsed = await parseFnError(error, data);
+        if (parsed.insufficient) {
+          handleInsufficient(parsed.message);
+        } else {
+          toast({ title: 'Erro ao gerar perfil', description: parsed.message, variant: 'destructive' });
+        }
         setAiLoading(false);
         return;
       }
