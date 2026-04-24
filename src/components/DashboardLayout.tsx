@@ -54,14 +54,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
               </Link>
             ))}
           </nav>
-          <div className="border-t border-border p-4 space-y-2">
-            <Link
-              to="/dashboard/settings"
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${location.pathname === '/dashboard/settings' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}
-            >
-              <Settings size={18} />
-              Configurações
-            </Link>
+          <div className="border-t border-border p-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm hover:bg-secondary transition-colors">
@@ -78,6 +71,11 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link to="/dashboard/settings">
+                    <Settings className="mr-2 h-4 w-4" /> Perfil
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={signOut} className="text-destructive cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" /> Sair
                 </DropdownMenuItem>
