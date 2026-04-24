@@ -251,6 +251,17 @@ const Admin = () => {
     setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_admin: !u.is_admin } : x));
   };
 
+  const changePlan = async (u: UserProfile, plan: 'free' | 'pro' | 'enterprise') => {
+    if (u.plan === plan) return;
+    const { error } = await supabase.from('profiles').update({ plan }).eq('id', u.id);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, plan } : x));
+      toast({ title: `Plano alterado para ${plan.toUpperCase()}` });
+    }
+  };
+
   const handleChangePassword = async () => {
     if (!pwdUser || newPassword.length < 6) {
       toast({ title: 'Senha precisa ter ao menos 6 caracteres', variant: 'destructive' });
