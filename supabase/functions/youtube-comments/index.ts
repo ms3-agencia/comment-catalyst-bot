@@ -70,10 +70,7 @@ Deno.serve(async (req) => {
     }
 
     // ---- Pre-check credit cost: 1 per video (action: extract_video)
-    const adminClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const adminClient = admin;
 
     const { data: costRow } = await adminClient
       .from("credit_action_costs")
@@ -194,10 +191,24 @@ Deno.serve(async (req) => {
       creditsCharged = totalCost;
     }
 
-    return new Response(
-      JSON.stringify({ comments: allComments, credits_charged: creditsCharged }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    const responsePayload = { comments: allComments, credits_charged: creditsCharged };
+
+    // Persist idempotency record so retries return the same response without re-charging
+    if (idempotencyKey) {
+      await admin.from("idempotency_keys").upsert(
+        {
+          user_id: user.id,
+          action_key: "extract_video",
+          client_key: String(idempotencyKey),
+          response: responsePayload,
+        },
+        { onConflict: "user_id,action_key,client_key" }
+      );
+    }
+
+    return new Response(JSON.stringify(responsePayload), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
       }
     );
   } catch (e) {
