@@ -76,6 +76,7 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [editUser, setEditUser] = useState<UserProfile | null>(null);
   const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [editPlan, setEditPlan] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -313,12 +314,35 @@ const Admin = () => {
   const openEdit = (u: UserProfile) => {
     setEditUser(u);
     setEditName(u.full_name || '');
+    setEditEmail(u.email || '');
     setEditPlan(u.plan);
   };
 
   const handleSave = async () => {
     if (!editUser) return;
     setSaving(true);
+
+    const trimmedEmail = editEmail.trim().toLowerCase();
+    const emailChanged = trimmedEmail && trimmedEmail !== (editUser.email || '').toLowerCase();
+
+    if (emailChanged) {
+      const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        setSaving(false);
+        toast({ title: 'Email inválido', variant: 'destructive' });
+        return;
+      }
+      const { error: emailErr } = await supabase.rpc('admin_update_user_email', {
+        _user_id: editUser.user_id,
+        _new_email: trimmedEmail,
+      });
+      if (emailErr) {
+        setSaving(false);
+        toast({ title: 'Erro ao alterar email', description: emailErr.message, variant: 'destructive' });
+        return;
+      }
+    }
+
     const { error } = await supabase.from('profiles').update({
       full_name: editName,
       plan: editPlan as 'free' | 'pro' | 'enterprise',
@@ -619,6 +643,10 @@ const Admin = () => {
                   <div className="space-y-2">
                     <Label>Nome</Label>
                     <Input value={editName} onChange={e => setEditName(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Email</Label>
+                    <Input type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} placeholder="usuario@exemplo.com" />
                   </div>
                   <div className="space-y-2">
                     <Label>Plano</Label>
