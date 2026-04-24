@@ -142,6 +142,20 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Depoimentos */}
+      <section className="px-6 lg:px-12 py-16 max-w-6xl mx-auto">
+        <div className="text-center mb-10">
+          <Badge variant="outline" className="mb-3 border-primary/40 text-primary">
+            <Star size={12} className="mr-1 fill-primary" /> Histórias reais
+          </Badge>
+          <h2 className="font-heading text-3xl lg:text-4xl font-bold">
+            Quem já usa, <span className="gradient-text">vende mais</span>
+          </h2>
+          <p className="mt-3 text-muted-foreground">Resultados de criadores e infoprodutores que pararam de adivinhar.</p>
+        </div>
+        <TestimonialsCarousel />
+      </section>
+
       {/* Planos */}
       <section className="px-6 lg:px-12 py-16 max-w-6xl mx-auto">
         <div className="text-center mb-12">
