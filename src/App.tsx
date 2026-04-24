@@ -33,6 +33,7 @@ const App = () => (
             <Route path="/dashboard/extract" element={<ProtectedRoute><Extract /></ProtectedRoute>} />
             <Route path="/dashboard/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><UserSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
