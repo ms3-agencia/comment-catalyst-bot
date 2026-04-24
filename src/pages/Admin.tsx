@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2 } from 'lucide-react';
+import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2, CreditCard } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -251,6 +251,17 @@ const Admin = () => {
     setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_admin: !u.is_admin } : x));
   };
 
+  const changePlan = async (u: UserProfile, plan: 'free' | 'pro' | 'enterprise') => {
+    if (u.plan === plan) return;
+    const { error } = await supabase.from('profiles').update({ plan }).eq('id', u.id);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, plan } : x));
+      toast({ title: `Plano alterado para ${plan.toUpperCase()}` });
+    }
+  };
+
   const handleChangePassword = async () => {
     if (!pwdUser || newPassword.length < 6) {
       toast({ title: 'Senha precisa ter ao menos 6 caracteres', variant: 'destructive' });
@@ -430,6 +441,20 @@ const Admin = () => {
                                 <DropdownMenuItem onClick={() => openEdit(u)}>
                                   <Save className="mr-2 h-4 w-4" /> Editar dados
                                 </DropdownMenuItem>
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>
+                                    <CreditCard className="mr-2 h-4 w-4" /> Mudar plano
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuPortal>
+                                    <DropdownMenuSubContent className="bg-popover">
+                                      <DropdownMenuRadioGroup value={u.plan} onValueChange={(v) => changePlan(u, v as 'free' | 'pro' | 'enterprise')}>
+                                        <DropdownMenuRadioItem value="free">Free</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="pro">Pro</DropdownMenuRadioItem>
+                                        <DropdownMenuRadioItem value="enterprise">Enterprise</DropdownMenuRadioItem>
+                                      </DropdownMenuRadioGroup>
+                                    </DropdownMenuSubContent>
+                                  </DropdownMenuPortal>
+                                </DropdownMenuSub>
                                 <DropdownMenuItem onClick={() => { setPwdUser(u); setNewPassword(''); }}>
                                   <KeyRound className="mr-2 h-4 w-4" /> Mudar senha
                                 </DropdownMenuItem>
