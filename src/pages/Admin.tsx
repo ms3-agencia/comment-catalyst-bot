@@ -226,7 +226,7 @@ const Admin = () => {
 
   const openEditPkg = (p: CreditPackage) => {
     setEditPkg(p);
-    setPkgForm({ name: p.name, credits: p.credits, price_brl: Number(p.price_brl), is_active: p.is_active, sort_order: p.sort_order });
+    setPkgForm({ name: p.name, credits: p.credits, price_brl: Number(p.price_brl), is_active: p.is_active, sort_order: p.sort_order, features: (p.features || []).join('\n') });
     setNewPkg(true);
   };
 
