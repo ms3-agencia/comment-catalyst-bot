@@ -401,12 +401,11 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
       container.innerHTML = buildPdfHtml(profile, projectName, branding);
       document.body.appendChild(container);
 
-      // Wait a tick for layout
-      await new Promise((r) => setTimeout(r, 120));
+      // Wait for layout + any images
+      await new Promise((r) => setTimeout(r, 150));
 
-      // Build the ordered list of sections: structural sections + each top-level
-      // child of the content block (so paragraphs/tables/cards/headings are
-      // their own atomic units, never sliced mid-element).
+      // Atomic sections: structural blocks + each direct child of content block.
+      // Capturing small atomic units guarantees nothing is sliced mid-line.
       const structural = Array.from(
         container.querySelectorAll('[data-pdf-section]')
       ) as HTMLElement[];
@@ -415,54 +414,50 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
         ? (Array.from(contentBlock.children) as HTMLElement[])
         : [];
 
-      // Order: header, project bar, ...content children..., footer.
-      const [headerEl, projectBarEl, footerEl] = structural;
-      const sections: HTMLElement[] = [
-        headerEl,
-        projectBarEl,
-        ...contentChildren,
-        footerEl,
-      ].filter(Boolean);
+      // Insertion order matches DOM order (header, project bar, chart, ...content).
+      const sections: HTMLElement[] = [...structural, ...contentChildren];
 
       // PDF layout (A4 portrait, mm)
-      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-      const PAGE_W = pdf.internal.pageSize.getWidth();   // 210
-      const PAGE_H = pdf.internal.pageSize.getHeight();  // 297
-      const MARGIN_TOP = 15;
-      const MARGIN_BOTTOM = 18; // extra room for page number
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+      const PAGE_W = pdf.internal.pageSize.getWidth();
+      const PAGE_H = pdf.internal.pageSize.getHeight();
+      const MARGIN_TOP = 14;
+      const MARGIN_BOTTOM = 22; // reserved for footer + page number
       const MARGIN_X = 12;
       const CONTENT_W = PAGE_W - MARGIN_X * 2;
-      const SECTION_GAP = 3;
+      const SECTION_GAP = 2.5;
       const USABLE_H = PAGE_H - MARGIN_TOP - MARGIN_BOTTOM;
+      const SCALE = 1.5; // lower than 2 → much faster, still crisp
 
       let cursorY = MARGIN_TOP;
       let isFirstOnPage = true;
 
       const renderSection = async (el: HTMLElement) => {
+        // Skip empty/zero-size elements
+        if (!el || el.offsetHeight < 2) return;
+
         const canvas = await html2canvas(el, {
-          scale: 2,
+          scale: SCALE,
           useCORS: true,
           backgroundColor: '#ffffff',
           windowWidth: 794,
+          logging: false,
         });
-        const ratio = CONTENT_W / (canvas.width / 2); // canvas captured at 2x
         const widthMm = CONTENT_W;
-        const fullHeightMm = (canvas.height / 2) * ratio;
-        const imgData = canvas.toDataURL('image/jpeg', 0.92);
+        const pxPerMm = canvas.width / widthMm;
+        const fullHeightMm = canvas.height / pxPerMm;
+        const imgData = canvas.toDataURL('image/jpeg', 0.85);
 
-        // If the section is taller than a full page, slice it across pages.
+        // Section taller than a full page → must slice. We keep it as a fallback,
+        // but our atomic granularity (per paragraph/list/table) makes this rare.
         if (fullHeightMm > USABLE_H) {
-          // start fresh page if not already at top
           if (!isFirstOnPage) {
             pdf.addPage();
             cursorY = MARGIN_TOP;
             isFirstOnPage = true;
           }
-
-          const pxPerMm = canvas.width / widthMm;
           const pageSlicePx = USABLE_H * pxPerMm;
           let renderedPx = 0;
-
           while (renderedPx < canvas.height) {
             const sliceHeightPx = Math.min(pageSlicePx, canvas.height - renderedPx);
             const sliceCanvas = document.createElement('canvas');
@@ -472,13 +467,9 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
             if (ctx) {
               ctx.fillStyle = '#ffffff';
               ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-              ctx.drawImage(
-                canvas,
-                0, renderedPx, canvas.width, sliceHeightPx,
-                0, 0, canvas.width, sliceHeightPx
-              );
+              ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
             }
-            const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.92);
+            const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.85);
             const sliceMm = sliceHeightPx / pxPerMm;
             pdf.addImage(sliceData, 'JPEG', MARGIN_X, MARGIN_TOP, widthMm, sliceMm);
             renderedPx += sliceHeightPx;
@@ -494,14 +485,13 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
           return;
         }
 
-        // Normal section: page-break if it doesn't fit
+        // Atomic section fits in a page → break to next page if it won't fit current.
         const remaining = PAGE_H - MARGIN_BOTTOM - cursorY;
         if (fullHeightMm > remaining && !isFirstOnPage) {
           pdf.addPage();
           cursorY = MARGIN_TOP;
           isFirstOnPage = true;
         }
-
         pdf.addImage(imgData, 'JPEG', MARGIN_X, cursorY, widthMm, fullHeightMm);
         cursorY += fullHeightMm + SECTION_GAP;
         isFirstOnPage = false;
@@ -511,23 +501,29 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
         await renderSection(section);
       }
 
-      // Page numbers — added after all content so we know the total
+      // Footer drawn natively on EVERY page at a fixed bottom Y
+      // (so it always sits at the end of the sheet, even with white space above on the last page).
+      const footerText = branding.footer_text || 'Gerado por YCaptura — Análise inteligente de audiência';
+      const siteName = branding.site_name || 'YCaptura';
       const total = pdf.getNumberOfPages();
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(9);
-      pdf.setTextColor(120, 120, 120);
       for (let p = 1; p <= total; p++) {
         pdf.setPage(p);
-        const label = `Página ${p} de ${total}`;
-        const textWidth = pdf.getTextWidth(label);
-        pdf.text(label, (PAGE_W - textWidth) / 2, PAGE_H - 8);
+        // Footer band
+        pdf.setFillColor(12, 74, 110); // #0c4a6e
+        pdf.rect(0, PAGE_H - 14, PAGE_W, 14, 'F');
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(8);
+        pdf.setTextColor(186, 230, 253); // #bae6fd
+        pdf.text(footerText, MARGIN_X, PAGE_H - 5.5);
+        const right = `${siteName}  ·  Página ${p}/${total}`;
+        const rightW = pdf.getTextWidth(right);
+        pdf.text(right, PAGE_W - MARGIN_X - rightW, PAGE_H - 5.5);
       }
 
       const fileName = `${(projectName || 'perfil-avatar').replace(/[^\w\-]+/g, '_')}-ycaptura.pdf`;
       try {
         pdf.save(fileName);
       } catch (saveErr) {
-        // Fallback: blob download (works in iframes/sandboxes where save() can fail silently)
         const blob = pdf.output('blob');
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
