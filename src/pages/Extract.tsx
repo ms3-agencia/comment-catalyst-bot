@@ -60,6 +60,16 @@ const Extract = () => {
   const { user, profile } = useAuth();
   const { refresh: refreshCredits } = useCredits();
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const handleInsufficient = (msg: string) => {
+    toast({
+      title: 'Créditos insuficientes',
+      description: `${msg} Redirecionando para a compra…`,
+      variant: 'destructive',
+    });
+    setTimeout(() => navigate('/dashboard/credits'), 1200);
+  };
   const [urls, setUrls] = useState<string[]>(['']);
   const [projectName, setProjectName] = useState('');
   const [loading, setLoading] = useState(false);
