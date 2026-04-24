@@ -209,8 +209,6 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify(responsePayload), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-      }
-    );
   } catch (e) {
     console.error("youtube-comments error:", e);
     return new Response(
