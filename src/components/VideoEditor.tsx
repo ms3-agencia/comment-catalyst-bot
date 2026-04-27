@@ -640,13 +640,20 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       const ctx = off.getContext('2d')!;
       const stream = (off as any).captureStream(fps) as MediaStream;
 
+      // ===== Audio mix =====
+      const audioSpecs = scenes.map(s => ({ duration: s.duration, text: s.text, audio: s.audio }));
+      const mix = await buildMixedAudioTrack(globalAudio, audioSpecs).catch(() => null);
+      if (mix?.track) stream.addTrack(mix.track);
+
       // pick best mime
       const mimes = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
       const mime = mimes.find(m => (window as any).MediaRecorder?.isTypeSupported?.(m)) || 'video/webm';
       const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000 });
       const chunks: Blob[] = [];
       recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-      const stopped = new Promise<void>(res => { recorder.onstop = () => res(); });
+      const stopped = new Promise<void>(res => {
+        recorder.onstop = async () => { await mix?.cleanup?.(); res(); };
+      });
       recorder.start(100);
 
       // ensure cache fresh
