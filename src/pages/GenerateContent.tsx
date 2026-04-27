@@ -72,6 +72,26 @@ const GenerateContent = () => {
   const [quantity, setQuantity] = useState(3);
   const [results, setResults] = useState<GeneratedContent[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [history, setHistory] = useState<GeneratedContent[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const loadHistory = async (projectId: string) => {
+    setHistoryLoading(true);
+    const { data } = await supabase
+      .from('generated_contents')
+      .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(30);
+    setHistory((data as GeneratedContent[]) || []);
+    setHistoryLoading(false);
+  };
+
+  const selectProject = (p: Project) => {
+    setProject(p);
+    setStep('network');
+    loadHistory(p.id);
+  };
 
   useEffect(() => {
     (async () => {
