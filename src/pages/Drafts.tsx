@@ -273,6 +273,7 @@ export default function Drafts() {
           open={!!activePost}
           onClose={() => { setActivePost(null); load(); }}
           content={activePost}
+          onImageRegen={() => {}}
         />
       )}
     </DashboardLayout>
