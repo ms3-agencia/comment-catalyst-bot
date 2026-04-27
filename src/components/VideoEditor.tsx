@@ -1076,6 +1076,19 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           )}
         </Button>
       </div>
+
+      {/* Áudio da cena */}
+      <div className="border-t border-border pt-3">
+        <AudioPanel
+          globalAudio={globalAudio}
+          onGlobalAudioChange={setGlobalAudio}
+          sceneAudio={activeScene.audio}
+          onSceneAudioChange={(a) => updateScene(activeIdx, { audio: a })}
+          sceneText={activeScene.text}
+          sceneDuration={activeScene.duration}
+          rendering={rendering}
+        />
+      </div>
     </Card>
   ) : (
     <Card className="p-4 text-sm text-muted-foreground">
