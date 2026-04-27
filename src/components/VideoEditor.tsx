@@ -1811,6 +1811,10 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
               {draftStatus === 'error' && <span className="text-destructive">Erro ao salvar</span>}
               {draftStatus === 'idle' && draftLoaded && <span className="opacity-60">Pronto</span>}
             </div>
+            <Button variant="ghost" size="sm" onClick={() => setVersionsOpen(true)} disabled={rendering} className="hidden sm:flex gap-1.5" title="Ver e restaurar versões anteriores">
+              <HistoryIcon className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">Versões</span>
+            </Button>
             <Button variant="ghost" size="sm" onClick={resetDraft} disabled={rendering} className="hidden sm:flex gap-1.5" title="Reiniciar edição (apaga rascunho)">
               <RotateCcw className="h-3.5 w-3.5" />
               <span className="hidden md:inline">Reiniciar</span>
