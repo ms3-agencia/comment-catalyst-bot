@@ -749,6 +749,16 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
 
   const activeScene = scenes[activeIdx];
 
+  const applyPresetAndRegenerate = (presetId: string) => {
+    setSelectedPresetId(presetId);
+    const p = presets.find(x => x.id === presetId);
+    setScenes(buildInitialScenes(content, p?.config || DEFAULT_PRESET));
+    setActiveIdx(0);
+    setPreviewProgress(0);
+    setPlaying(false);
+    toast({ title: 'Cenas geradas', description: p ? `Estilo: ${p.name}` : 'Estilo padrão aplicado' });
+  };
+
   // ============= Reusable Blocks =============
   const PreviewBlock = (
     <Card className="p-2 sm:p-3 bg-card">
