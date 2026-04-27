@@ -2,7 +2,8 @@ import { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins, UserCircle, Sparkles, History, Instagram, Music2, Facebook, Linkedin, Twitter, Pin, MessageCircle, ArrowLeft, Copy, Check, Download, Loader2, TrendingUp, FileText, Wand2, ImageIcon } from 'lucide-react';
+import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins, UserCircle, Sparkles, History, Instagram, Music2, Facebook, Linkedin, Twitter, Pin, MessageCircle, ArrowLeft, Copy, Check, Download, Loader2, TrendingUp, FileText, Wand2, ImageIcon, Clapperboard } from 'lucide-react';
+import { VideoEditor } from '@/components/VideoEditor';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CreditsWidget } from '@/components/CreditsWidget';
@@ -111,6 +112,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const [allHistory, setAllHistory] = useState<HistoryItem[]>([]);
   const [activeNetwork, setActiveNetwork] = useState<string | null>(null);
   const [activePost, setActivePost] = useState<HistoryItem | null>(null);
+  const [videoEditorPost, setVideoEditorPost] = useState<HistoryItem | null>(null);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
   // Inline image generation in history detail
@@ -349,6 +351,15 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                 {!activePost.image_url && !genPanelOpen && (
                   <Button variant="default" onClick={() => openGenPanel(activePost)}>
                     <Wand2 className="h-4 w-4" /> Gerar imagem
+                  </Button>
+                )}
+                {(activePost.script || activePost.caption) && (
+                  <Button
+                    variant="outline"
+                    className="border-primary/40 hover:bg-primary/10"
+                    onClick={() => setVideoEditorPost(activePost)}
+                  >
+                    <Clapperboard className="h-4 w-4 text-primary" /> Gerar vídeo
                   </Button>
                 )}
               </div>
