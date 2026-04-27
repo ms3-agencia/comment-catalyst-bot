@@ -76,6 +76,8 @@ const GenerateContent = () => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [history, setHistory] = useState<GeneratedContent[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyNetwork, setHistoryNetwork] = useState<string | null>(null);
   const [imagingId, setImagingId] = useState<string | null>(null);
 
   const loadHistory = async (projectId: string) => {
@@ -85,7 +87,7 @@ const GenerateContent = () => {
       .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type, image_url, image_prompt')
       .eq('project_id', projectId)
       .order('created_at', { ascending: false })
-      .limit(30);
+      .limit(200);
     setHistory((data as GeneratedContent[]) || []);
     setHistoryLoading(false);
   };
