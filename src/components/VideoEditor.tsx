@@ -385,9 +385,12 @@ type Props = {
   onImageRegen: (sceneIdx: number, prompt: string) => Promise<string | null>;
 };
 
+type GenKind = 'basic' | 'ai';
+type ProviderRow = { provider: string; weight: number; config: any };
+
 export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => {
   const { toast } = useToast();
-  const { refresh: refreshCredits } = useCredits();
+  const { credits, refresh: refreshCredits } = useCredits();
   const isMobile = useIsMobile();
 
   const [format, setFormat] = useState<VideoFormat>(VIDEO_FORMATS[0]);
@@ -397,9 +400,15 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const [previewProgress, setPreviewProgress] = useState(0); // 0..total
   const [rendering, setRendering] = useState(false);
   const [renderProgress, setRenderProgress] = useState(0);
-  const [costPerSecond, setCostPerSecond] = useState<number>(1);
+  const [costBasic, setCostBasic] = useState<number>(1); // per second
+  const [costAi, setCostAi] = useState<number>(50); // per scene
   const [regenIdx, setRegenIdx] = useState<number | null>(null);
   const [mobileTab, setMobileTab] = useState<'preview' | 'edit'>('preview');
+
+  const [genKind, setGenKind] = useState<GenKind>('basic');
+  const [providersBasic, setProvidersBasic] = useState<ProviderRow[]>([]);
+  const [providersAi, setProvidersAi] = useState<ProviderRow[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<string>('browser_canvas');
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -428,20 +437,51 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     }
   }, [open, content]);
 
-  // load cost from db
+  // load costs + providers
   useEffect(() => {
+    if (!open) return;
     (async () => {
-      const { data } = await supabase
+      const { data: costs } = await supabase
         .from('credit_action_costs')
-        .select('cost')
-        .eq('action_key', 'video_render_basic')
-        .maybeSingle();
-      if (data?.cost) setCostPerSecond(data.cost);
+        .select('action_key, cost')
+        .in('action_key', ['video_render_basic', 'video_render_ai']);
+      costs?.forEach((c: any) => {
+        if (c.action_key === 'video_render_basic') setCostBasic(c.cost);
+        if (c.action_key === 'video_render_ai') setCostAi(c.cost);
+      });
+
+      const { data: provs } = await supabase
+        .from('video_providers')
+        .select('kind, provider, weight, config, enabled')
+        .eq('kind', 'video_ai')
+        .eq('enabled', true)
+        .order('weight', { ascending: false });
+
+      const basics = (provs || []).filter((p: any) => p.provider === 'browser_canvas');
+      const ais = (provs || []).filter((p: any) => p.provider !== 'browser_canvas');
+      setProvidersBasic(basics);
+      setProvidersAi(ais);
+
+      // default selection
+      if (basics.length) {
+        setGenKind('basic');
+        setSelectedProvider(basics[0].provider);
+      } else if (ais.length) {
+        setGenKind('ai');
+        setSelectedProvider(ais[0].provider);
+      }
     })();
   }, [open]);
 
   const totalDuration = useMemo(() => scenes.reduce((s, x) => s + x.duration, 0), [scenes]);
-  const totalCost = Math.max(1, Math.ceil(totalDuration * costPerSecond));
+  const totalCost = useMemo(() => {
+    if (genKind === 'ai') return Math.max(1, scenes.length * costAi);
+    return Math.max(1, Math.ceil(totalDuration * costBasic));
+  }, [genKind, scenes.length, costAi, totalDuration, costBasic]);
+
+  const balance = credits?.balance ?? 0;
+  const insufficient = balance < totalCost;
+  const activeProviders = genKind === 'basic' ? providersBasic : providersAi;
 
   // preload images on scene change
   useEffect(() => {
@@ -548,14 +588,31 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   // ============= Render to MP4/WebM =============
   const exportVideo = async () => {
     if (!scenes.length) return;
+    if (insufficient) {
+      toast({
+        title: 'Créditos insuficientes',
+        description: `Necessário: ${totalCost}, disponível: ${balance}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (genKind === 'ai') {
+      toast({
+        title: 'Geração por IA em breve',
+        description: `Provedor "${selectedProvider}" ainda não está disponível para renderização. Use o modo Básico (Canvas).`,
+        variant: 'destructive',
+      });
+      return;
+    }
     setRendering(true);
     setRenderProgress(0);
     try {
+      const actionKey: string = 'video_render_basic';
       // consume credits server-side
       const { data: cred, error: credErr } = await supabase.rpc('consume_credits', {
         _amount: totalCost,
-        _action_key: 'video_render_basic',
-        _description: `Vídeo (${Math.round(totalDuration)}s) - ${content.id}`,
+        _action_key: actionKey,
+        _description: `Vídeo ${genKind} (${Math.round(totalDuration)}s, ${selectedProvider}) - ${content.id}`,
         _reference_id: content.id,
       });
       if (credErr) throw credErr;
@@ -654,8 +711,8 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
             </Button>
           ))}
         </div>
-        <Badge variant="outline" className="gap-1 text-xs">
-          <Coins className="h-3 w-3" /> {totalCost} créd · {totalDuration}s
+        <Badge variant={insufficient ? 'destructive' : 'outline'} className="gap-1 text-xs">
+          <Coins className="h-3 w-3" /> {totalCost} créd · saldo {balance} · {totalDuration}s
         </Badge>
       </div>
 
@@ -738,13 +795,77 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           </button>
         </div>
 
+        {/* Tipo de geração + provedor */}
+        <div className="rounded-lg border border-border bg-background/50 p-2 space-y-2">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                setGenKind('basic');
+                if (providersBasic[0]) setSelectedProvider(providersBasic[0].provider);
+              }}
+              disabled={rendering || providersBasic.length === 0}
+              className={`flex-1 text-[11px] sm:text-xs px-2 py-2 rounded border transition-colors ${
+                genKind === 'basic'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border hover:border-primary/40'
+              } disabled:opacity-40`}
+            >
+              <div className="font-semibold">Básico (Canvas)</div>
+              <div className="opacity-70">{costBasic} créd/s</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setGenKind('ai');
+                if (providersAi[0]) setSelectedProvider(providersAi[0].provider);
+              }}
+              disabled={rendering || providersAi.length === 0}
+              className={`flex-1 text-[11px] sm:text-xs px-2 py-2 rounded border transition-colors ${
+                genKind === 'ai'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border hover:border-primary/40'
+              } disabled:opacity-40`}
+              title={providersAi.length === 0 ? 'Nenhum provedor de IA ativo' : ''}
+            >
+              <div className="font-semibold">IA (vídeo real)</div>
+              <div className="opacity-70">{costAi} créd/cena</div>
+            </button>
+          </div>
+
+          {activeProviders.length > 0 && (
+            <div>
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Provedor</Label>
+              <select
+                value={selectedProvider}
+                onChange={(e) => setSelectedProvider(e.target.value)}
+                disabled={rendering || activeProviders.length <= 1}
+                className="w-full mt-1 h-8 text-xs rounded border border-border bg-background px-2"
+              >
+                {activeProviders.map(p => (
+                  <option key={p.provider} value={p.provider}>
+                    {p.provider} · peso {p.weight}
+                  </option>
+                ))}
+              </select>
+              {activeProviders[0]?.config?.description && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {(activeProviders.find(p => p.provider === selectedProvider)?.config?.description) || ''}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
         <Button
           className="w-full h-11"
           onClick={exportVideo}
-          disabled={rendering || scenes.length === 0 || totalDuration > 60}
+          disabled={rendering || scenes.length === 0 || totalDuration > 60 || insufficient}
         >
           {rendering ? (
             <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Renderizando... {renderProgress}%</>
+          ) : insufficient ? (
+            <><Coins className="h-4 w-4 mr-2" /> <span className="truncate">Créditos insuficientes ({balance}/{totalCost})</span></>
           ) : (
             <><Download className="h-4 w-4 mr-2" /> <span className="truncate">Gerar e baixar ({totalCost} créd.)</span></>
           )}
@@ -752,6 +873,11 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         {totalDuration > 60 && (
           <p className="text-xs text-destructive text-center">
             Duração máxima: 60s. Atual: {totalDuration}s. Reduza a duração das cenas.
+          </p>
+        )}
+        {insufficient && totalDuration <= 60 && (
+          <p className="text-xs text-destructive text-center">
+            Você tem {balance} créditos. Precisa de {totalCost}. Reduza cenas/duração ou adquira mais créditos.
           </p>
         )}
       </div>
