@@ -569,6 +569,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       id: uid(), text: 'Nova cena', imageUrl: fallbackImg, duration: 4,
       imageEffect: 'zoom_in', textEffect: 'fade', textPosition: 'center',
       textColor: '#ffffff', textBg: 'rgba(0,0,0,0.45)', fontFamily: 'sans', fontSize: 1.0,
+      audio: defaultSceneAudio(),
     }]);
     setActiveIdx(scenes.length);
   };
