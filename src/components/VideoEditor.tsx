@@ -445,14 +445,15 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const rafRef = useRef<number | null>(null);
   const playStartRef = useRef<number>(0);
 
-  // init scenes when opened
+  // init scenes when opened (uses default preset if loaded)
   useEffect(() => {
     if (open) {
-      setScenes(buildInitialScenes(content));
+      const def = presets.find(p => p.is_default) || presets[0];
+      setScenes(buildInitialScenes(content, def?.config || DEFAULT_PRESET));
+      setSelectedPresetId(def?.id || '');
       setActiveIdx(0);
       setPreviewProgress(0);
       setPlaying(false);
-      // pick default format from content type
       const t = content.content_type;
       if (['reels', 'shorts', 'story', 'video'].includes(t) && content.social_network !== 'youtube') {
         setFormat(VIDEO_FORMATS[0]);
@@ -465,7 +466,24 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       setPlaying(false);
     }
-  }, [open, content]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, content, presets.length]);
+
+  // load style presets
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data } = await supabase
+        .from('video_style_presets' as any)
+        .select('id, name, is_default, config')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+      setPresets(((data as any[]) || []).map(p => ({
+        id: p.id, name: p.name, is_default: p.is_default,
+        config: { ...DEFAULT_PRESET, ...(p.config || {}) },
+      })));
+    })();
+  }, [open]);
 
   // load costs + providers
   useEffect(() => {
