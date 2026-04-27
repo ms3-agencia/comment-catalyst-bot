@@ -1076,6 +1076,109 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           )}
         </div>
 
+        {/* ===== Opções de exportação ===== */}
+        <div className="rounded-lg border border-border bg-background/50 p-2 space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Exportação</Label>
+            <Button variant="ghost" size="sm" className="h-7 text-[11px]" onClick={() => setHistoryOpen(true)}>
+              <History className="h-3 w-3 mr-1" /> Histórico
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Formato</Label>
+              <select
+                value={container}
+                onChange={(e) => {
+                  const v = e.target.value as Container;
+                  setContainer(v);
+                  if (v === 'mp4') setCodec('h264');
+                  else if (codec === 'h264') setCodec('vp9');
+                }}
+                disabled={rendering}
+                className="w-full mt-1 h-8 text-xs rounded border border-border bg-background px-2"
+              >
+                <option value="webm">WebM</option>
+                <option value="mp4">MP4 (se suportado)</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Codec</Label>
+              <select
+                value={codec}
+                onChange={(e) => setCodec(e.target.value as CodecKey)}
+                disabled={rendering}
+                className="w-full mt-1 h-8 text-xs rounded border border-border bg-background px-2"
+              >
+                {container === 'webm' ? (
+                  <>
+                    <option value="vp9">VP9 (recomendado)</option>
+                    <option value="vp8">VP8 (compat.)</option>
+                    <option value="av1">AV1 (moderno)</option>
+                    <option value="auto">Auto</option>
+                  </>
+                ) : (
+                  <option value="h264">H.264</option>
+                )}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Qualidade</Label>
+              <select
+                value={quality}
+                onChange={(e) => setQuality(e.target.value as QualityKey)}
+                disabled={rendering}
+                className="w-full mt-1 h-8 text-xs rounded border border-border bg-background px-2"
+              >
+                <option value="low">Baixa (2 Mbps)</option>
+                <option value="medium">Média (4 Mbps)</option>
+                <option value="high">Alta (8 Mbps)</option>
+                <option value="ultra">Ultra (14 Mbps)</option>
+                <option value="custom">Personalizado</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Resolução</Label>
+              <select
+                value={resolutionScale}
+                onChange={(e) => setResolutionScale(parseFloat(e.target.value) as ResolutionScale)}
+                disabled={rendering}
+                className="w-full mt-1 h-8 text-xs rounded border border-border bg-background px-2"
+              >
+                <option value={0.5}>50% ({Math.round(format.w * 0.5)}×{Math.round(format.h * 0.5)})</option>
+                <option value={0.75}>75% ({Math.round(format.w * 0.75)}×{Math.round(format.h * 0.75)})</option>
+                <option value={1}>100% ({format.w}×{format.h})</option>
+                <option value={1.5}>150% ({Math.round(format.w * 1.5)}×{Math.round(format.h * 1.5)})</option>
+              </select>
+            </div>
+          </div>
+
+          {quality === 'custom' && (
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Bitrate (kbps): {customBitrate}</Label>
+              <input
+                type="range"
+                min={500}
+                max={20000}
+                step={500}
+                value={customBitrate}
+                onChange={(e) => setCustomBitrate(parseInt(e.target.value))}
+                disabled={rendering}
+                className="w-full mt-1"
+              />
+            </div>
+          )}
+
+          <p className="text-[10px] text-muted-foreground">
+            {container.toUpperCase()} · {Math.round(format.w * resolutionScale)}×{Math.round(format.h * resolutionScale)} ·{' '}
+            {quality === 'custom' ? customBitrate : QUALITY_BITRATES[quality]} kbps
+          </p>
+        </div>
+
         <Button
           className="w-full h-11"
           onClick={exportVideo}
@@ -1089,6 +1192,17 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
             <><Download className="h-4 w-4 mr-2" /> <span className="truncate">Gerar e baixar ({totalCost} créd.)</span></>
           )}
         </Button>
+
+        {rendering && (
+          <div className="space-y-1">
+            <Progress value={renderProgress} />
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+              <span className="truncate">{renderPhase}</span>
+              <span>{renderEta}</span>
+            </div>
+          </div>
+        )}
+
         {totalDuration > 60 && (
           <p className="text-xs text-destructive text-center">
             Duração máxima: 60s. Atual: {totalDuration}s. Reduza a duração das cenas.
