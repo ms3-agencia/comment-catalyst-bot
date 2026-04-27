@@ -539,32 +539,25 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     })();
   }, [open]);
 
-  // load costs + providers
+  // load costs + providers (full set, used for weighted selection of all kinds)
   useEffect(() => {
     if (!open) return;
     (async () => {
-      const { data: costs } = await supabase
-        .from('credit_action_costs')
-        .select('action_key, cost')
-        .in('action_key', ['video_render_basic', 'video_render_ai']);
-      costs?.forEach((c: any) => {
-        if (c.action_key === 'video_render_basic') setCostBasic(c.cost);
-        if (c.action_key === 'video_render_ai') setCostAi(c.cost);
-      });
+      const { providers, costs } = await loadProvidersAndCosts();
+      setAllProviders(providers);
+      setCostsMap(costs);
 
-      const { data: provs } = await supabase
-        .from('video_providers')
-        .select('kind, provider, weight, config, enabled')
-        .eq('kind', 'video_ai')
-        .eq('enabled', true)
-        .order('weight', { ascending: false });
+      // Keep legacy cost states for the existing UI labels
+      if (costs.video_render_basic != null) setCostBasic(costs.video_render_basic);
+      if (costs.video_render_ai != null) setCostAi(costs.video_render_ai);
 
-      const basics = (provs || []).filter((p: any) => p.provider === 'browser_canvas');
-      const ais = (provs || []).filter((p: any) => p.provider !== 'browser_canvas');
+      // Legacy basic/ai split (UI radio)
+      const basics = providers.filter(p => p.kind === 'video_ai' && p.provider === 'browser_canvas')
+        .map(p => ({ provider: p.provider, weight: p.weight, config: p.config }));
+      const ais = providers.filter(p => p.kind === 'video_ai' && p.provider !== 'browser_canvas')
+        .map(p => ({ provider: p.provider, weight: p.weight, config: p.config }));
       setProvidersBasic(basics);
       setProvidersAi(ais);
-
-      // default selection
       if (basics.length) {
         setGenKind('basic');
         setSelectedProvider(basics[0].provider);
@@ -575,12 +568,41 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     })();
   }, [open]);
 
-  const totalDuration = useMemo(() => scenes.reduce((s, x) => s + x.duration, 0), [scenes]);
-  const totalCost = useMemo(() => {
-    if (genKind === 'ai') return Math.max(1, scenes.length * costAi);
-    return Math.max(1, Math.ceil(totalDuration * costBasic));
-  }, [genKind, scenes.length, costAi, totalDuration, costBasic]);
+  // Re-select weighted providers whenever the pool changes or genKind toggles
+  useEffect(() => {
+    if (!allProviders.length) return;
+    const videoFilter = genKind === 'ai'
+      ? (p: PSRow) => p.provider !== 'browser_canvas'
+      : (p: PSRow) => p.provider === 'browser_canvas';
+    setResolvedVideo(selectWeightedProvider(allProviders, 'video_ai', costsMap, videoFilter));
+    setResolvedTts(selectWeightedProvider(allProviders, 'tts', costsMap, p => p.provider !== 'none'));
+    setResolvedMusic(selectWeightedProvider(allProviders, 'music', costsMap, p => p.provider !== 'none'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allProviders, costsMap, genKind]);
 
+  const totalDuration = useMemo(() => scenes.reduce((s, x) => s + x.duration, 0), [scenes]);
+
+  // narration character total (only counts scenes with narration enabled)
+  const ttsCharsTotal = useMemo(() => scenes.reduce((s, sc) => {
+    if (!sc.audio?.narrationEnabled) return s;
+    if (sc.audio.narrationProvider === 'upload') return s; // uploads don't consume TTS
+    const txt = (sc.audio.narrationText || sc.text || '').trim();
+    return s + txt.length;
+  }, 0), [scenes]);
+
+  const hasMusic = !!globalAudio.musicUrl || scenes.some(s => s.audio?.musicUrl);
+
+  const costBreakdown = useMemo(() => computeRenderCost({
+    videoProvider: resolvedVideo,
+    ttsProvider: resolvedTts,
+    musicProvider: resolvedMusic,
+    totalDurationSec: totalDuration,
+    scenesCount: scenes.length,
+    ttsCharsTotal,
+    hasMusic,
+  }), [resolvedVideo, resolvedTts, resolvedMusic, totalDuration, scenes.length, ttsCharsTotal, hasMusic]);
+
+  const totalCost = costBreakdown.total || 1;
   const balance = credits?.balance ?? 0;
   const insufficient = balance < totalCost;
   const activeProviders = genKind === 'basic' ? providersBasic : providersAi;
