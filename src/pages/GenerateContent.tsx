@@ -11,7 +11,7 @@ import { useCredits } from '@/hooks/useCredits';
 import {
   Sparkles, Loader2, ArrowLeft, FolderOpen, Instagram, Youtube, Facebook, Linkedin,
   Music2, MessageCircle, Image as ImageIcon, Video, Film, Layers, FileText, Pin,
-  Twitter, Hash, Copy, Check, TrendingUp, Wand2, Download, RefreshCw,
+  Twitter, Hash, Copy, Check, TrendingUp, Wand2, Download, RefreshCw, History, ChevronDown,
 } from 'lucide-react';
 
 type Project = {
@@ -76,6 +76,8 @@ const GenerateContent = () => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [history, setHistory] = useState<GeneratedContent[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyNetwork, setHistoryNetwork] = useState<string | null>(null);
   const [imagingId, setImagingId] = useState<string | null>(null);
 
   const loadHistory = async (projectId: string) => {
@@ -85,7 +87,7 @@ const GenerateContent = () => {
       .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type, image_url, image_prompt')
       .eq('project_id', projectId)
       .order('created_at', { ascending: false })
-      .limit(30);
+      .limit(200);
     setHistory((data as GeneratedContent[]) || []);
     setHistoryLoading(false);
   };
@@ -132,6 +134,7 @@ const GenerateContent = () => {
   const reset = () => {
     setStep('project'); setProject(null); setNetwork(null);
     setContentType(null); setQuantity(3); setResults([]);
+    setHistoryOpen(false); setHistoryNetwork(null);
   };
 
   const handleGenerate = async () => {
@@ -208,95 +211,135 @@ const GenerateContent = () => {
           </div>
         )}
 
-        {/* History bar for selected project */}
-        {project && step !== 'project' && (
-          <Card className="relative overflow-hidden border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card p-5 glow-primary">
-            <div className="absolute inset-0 opacity-30 pointer-events-none"
-                 style={{ backgroundImage: 'radial-gradient(circle at 20% 0%, hsl(var(--primary)/0.25), transparent 50%)' }} />
-            <div className="relative flex items-center justify-between mb-4 flex-wrap gap-2">
-              <div>
-                <h3 className="text-base font-heading font-semibold flex items-center gap-2">
-                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-primary">
-                    <Sparkles className="h-4 w-4" />
-                  </span>
+        {/* History toggle for selected project */}
+        {project && step !== 'project' && (() => {
+          const groups = NETWORKS
+            .map(n => ({ ...n, items: history.filter(h => h.social_network === n.key) }))
+            .filter(g => g.items.length > 0);
+          const filtered = historyNetwork ? history.filter(h => h.social_network === historyNetwork) : [];
+          const activeNet = NETWORKS.find(n => n.key === historyNetwork);
+          return (
+            <div className="space-y-3">
+              <Button
+                variant="outline"
+                onClick={() => { setHistoryOpen(o => !o); if (!historyOpen) setHistoryNetwork(null); }}
+                className="w-full sm:w-auto justify-between gap-2 border-primary/30 hover:border-primary hover:bg-primary/5"
+              >
+                <span className="flex items-center gap-2">
+                  <History className="h-4 w-4 text-primary" />
                   Histórico de "{project.name}"
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5 ml-9">
-                  Conteúdos gerados anteriormente · clique para copiar
-                </p>
-              </div>
-              <span className="text-xs px-3 py-1 rounded-full bg-primary/15 text-primary font-semibold border border-primary/30">
-                {history.length} {history.length === 1 ? 'item' : 'itens'}
-              </span>
-            </div>
-            {historyLoading ? (
-              <div className="relative flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
-                <Loader2 className="h-4 w-4 animate-spin" /> Carregando histórico...
-              </div>
-            ) : history.length === 0 ? (
-              <div className="relative text-center py-6 border border-dashed border-border rounded-lg">
-                <Sparkles className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">Nenhum conteúdo gerado ainda.</p>
-                <p className="text-xs text-muted-foreground/70">Gere o primeiro abaixo 👇</p>
-              </div>
-            ) : (
-              <div className="relative flex gap-3 overflow-x-auto pb-3 -mx-1 px-1 snap-x scroll-smooth">
-                {history.map(h => {
-                  const netMeta = NETWORKS.find(n => n.key === h.social_network);
-                  const NetIcon = netMeta?.icon || Sparkles;
-                  const typeMeta = TYPE_META[h.content_type] || { label: h.content_type, icon: FileText };
-                  return (
-                    <div
-                      key={h.id}
-                      className="snap-start shrink-0 w-64 group relative rounded-xl border border-border bg-card/80 backdrop-blur p-4 hover:border-primary hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all cursor-pointer"
-                      onClick={() => copyContent(h)}
-                      title="Clique para copiar"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-primary/15 text-primary">
-                            <NetIcon className="h-3.5 w-3.5" />
-                          </span>
-                          <span className="text-[11px] font-medium capitalize">{netMeta?.label || h.social_network}</span>
-                        </div>
-                        <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
-                          {typeMeta.label}
-                        </span>
-                      </div>
-                      {h.image_url && (
-                        <div className="mb-2 -mx-1 rounded-lg overflow-hidden border border-border aspect-video bg-muted">
-                          <img src={h.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
-                        </div>
-                      )}
-                      <p className="text-sm font-semibold line-clamp-2 leading-snug min-h-[2.5rem]">
-                        {h.title || h.caption || 'Sem título'}
-                      </p>
-                      {h.caption && h.title && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1.5">{h.caption}</p>
-                      )}
-                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
-                        {h.engagement_score != null ? (
-                          <span className="flex items-center gap-1 text-xs font-semibold text-primary">
-                            <TrendingUp className="h-3 w-3" />{h.engagement_score}%
-                          </span>
-                        ) : <span />}
-                        {copiedId === h.id ? (
-                          <span className="flex items-center gap-1 text-xs text-primary font-medium">
-                            <Check className="h-3 w-3" /> Copiado
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-primary transition-colors">
-                            <Copy className="h-3 w-3" /> Copiar
-                          </span>
-                        )}
+                  <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-primary/15 text-primary">
+                    {history.length}
+                  </span>
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${historyOpen ? 'rotate-180' : ''}`} />
+              </Button>
+
+              {historyOpen && (
+                <Card className="p-5 border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card">
+                  {historyLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-4 justify-center">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
+                    </div>
+                  ) : history.length === 0 ? (
+                    <div className="text-center py-6">
+                      <Sparkles className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                      <p className="text-sm text-muted-foreground">Nenhum conteúdo gerado ainda.</p>
+                    </div>
+                  ) : !historyNetwork ? (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-3">Selecione uma rede para ver os conteúdos:</p>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                        {groups.map(g => {
+                          const Icon = g.icon;
+                          return (
+                            <button
+                              key={g.key}
+                              onClick={() => setHistoryNetwork(g.key)}
+                              className="group relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-border bg-card hover:border-primary hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all"
+                            >
+                              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                                <Icon className="h-5 w-5" />
+                              </span>
+                              <span className="text-xs font-medium">{g.label}</span>
+                              <span className="absolute top-1.5 right-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground min-w-[1.25rem] text-center">
+                                {g.items.length}
+                              </span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
-        )}
+                  ) : (
+                    <div>
+                      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          {activeNet && (
+                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary">
+                              <activeNet.icon className="h-4 w-4" />
+                            </span>
+                          )}
+                          <h4 className="font-heading font-semibold">{activeNet?.label}</h4>
+                          <span className="text-xs text-muted-foreground">({filtered.length})</span>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => setHistoryNetwork(null)}>
+                          <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Outras redes
+                        </Button>
+                      </div>
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {filtered.map(h => {
+                          const typeMeta = TYPE_META[h.content_type] || { label: h.content_type, icon: FileText };
+                          return (
+                            <div
+                              key={h.id}
+                              onClick={() => copyContent(h)}
+                              className="group rounded-xl border border-border bg-card/80 backdrop-blur p-4 hover:border-primary hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all cursor-pointer"
+                              title="Clique para copiar"
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
+                                  {typeMeta.label}
+                                </span>
+                                {h.engagement_score != null && (
+                                  <span className="flex items-center gap-1 text-xs font-semibold text-primary">
+                                    <TrendingUp className="h-3 w-3" />{h.engagement_score}%
+                                  </span>
+                                )}
+                              </div>
+                              {h.image_url && (
+                                <div className="mb-2 rounded-lg overflow-hidden border border-border aspect-video bg-muted">
+                                  <img src={h.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                </div>
+                              )}
+                              <p className="text-sm font-semibold line-clamp-2 leading-snug">
+                                {h.title || h.caption || 'Sem título'}
+                              </p>
+                              {h.caption && h.title && (
+                                <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{h.caption}</p>
+                              )}
+                              <div className="flex items-center justify-end mt-2 pt-2 border-t border-border/50">
+                                {copiedId === h.id ? (
+                                  <span className="flex items-center gap-1 text-xs text-primary font-medium">
+                                    <Check className="h-3 w-3" /> Copiado
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-primary transition-colors">
+                                    <Copy className="h-3 w-3" /> Copiar
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              )}
+            </div>
+          );
+        })()}
+
 
         {/* STEP: Project */}
         {step === 'project' && (
