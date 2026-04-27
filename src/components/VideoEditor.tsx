@@ -594,7 +594,30 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     toast({ title: 'Edição reiniciada', description: 'O rascunho será sobrescrito ao próximo salvamento.' });
   };
 
-  // load style presets
+  const applyDraftState = (draft: EditorDraftState) => {
+    draftHydratingRef.current = true;
+    if (Array.isArray(draft.scenes)) setScenes(draft.scenes as Scene[]);
+    if (draft.format) setFormat(draft.format);
+    if (draft.globalAudio) setGlobalAudio(draft.globalAudio);
+    if (draft.selectedPresetId) setSelectedPresetId(draft.selectedPresetId);
+    if (draft.container) setContainer(draft.container as Container);
+    if (draft.codec) setCodec(draft.codec as CodecKey);
+    if (draft.quality) setQuality(draft.quality as QualityKey);
+    if (typeof draft.customBitrate === 'number') setCustomBitrate(draft.customBitrate);
+    if (typeof draft.resolutionScale === 'number') setResolutionScale(draft.resolutionScale as ResolutionScale);
+    if (draft.selectedProvider) setSelectedProvider(draft.selectedProvider);
+    if (draft.genKind) setGenKind(draft.genKind as GenKind);
+    setActiveIdx(0);
+    setPreviewProgress(0);
+    setPlaying(false);
+    setTimeout(() => { draftHydratingRef.current = false; }, 300);
+  };
+
+  const currentDraftState = (): EditorDraftState => ({
+    scenes, format, globalAudio, selectedPresetId,
+    container, codec, quality, customBitrate, resolutionScale,
+    selectedProvider, genKind,
+  });
   useEffect(() => {
     if (!open) return;
     (async () => {
