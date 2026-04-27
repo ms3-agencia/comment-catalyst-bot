@@ -345,7 +345,128 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                   {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
                   {copied ? 'Copiado!' : 'Copiar conteúdo'}
                 </Button>
+                {!activePost.image_url && !genPanelOpen && (
+                  <Button variant="default" onClick={() => openGenPanel(activePost)}>
+                    <Wand2 className="h-4 w-4" /> Gerar imagem
+                  </Button>
+                )}
               </div>
+
+              {/* Inline image generation panel */}
+              {genPanelOpen && activePost && (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4 text-primary" /> Gerar imagem com IA
+                    </h4>
+                    <Button variant="ghost" size="sm" onClick={() => setGenPanelOpen(false)} disabled={genLoading}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* Format picker */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Formato da imagem</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {getFormats(activePost.social_network, activePost.content_type).map(f => {
+                        const active = genFormat?.ratio === f.ratio;
+                        const ratio = f.w / f.h;
+                        const maxBox = 36;
+                        const bw = ratio >= 1 ? maxBox : Math.round(maxBox * ratio);
+                        const bh = ratio >= 1 ? Math.round(maxBox / ratio) : maxBox;
+                        const cost = imageCreditCost(f.w, f.h);
+                        return (
+                          <button
+                            key={f.ratio}
+                            type="button"
+                            disabled={genLoading}
+                            onClick={() => setGenFormat(f)}
+                            className={`relative p-2 rounded-lg border-2 transition-all text-left disabled:opacity-50 ${
+                              active ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50 bg-card'
+                            }`}
+                          >
+                            <span className="absolute top-1 right-1 text-[9px] font-bold px-1 py-0.5 rounded bg-primary/15 text-primary">
+                              {cost}c
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`shrink-0 rounded border-2 ${active ? 'border-primary bg-primary/20' : 'border-muted-foreground/40 bg-muted'}`}
+                                style={{ width: bw, height: bh }}
+                              />
+                              <div className="min-w-0">
+                                <div className="text-xs font-semibold">{f.ratio}</div>
+                                <div className="text-[10px] text-muted-foreground truncate">{f.w}×{f.h}</div>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Quantity */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Quantidade (1-4)</p>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4].map(n => (
+                        <button
+                          key={n}
+                          type="button"
+                          disabled={genLoading}
+                          onClick={() => setGenQuantity(n)}
+                          className={`flex-1 py-2 rounded-lg border-2 text-sm font-semibold transition-all disabled:opacity-50 ${
+                            genQuantity === n ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50'
+                          }`}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Total */}
+                  <div className="flex justify-between items-baseline pt-2 border-t border-primary/20">
+                    <span className="text-sm">Total estimado</span>
+                    <span className="font-heading text-xl font-bold gradient-text">
+                      {genFormat ? imageCreditCost(genFormat.w, genFormat.h) * genQuantity : 0}c
+                    </span>
+                  </div>
+
+                  <Button onClick={generateImagesForPost} disabled={genLoading || !genFormat} className="w-full">
+                    {genLoading ? (
+                      <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Gerando {genResults.length}/{genQuantity}...</>
+                    ) : (
+                      <><Sparkles className="h-4 w-4 mr-1" /> Gerar {genQuantity} imagem{genQuantity > 1 ? 'ns' : ''}</>
+                    )}
+                  </Button>
+
+                  {/* Generated images */}
+                  {genResults.length > 0 && (
+                    <div className="space-y-2 pt-2">
+                      <p className="text-xs font-medium text-muted-foreground">Imagens geradas:</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {genResults.map((url, idx) => (
+                          <div key={idx} className="rounded-lg overflow-hidden border border-border bg-muted relative group">
+                            <img src={url} alt={`Geração ${idx + 1}`} className="w-full h-auto object-cover" />
+                            <button
+                              onClick={() => downloadImage(url, `${activePost.title || 'conteudo'}-${idx + 1}.png`)}
+                              className="absolute top-2 right-2 p-1.5 rounded-lg bg-background/90 hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Baixar"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      {genQuantity > 1 && (
+                        <p className="text-[11px] text-muted-foreground">
+                          A última imagem é salva no histórico. Baixe as outras antes de fechar.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-3 rounded-xl border border-border bg-card p-5">
                 {activePost.title && (
