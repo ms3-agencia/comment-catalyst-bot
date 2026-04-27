@@ -161,6 +161,25 @@ export function DraftVersionsDialog({
           </Button>
         </div>
 
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" /> Exportar rascunho (.json)
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleImportClick} className="gap-1.5">
+            <Upload className="h-3.5 w-3.5" /> Importar rascunho
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={handleImportFile}
+          />
+          <p className="basis-full text-[11px] text-muted-foreground">
+            Use para continuar a edição em outro dispositivo ou navegador.
+          </p>
+        </div>
+
         <ScrollArea className="h-[340px] pr-2">
           {loading ? (
             <div className="flex items-center justify-center py-10 text-muted-foreground text-sm">
