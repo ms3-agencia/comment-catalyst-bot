@@ -641,6 +641,36 @@ export type Database = {
         }
         Relationships: []
       }
+      video_editor_draft_versions: {
+        Row: {
+          content_id: string
+          created_at: string
+          id: string
+          label: string | null
+          state: Json
+          user_id: string
+          version: number
+        }
+        Insert: {
+          content_id: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          state?: Json
+          user_id: string
+          version?: number
+        }
+        Update: {
+          content_id?: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          state?: Json
+          user_id?: string
+          version?: number
+        }
+        Relationships: []
+      }
       video_editor_drafts: {
         Row: {
           content_id: string

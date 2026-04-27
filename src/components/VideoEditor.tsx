@@ -28,8 +28,9 @@ import {
   type ProviderRow as PSRow, type ResolvedProvider, type CostMap,
 } from '@/lib/providerSelector';
 import { saveLastRender, loadLastRender, clearLastRender, type StoredRender } from '@/lib/lastRenderStore';
-import { loadDraft, saveDraft, type EditorDraftState } from '@/lib/videoEditorDraft';
-import { Check, CloudUpload, RotateCcw } from 'lucide-react';
+import { loadDraft, saveDraft, createDraftVersion, type EditorDraftState } from '@/lib/videoEditorDraft';
+import { DraftVersionsDialog } from './video/DraftVersionsDialog';
+import { Check, CloudUpload, RotateCcw, History as HistoryIcon } from 'lucide-react';
 
 // =================== Tipos ===================
 type ImageEffect = 'none' | 'zoom_in' | 'zoom_out' | 'pan_left' | 'pan_right' | 'pan_up' | 'pan_down';
@@ -502,6 +503,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   // ===== Draft autosave =====
   const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [draftLoaded, setDraftLoaded] = useState(false);
+  const [versionsOpen, setVersionsOpen] = useState(false);
   const draftSaveTimer = useRef<number | null>(null);
   const draftHydratingRef = useRef(true);
 
@@ -592,7 +594,30 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     toast({ title: 'Edição reiniciada', description: 'O rascunho será sobrescrito ao próximo salvamento.' });
   };
 
-  // load style presets
+  const applyDraftState = (draft: EditorDraftState) => {
+    draftHydratingRef.current = true;
+    if (Array.isArray(draft.scenes)) setScenes(draft.scenes as Scene[]);
+    if (draft.format) setFormat(draft.format);
+    if (draft.globalAudio) setGlobalAudio(draft.globalAudio);
+    if (draft.selectedPresetId) setSelectedPresetId(draft.selectedPresetId);
+    if (draft.container) setContainer(draft.container as Container);
+    if (draft.codec) setCodec(draft.codec as CodecKey);
+    if (draft.quality) setQuality(draft.quality as QualityKey);
+    if (typeof draft.customBitrate === 'number') setCustomBitrate(draft.customBitrate);
+    if (typeof draft.resolutionScale === 'number') setResolutionScale(draft.resolutionScale as ResolutionScale);
+    if (draft.selectedProvider) setSelectedProvider(draft.selectedProvider);
+    if (draft.genKind) setGenKind(draft.genKind as GenKind);
+    setActiveIdx(0);
+    setPreviewProgress(0);
+    setPlaying(false);
+    setTimeout(() => { draftHydratingRef.current = false; }, 300);
+  };
+
+  const currentDraftState = (): EditorDraftState => ({
+    scenes, format, globalAudio, selectedPresetId,
+    container, codec, quality, customBitrate, resolutionScale,
+    selectedProvider, genKind,
+  });
   useEffect(() => {
     if (!open) return;
     (async () => {
@@ -945,6 +970,9 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     setRenderPhase('Preparando…');
     setRenderEta('');
     renderStartRef.current = performance.now();
+
+    // Auto-snapshot a version checkpoint before rendering, so users can always roll back.
+    createDraftVersion(content.id, currentDraftState(), `Antes do render ${new Date().toLocaleString()}`).catch(() => {});
 
     // If the content has a script, ensure each scene has its own image before rendering.
     if (content.script) {
@@ -1786,6 +1814,10 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
               {draftStatus === 'error' && <span className="text-destructive">Erro ao salvar</span>}
               {draftStatus === 'idle' && draftLoaded && <span className="opacity-60">Pronto</span>}
             </div>
+            <Button variant="ghost" size="sm" onClick={() => setVersionsOpen(true)} disabled={rendering} className="hidden sm:flex gap-1.5" title="Ver e restaurar versões anteriores">
+              <HistoryIcon className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">Versões</span>
+            </Button>
             <Button variant="ghost" size="sm" onClick={resetDraft} disabled={rendering} className="hidden sm:flex gap-1.5" title="Reiniciar edição (apaga rascunho)">
               <RotateCcw className="h-3.5 w-3.5" />
               <span className="hidden md:inline">Reiniciar</span>
@@ -1825,6 +1857,14 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         onOpenChange={setHistoryOpen}
         contentId={content.id}
         activeRender={rendering ? { progress: renderProgress, phase: renderPhase, eta: renderEta } : null}
+      />
+
+      <DraftVersionsDialog
+        open={versionsOpen}
+        onOpenChange={setVersionsOpen}
+        contentId={content.id}
+        currentState={currentDraftState()}
+        onRestore={(state) => applyDraftState(state)}
       />
     </div>
   );
