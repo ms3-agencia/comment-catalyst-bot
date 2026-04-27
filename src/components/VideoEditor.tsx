@@ -28,8 +28,9 @@ import {
   type ProviderRow as PSRow, type ResolvedProvider, type CostMap,
 } from '@/lib/providerSelector';
 import { saveLastRender, loadLastRender, clearLastRender, type StoredRender } from '@/lib/lastRenderStore';
-import { loadDraft, saveDraft, type EditorDraftState } from '@/lib/videoEditorDraft';
-import { Check, CloudUpload, RotateCcw } from 'lucide-react';
+import { loadDraft, saveDraft, createDraftVersion, type EditorDraftState } from '@/lib/videoEditorDraft';
+import { DraftVersionsDialog } from './video/DraftVersionsDialog';
+import { Check, CloudUpload, RotateCcw, History as HistoryIcon } from 'lucide-react';
 
 // =================== Tipos ===================
 type ImageEffect = 'none' | 'zoom_in' | 'zoom_out' | 'pan_left' | 'pan_right' | 'pan_up' | 'pan_down';
