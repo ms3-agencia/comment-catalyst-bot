@@ -637,6 +637,16 @@ const Admin = () => {
                               <span className="inline-block rounded-full px-2 py-0.5 text-xs font-semibold uppercase bg-muted text-muted-foreground">Usuário</span>
                             )}
                           </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col leading-tight">
+                              <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
+                                <Coins size={12} /> {(u.credits_balance ?? 0).toLocaleString('pt-BR')}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                Consumo: {(u.credits_consumed ?? 0).toLocaleString('pt-BR')}
+                              </span>
+                            </div>
+                          </TableCell>
                           <TableCell className="text-muted-foreground text-sm">{new Date(u.created_at).toLocaleDateString('pt-BR')}</TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>
