@@ -186,53 +186,80 @@ const GenerateContent = () => {
         )}
 
         {/* History bar for selected project */}
-        {project && step !== 'project' && step !== 'results' && (
-          <Card className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                Conteúdos já gerados para "{project.name}"
-              </h3>
-              <span className="text-xs text-muted-foreground">{history.length} item(ns)</span>
+        {project && step !== 'project' && (
+          <Card className="relative overflow-hidden border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card p-5 glow-primary">
+            <div className="absolute inset-0 opacity-30 pointer-events-none"
+                 style={{ backgroundImage: 'radial-gradient(circle at 20% 0%, hsl(var(--primary)/0.25), transparent 50%)' }} />
+            <div className="relative flex items-center justify-between mb-4 flex-wrap gap-2">
+              <div>
+                <h3 className="text-base font-heading font-semibold flex items-center gap-2">
+                  <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-primary">
+                    <Sparkles className="h-4 w-4" />
+                  </span>
+                  Histórico de "{project.name}"
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5 ml-9">
+                  Conteúdos gerados anteriormente · clique para copiar
+                </p>
+              </div>
+              <span className="text-xs px-3 py-1 rounded-full bg-primary/15 text-primary font-semibold border border-primary/30">
+                {history.length} {history.length === 1 ? 'item' : 'itens'}
+              </span>
             </div>
             {historyLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="relative flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
                 <Loader2 className="h-4 w-4 animate-spin" /> Carregando histórico...
               </div>
             ) : history.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum conteúdo gerado ainda para este projeto.</p>
+              <div className="relative text-center py-6 border border-dashed border-border rounded-lg">
+                <Sparkles className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground">Nenhum conteúdo gerado ainda.</p>
+                <p className="text-xs text-muted-foreground/70">Gere o primeiro abaixo 👇</p>
+              </div>
             ) : (
-              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+              <div className="relative flex gap-3 overflow-x-auto pb-3 -mx-1 px-1 snap-x scroll-smooth">
                 {history.map(h => {
                   const netMeta = NETWORKS.find(n => n.key === h.social_network);
                   const NetIcon = netMeta?.icon || Sparkles;
+                  const typeMeta = TYPE_META[h.content_type] || { label: h.content_type, icon: FileText };
                   return (
                     <div
                       key={h.id}
-                      className="shrink-0 w-64 rounded-lg border border-border bg-card/50 p-3 hover:border-primary transition-colors cursor-pointer"
+                      className="snap-start shrink-0 w-64 group relative rounded-xl border border-border bg-card/80 backdrop-blur p-4 hover:border-primary hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all cursor-pointer"
                       onClick={() => copyContent(h)}
                       title="Clique para copiar"
                     >
-                      <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
-                        <NetIcon className="h-3.5 w-3.5 text-primary" />
-                        <span className="capitalize">{netMeta?.label || h.social_network}</span>
-                        <span>•</span>
-                        <span>{TYPE_META[h.content_type]?.label || h.content_type}</span>
-                        {h.engagement_score != null && (
-                          <span className="ml-auto flex items-center gap-1 text-primary">
-                            <TrendingUp className="h-3 w-3" />{h.engagement_score}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-1.5">
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-primary/15 text-primary">
+                            <NetIcon className="h-3.5 w-3.5" />
                           </span>
-                        )}
+                          <span className="text-[11px] font-medium capitalize">{netMeta?.label || h.social_network}</span>
+                        </div>
+                        <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
+                          {typeMeta.label}
+                        </span>
                       </div>
-                      <p className="text-sm font-medium line-clamp-2">{h.title || h.caption || 'Sem título'}</p>
+                      <p className="text-sm font-semibold line-clamp-2 leading-snug min-h-[2.5rem]">
+                        {h.title || h.caption || 'Sem título'}
+                      </p>
                       {h.caption && h.title && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{h.caption}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1.5">{h.caption}</p>
                       )}
-                      <div className="flex items-center justify-end mt-2 text-xs text-muted-foreground">
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
+                        {h.engagement_score != null ? (
+                          <span className="flex items-center gap-1 text-xs font-semibold text-primary">
+                            <TrendingUp className="h-3 w-3" />{h.engagement_score}%
+                          </span>
+                        ) : <span />}
                         {copiedId === h.id ? (
-                          <span className="flex items-center gap-1 text-primary"><Check className="h-3 w-3" /> Copiado</span>
+                          <span className="flex items-center gap-1 text-xs text-primary font-medium">
+                            <Check className="h-3 w-3" /> Copiado
+                          </span>
                         ) : (
-                          <span className="flex items-center gap-1"><Copy className="h-3 w-3" /> Copiar</span>
+                          <span className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-primary transition-colors">
+                            <Copy className="h-3 w-3" /> Copiar
+                          </span>
                         )}
                       </div>
                     </div>
