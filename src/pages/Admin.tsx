@@ -30,6 +30,8 @@ type UserProfile = {
   status: string;
   created_at: string;
   is_admin?: boolean;
+  credits_balance?: number;
+  credits_consumed?: number;
 };
 
 type AiProvider = {
