@@ -588,14 +588,31 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   // ============= Render to MP4/WebM =============
   const exportVideo = async () => {
     if (!scenes.length) return;
+    if (insufficient) {
+      toast({
+        title: 'Créditos insuficientes',
+        description: `Necessário: ${totalCost}, disponível: ${balance}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (genKind === 'ai') {
+      toast({
+        title: 'Geração por IA em breve',
+        description: `Provedor "${selectedProvider}" ainda não está disponível para renderização. Use o modo Básico (Canvas).`,
+        variant: 'destructive',
+      });
+      return;
+    }
     setRendering(true);
     setRenderProgress(0);
     try {
+      const actionKey = genKind === 'ai' ? 'video_render_ai' : 'video_render_basic';
       // consume credits server-side
       const { data: cred, error: credErr } = await supabase.rpc('consume_credits', {
         _amount: totalCost,
-        _action_key: 'video_render_basic',
-        _description: `Vídeo (${Math.round(totalDuration)}s) - ${content.id}`,
+        _action_key: actionKey,
+        _description: `Vídeo ${genKind} (${Math.round(totalDuration)}s, ${selectedProvider}) - ${content.id}`,
         _reference_id: content.id,
       });
       if (credErr) throw credErr;
