@@ -1259,6 +1259,25 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           height={format.h}
           className="w-full h-full block"
         />
+        <RenderOverlay
+          visible={rendering || bulkGen.active}
+          stage={
+            renderProgress >= 100
+              ? 'done'
+              : bulkGen.active
+              ? 'images'
+              : 'render'
+          }
+          progress={
+            bulkGen.active && bulkGen.total > 0
+              ? Math.round((bulkGen.current / bulkGen.total) * 100)
+              : renderProgress
+          }
+          phase={renderPhase}
+          eta={renderEta}
+          imagesCurrent={bulkGen.current}
+          imagesTotal={bulkGen.total}
+        />
       </div>
 
       {/* Timeline / controls */}
