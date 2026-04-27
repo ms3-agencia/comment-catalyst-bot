@@ -10,7 +10,7 @@ export type AudioSceneSpec = {
 };
 
 export type MixResult = {
-  track: MediaStreamAudioTrack;
+  track: MediaStreamTrack;
   context: AudioContext;
   cleanup: () => Promise<void>;
 };
@@ -157,7 +157,7 @@ export async function buildMixedAudioTrack(
     timers.push(id);
   }
 
-  const track = (dest.stream as MediaStream).getAudioTracks()[0] as MediaStreamAudioTrack;
+  const track = (dest.stream as MediaStream).getAudioTracks()[0] as MediaStreamTrack;
 
   const cleanup = async () => {
     for (const id of timers) clearTimeout(id);
