@@ -414,6 +414,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const [providersBasic, setProvidersBasic] = useState<ProviderRow[]>([]);
   const [providersAi, setProvidersAi] = useState<ProviderRow[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string>('browser_canvas');
+  const [globalAudio, setGlobalAudio] = useState<GlobalAudio>({ musicUrl: null, musicVolume: 0.6 });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
