@@ -466,6 +466,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const [costBasic, setCostBasic] = useState<number>(1); // per second
   const [costAi, setCostAi] = useState<number>(50); // per scene
   const [regenIdx, setRegenIdx] = useState<number | null>(null);
+  const [bulkGen, setBulkGen] = useState<{ active: boolean; current: number; total: number }>({ active: false, current: 0, total: 0 });
   const [mobileTab, setMobileTab] = useState<'preview' | 'edit'>('preview');
 
   const [genKind, setGenKind] = useState<GenKind>('basic');
