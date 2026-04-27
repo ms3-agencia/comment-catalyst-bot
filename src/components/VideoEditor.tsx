@@ -16,6 +16,9 @@ import {
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { AudioPanel } from './video/AudioPanel';
+import { defaultSceneAudio, type SceneAudio, type GlobalAudio } from './video/audioTypes';
+import { buildMixedAudioTrack } from './video/audioMixer';
 
 // =================== Tipos ===================
 type ImageEffect = 'none' | 'zoom_in' | 'zoom_out' | 'pan_left' | 'pan_right' | 'pan_up' | 'pan_down';
@@ -43,6 +46,7 @@ export type Scene = {
   textBg: string; // 'none' | hex (with alpha as rgba)
   fontFamily: FontFamily;
   fontSize: number; // 0.5..1.5 multiplier
+  audio: SceneAudio;
 };
 
 type SourceContent = {
