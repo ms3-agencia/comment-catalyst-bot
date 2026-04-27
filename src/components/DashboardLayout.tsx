@@ -305,7 +305,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
       </main>
 
       {/* History Dialog */}
-      <Dialog open={historyDialogOpen} onOpenChange={(o) => { setHistoryDialogOpen(o); if (!o) { setActiveNetwork(null); setActivePost(null); } }}>
+      <Dialog open={historyDialogOpen} onOpenChange={(o) => { setHistoryDialogOpen(o); if (!o) { setActiveNetwork(null); setActivePost(null); setGenPanelOpen(false); setGenResults([]); } }}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 font-heading">
