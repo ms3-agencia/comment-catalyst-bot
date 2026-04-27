@@ -134,6 +134,7 @@ const GenerateContent = () => {
   const reset = () => {
     setStep('project'); setProject(null); setNetwork(null);
     setContentType(null); setQuantity(3); setResults([]);
+    setHistoryOpen(false); setHistoryNetwork(null);
   };
 
   const handleGenerate = async () => {
