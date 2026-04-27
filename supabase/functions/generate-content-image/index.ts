@@ -11,6 +11,7 @@ interface Body {
   image_format?: string; // e.g. "9:16", "1:1", "4:5", "16:9", "2:3", "1.91:1"
   width?: number;
   height?: number;
+  skip_persist?: boolean; // se true, não sobrescreve image_url do conteúdo (uso em editor de vídeo)
 }
 
 const FORMAT_HINTS: Record<string, string> = {
@@ -209,11 +210,13 @@ Deno.serve(async (req) => {
     const { data: pub } = admin.storage.from("content-images").getPublicUrl(filePath);
     const publicUrl = pub.publicUrl;
 
-    // Update content row
-    await admin
-      .from("generated_contents")
-      .update({ image_url: publicUrl, image_prompt: finalPrompt })
-      .eq("id", content.id);
+    // Update content row (skip if scene-only image for video editor)
+    if (!body.skip_persist) {
+      await admin
+        .from("generated_contents")
+        .update({ image_url: publicUrl, image_prompt: finalPrompt })
+        .eq("id", content.id);
+    }
 
     return new Response(JSON.stringify({
       success: true,

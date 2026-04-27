@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { CopyIconButton } from '@/components/CopyIconButton';
+import { VideoEditor } from '@/components/VideoEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,7 @@ import { useCredits } from '@/hooks/useCredits';
 import {
   Sparkles, Loader2, ArrowLeft, FolderOpen, Instagram, Youtube, Facebook, Linkedin,
   Music2, MessageCircle, Image as ImageIcon, Video, Film, Layers, FileText, Pin,
-  Twitter, Hash, Copy, Check, TrendingUp, Wand2, Download, RefreshCw, History, ChevronDown, Pencil, Send, X,
+  Twitter, Hash, Copy, Check, TrendingUp, Wand2, Download, RefreshCw, History, ChevronDown, Pencil, Send, X, Clapperboard,
 } from 'lucide-react';
 
 type Project = {
@@ -140,6 +141,7 @@ const GenerateContent = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPrompt, setEditPrompt] = useState('');
   const [editLoading, setEditLoading] = useState(false);
+  const [videoEditorContent, setVideoEditorContent] = useState<GeneratedContent | null>(null);
 
   const EDIT_SUGGESTIONS = [
     'Arrumar a escrita',
@@ -685,6 +687,17 @@ const GenerateContent = () => {
                         </Button>
                       )}
                     </div>
+                    {/* Botão de vídeo (apenas se houver roteiro) */}
+                    {(c.script || c.caption) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-primary/40 hover:bg-primary/10"
+                        onClick={() => setVideoEditorContent(c)}
+                      >
+                        <Clapperboard className="h-4 w-4 mr-1 text-primary" /> Gerar vídeo (até 60s)
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={() => copyContent(c)} className="w-full">
                       {copiedId === c.id ? <><Check className="h-4 w-4 mr-1" /> Copiado</> : <><Copy className="h-4 w-4 mr-1" /> Copiar</>}
                     </Button>
@@ -695,6 +708,34 @@ const GenerateContent = () => {
           </div>
         )}
       </div>
+      {videoEditorContent && (
+        <VideoEditor
+          open={!!videoEditorContent}
+          onClose={() => setVideoEditorContent(null)}
+          content={videoEditorContent as any}
+          onImageRegen={async (_idx, prompt) => {
+            try {
+              const fmt = getFormats(videoEditorContent.social_network, videoEditorContent.content_type)[0];
+              const { data, error } = await supabase.functions.invoke('generate-content-image', {
+                body: {
+                  content_id: videoEditorContent.id,
+                  image_format: fmt.ratio,
+                  width: fmt.w,
+                  height: fmt.h,
+                  custom_prompt: prompt,
+                  skip_persist: true,
+                },
+              });
+              if (error) throw error;
+              if ((data as any)?.error) throw new Error((data as any).error);
+              return (data as any).image_url || null;
+            } catch (e: any) {
+              toast({ title: 'Erro ao gerar imagem', description: e.message, variant: 'destructive' });
+              return null;
+            }
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 };

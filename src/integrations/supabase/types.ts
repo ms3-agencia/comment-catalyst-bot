@@ -593,6 +593,48 @@ export type Database = {
         }
         Relationships: []
       }
+      video_providers: {
+        Row: {
+          api_key_secret_name: string | null
+          config: Json
+          created_at: string
+          display_name: string
+          enabled: boolean
+          id: string
+          kind: string
+          model: string | null
+          provider: string
+          updated_at: string
+          weight: number
+        }
+        Insert: {
+          api_key_secret_name?: string | null
+          config?: Json
+          created_at?: string
+          display_name: string
+          enabled?: boolean
+          id?: string
+          kind: string
+          model?: string | null
+          provider: string
+          updated_at?: string
+          weight?: number
+        }
+        Update: {
+          api_key_secret_name?: string | null
+          config?: Json
+          created_at?: string
+          display_name?: string
+          enabled?: boolean
+          id?: string
+          kind?: string
+          model?: string | null
+          provider?: string
+          updated_at?: string
+          weight?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
