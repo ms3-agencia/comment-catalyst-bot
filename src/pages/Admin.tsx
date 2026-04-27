@@ -471,6 +471,8 @@ const Admin = () => {
       setCreditsDescription('Ajuste manual');
     }
   };
+
+  const handleSaveApiKey = async () => {
     if (!youtubeApiKey.trim()) {
       toast({ title: 'Informe a chave da API', variant: 'destructive' });
       return;
