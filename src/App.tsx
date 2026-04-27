@@ -15,6 +15,7 @@ import UserSettings from "./pages/UserSettings";
 import Admin from "./pages/Admin";
 import Credits from "./pages/Credits";
 import GenerateContent from "./pages/GenerateContent";
+import Drafts from "./pages/Drafts";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
