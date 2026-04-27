@@ -60,6 +60,18 @@ export const VideoProvidersTab = () => {
     setProviders(prev => prev.map(p => p.id === id ? { ...p, ...patch } as Provider : p));
   };
 
+  const updateCostKey = async (provider: Provider, costKey: string) => {
+    const newConfig = { ...(provider.config || {}), cost_action_key: costKey };
+    await update(provider.id, { config: newConfig } as any);
+  };
+
+  const filterCostsForKind = (kind: Provider['kind']): CostAction[] => {
+    if (kind === 'video_ai') return costs.filter(c => c.action_key.startsWith('video_'));
+    if (kind === 'tts') return costs.filter(c => c.action_key.startsWith('tts_') || c.action_key === 'video_tts_narration');
+    if (kind === 'music') return costs.filter(c => c.action_key.startsWith('music_'));
+    return costs;
+  };
+
   if (loading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
