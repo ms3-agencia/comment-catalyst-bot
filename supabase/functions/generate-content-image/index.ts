@@ -149,6 +149,7 @@ Deno.serve(async (req) => {
         model: "google/gemini-2.5-flash-image",
         messages: [{ role: "user", content: finalPrompt }],
         modalities: ["image", "text"],
+        ...(aspectForGemini ? { image_config: { aspect_ratio: aspectForGemini } } : {}),
       }),
     });
 
