@@ -126,6 +126,7 @@ const GenerateContent = () => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyNetwork, setHistoryNetwork] = useState<string | null>(null);
   const [imagingId, setImagingId] = useState<string | null>(null);
+  const [selectedFormat, setSelectedFormat] = useState<ImgFormat | null>(null);
 
   const loadHistory = async (projectId: string) => {
     setHistoryLoading(true);
@@ -139,11 +140,17 @@ const GenerateContent = () => {
     setHistoryLoading(false);
   };
 
-  const generateImage = async (content: GeneratedContent) => {
+  const generateImage = async (content: GeneratedContent, format?: ImgFormat) => {
     setImagingId(content.id);
     try {
+      const fmt = format || selectedFormat || getFormats(content.social_network, content.content_type)[0];
       const { data, error } = await supabase.functions.invoke('generate-content-image', {
-        body: { content_id: content.id },
+        body: {
+          content_id: content.id,
+          image_format: fmt.ratio,
+          width: fmt.w,
+          height: fmt.h,
+        },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
