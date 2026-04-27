@@ -90,8 +90,15 @@ Deno.serve(async (req) => {
       return FORMAT_HINTS["1:1"];
     })();
 
+    const selectedRatio = body.image_format && FORMAT_HINTS[body.image_format] ? body.image_format : null;
+    const targetW = body.width;
+    const targetH = body.height;
+    const dimsText = targetW && targetH ? ` Exact target dimensions: ${targetW}x${targetH} pixels.` : "";
+
     const basePrompt = body.custom_prompt?.trim() || content.visual_idea || content.title || content.caption || "social media content";
-    const finalPrompt = `Create a high-quality, eye-catching social media image for ${content.social_network} ${content.content_type}. ${formatHint}. Visual concept: ${basePrompt}. Style: modern, vibrant, professional, clean composition with strong focal point, no text overlays unless essential, optimized for high engagement on ${content.social_network}.`;
+    const finalPrompt = `Create a high-quality, eye-catching social media image for ${content.social_network} ${content.content_type}. ${formatHint}.${dimsText} Frame and compose the entire image to fully fill this aspect ratio — DO NOT add letterbox bars, padding, borders, or whitespace; the subject must occupy the full frame. Visual concept: ${basePrompt}. Style: modern, vibrant, professional, clean composition with a strong focal point centered for the chosen aspect ratio, no text overlays unless essential, optimized for high engagement on ${content.social_network}.`;
+
+    const aspectForGemini = selectedRatio ? GEMINI_ASPECT[selectedRatio] : undefined;
 
     // Compute credit cost based on output megapixels (matches frontend imageCreditCost)
     const computeCost = (w?: number, h?: number, baseCost = 3): number => {
