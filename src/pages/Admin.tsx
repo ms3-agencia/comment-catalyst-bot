@@ -30,6 +30,8 @@ type UserProfile = {
   status: string;
   created_at: string;
   is_admin?: boolean;
+  credits_balance?: number;
+  credits_consumed?: number;
 };
 
 type AiProvider = {
@@ -134,7 +136,22 @@ const Admin = () => {
     const adminIds = new Set((roles || []).map(r => r.user_id));
     const { count: pCount } = await supabase.from('projects').select('*', { count: 'exact', head: true });
     const { count: cCount } = await supabase.from('comments').select('*', { count: 'exact', head: true });
-    const enriched = ((profiles as any[]) || []).map(p => ({ ...p, is_admin: adminIds.has(p.user_id) })) as UserProfile[];
+    const { data: credits } = await supabase.from('user_credits').select('user_id, balance');
+    const balanceMap = new Map((credits || []).map((c: any) => [c.user_id, c.balance as number]));
+    const { data: txs } = await supabase
+      .from('credit_transactions')
+      .select('user_id, amount')
+      .eq('type', 'consumption');
+    const consumedMap = new Map<string, number>();
+    (txs || []).forEach((t: any) => {
+      consumedMap.set(t.user_id, (consumedMap.get(t.user_id) || 0) + Math.abs(t.amount));
+    });
+    const enriched = ((profiles as any[]) || []).map(p => ({
+      ...p,
+      is_admin: adminIds.has(p.user_id),
+      credits_balance: balanceMap.get(p.user_id) ?? 0,
+      credits_consumed: consumedMap.get(p.user_id) ?? 0,
+    })) as UserProfile[];
     setUsers(enriched);
     setStats({ users: profiles?.length ?? 0, projects: pCount ?? 0, comments: cCount ?? 0 });
 
@@ -590,6 +607,7 @@ const Admin = () => {
                       <TableHead>Plano</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Papel</TableHead>
+                      <TableHead>Créditos / Consumo</TableHead>
                       <TableHead>Criado em</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
@@ -618,6 +636,16 @@ const Admin = () => {
                             ) : (
                               <span className="inline-block rounded-full px-2 py-0.5 text-xs font-semibold uppercase bg-muted text-muted-foreground">Usuário</span>
                             )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col leading-tight">
+                              <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
+                                <Coins size={12} /> {(u.credits_balance ?? 0).toLocaleString('pt-BR')}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                Consumo: {(u.credits_consumed ?? 0).toLocaleString('pt-BR')}
+                              </span>
+                            </div>
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">{new Date(u.created_at).toLocaleDateString('pt-BR')}</TableCell>
                           <TableCell className="text-right">
@@ -682,7 +710,7 @@ const Admin = () => {
                       );
                     })}
                     {!filtered.length && (
-                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum usuário encontrado</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum usuário encontrado</TableCell></TableRow>
                     )}
                   </TableBody>
                 </Table>
