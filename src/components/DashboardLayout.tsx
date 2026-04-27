@@ -2,7 +2,7 @@ import { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins, UserCircle, Sparkles, History, Instagram, Music2, Facebook, Linkedin, Twitter, Pin, MessageCircle, ArrowLeft, Copy, Check, Download, Loader2, TrendingUp, FileText } from 'lucide-react';
+import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins, UserCircle, Sparkles, History, Instagram, Music2, Facebook, Linkedin, Twitter, Pin, MessageCircle, ArrowLeft, Copy, Check, Download, Loader2, TrendingUp, FileText, Wand2, ImageIcon } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CreditsWidget } from '@/components/CreditsWidget';
@@ -32,6 +32,58 @@ const NETWORKS = [
   { key: 'threads', label: 'Threads', icon: MessageCircle },
 ];
 
+// Image formats per network+type. First option = recommended/default.
+type ImgFormat = { ratio: string; w: number; h: number; label: string };
+const FORMATS: Record<string, ImgFormat[]> = {
+  'instagram:post': [
+    { ratio: '4:5', w: 1080, h: 1350, label: 'Vertical (recomendado)' },
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+  ],
+  'instagram:carrossel': [
+    { ratio: '4:5', w: 1080, h: 1350, label: 'Vertical (recomendado)' },
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+  ],
+  'instagram:reels': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'instagram:story': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'tiktok:video': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'youtube:video': [{ ratio: '16:9', w: 1920, h: 1080, label: 'Horizontal HD' }],
+  'youtube:shorts': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'facebook:post': [
+    { ratio: '1.91:1', w: 1200, h: 630, label: 'Link/Imagem' },
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+  ],
+  'facebook:video': [
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+    { ratio: '16:9', w: 1920, h: 1080, label: 'Horizontal' },
+  ],
+  'facebook:reels': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'linkedin:post': [
+    { ratio: '1.91:1', w: 1200, h: 627, label: 'Horizontal' },
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+  ],
+  'linkedin:carrossel': [{ ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' }],
+  'linkedin:video': [
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+    { ratio: '16:9', w: 1920, h: 1080, label: 'Horizontal' },
+  ],
+  'x:post': [{ ratio: '16:9', w: 1600, h: 900, label: 'Horizontal' }],
+  'x:thread': [{ ratio: '16:9', w: 1600, h: 900, label: 'Horizontal' }],
+  'pinterest:pin': [{ ratio: '2:3', w: 1000, h: 1500, label: 'Vertical' }],
+  'pinterest:idea_pin': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'threads:post': [{ ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' }],
+  'threads:thread': [{ ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' }],
+};
+
+const getFormats = (net: string, type: string): ImgFormat[] =>
+  FORMATS[`${net}:${type}`] || [{ ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' }];
+
+const imageCreditCost = (w: number, h: number): number => {
+  const mp = (w * h) / 1_000_000;
+  if (mp <= 1.2) return 3;
+  if (mp <= 1.6) return 4;
+  return 5;
+};
+
 type HistoryItem = {
   id: string;
   title: string | null;
@@ -60,6 +112,12 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const [activePost, setActivePost] = useState<HistoryItem | null>(null);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  // Inline image generation in history detail
+  const [genPanelOpen, setGenPanelOpen] = useState(false);
+  const [genFormat, setGenFormat] = useState<ImgFormat | null>(null);
+  const [genQuantity, setGenQuantity] = useState(1);
+  const [genLoading, setGenLoading] = useState(false);
+  const [genResults, setGenResults] = useState<string[]>([]);
 
   const allItems = [...navItems, ...(isAdmin ? adminItems : [])];
 
@@ -131,6 +189,47 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
       setDownloading(false);
     }
   };
+
+  const openGenPanel = (c: HistoryItem) => {
+    const fmts = getFormats(c.social_network, c.content_type);
+    setGenFormat(fmts[0]);
+    setGenQuantity(1);
+    setGenResults([]);
+    setGenPanelOpen(true);
+  };
+
+  const generateImagesForPost = async () => {
+    if (!activePost || !genFormat) return;
+    setGenLoading(true);
+    const generated: string[] = [];
+    try {
+      for (let i = 0; i < genQuantity; i++) {
+        const { data, error } = await supabase.functions.invoke('generate-content-image', {
+          body: {
+            content_id: activePost.id,
+            image_format: genFormat.ratio,
+            width: genFormat.w,
+            height: genFormat.h,
+          },
+        });
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        const url = (data as any).image_url as string;
+        generated.push(url);
+        setGenResults([...generated]);
+      }
+      // Update local state with the latest image (which is what's saved on the row)
+      const latest = generated[generated.length - 1];
+      setActivePost({ ...activePost, image_url: latest });
+      setAllHistory(prev => prev.map(h => h.id === activePost.id ? { ...h, image_url: latest } : h));
+      toast({ title: `${generated.length} imagem(ns) gerada(s)!` });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar imagem', description: e.message || 'Tente novamente', variant: 'destructive' });
+    } finally {
+      setGenLoading(false);
+    }
+  };
+
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -206,7 +305,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
       </main>
 
       {/* History Dialog */}
-      <Dialog open={historyDialogOpen} onOpenChange={(o) => { setHistoryDialogOpen(o); if (!o) { setActiveNetwork(null); setActivePost(null); } }}>
+      <Dialog open={historyDialogOpen} onOpenChange={(o) => { setHistoryDialogOpen(o); if (!o) { setActiveNetwork(null); setActivePost(null); setGenPanelOpen(false); setGenResults([]); } }}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 font-heading">
@@ -222,7 +321,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
           ) : activePost ? (
             // POST DETAIL VIEW
             <div className="space-y-4">
-              <Button variant="ghost" size="sm" onClick={() => setActivePost(null)}>
+              <Button variant="ghost" size="sm" onClick={() => { setActivePost(null); setGenPanelOpen(false); setGenResults([]); }}>
                 <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
               </Button>
 
@@ -246,7 +345,128 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                   {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
                   {copied ? 'Copiado!' : 'Copiar conteúdo'}
                 </Button>
+                {!activePost.image_url && !genPanelOpen && (
+                  <Button variant="default" onClick={() => openGenPanel(activePost)}>
+                    <Wand2 className="h-4 w-4" /> Gerar imagem
+                  </Button>
+                )}
               </div>
+
+              {/* Inline image generation panel */}
+              {genPanelOpen && activePost && (
+                <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4 text-primary" /> Gerar imagem com IA
+                    </h4>
+                    <Button variant="ghost" size="sm" onClick={() => setGenPanelOpen(false)} disabled={genLoading}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  {/* Format picker */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Formato da imagem</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {getFormats(activePost.social_network, activePost.content_type).map(f => {
+                        const active = genFormat?.ratio === f.ratio;
+                        const ratio = f.w / f.h;
+                        const maxBox = 36;
+                        const bw = ratio >= 1 ? maxBox : Math.round(maxBox * ratio);
+                        const bh = ratio >= 1 ? Math.round(maxBox / ratio) : maxBox;
+                        const cost = imageCreditCost(f.w, f.h);
+                        return (
+                          <button
+                            key={f.ratio}
+                            type="button"
+                            disabled={genLoading}
+                            onClick={() => setGenFormat(f)}
+                            className={`relative p-2 rounded-lg border-2 transition-all text-left disabled:opacity-50 ${
+                              active ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50 bg-card'
+                            }`}
+                          >
+                            <span className="absolute top-1 right-1 text-[9px] font-bold px-1 py-0.5 rounded bg-primary/15 text-primary">
+                              {cost}c
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`shrink-0 rounded border-2 ${active ? 'border-primary bg-primary/20' : 'border-muted-foreground/40 bg-muted'}`}
+                                style={{ width: bw, height: bh }}
+                              />
+                              <div className="min-w-0">
+                                <div className="text-xs font-semibold">{f.ratio}</div>
+                                <div className="text-[10px] text-muted-foreground truncate">{f.w}×{f.h}</div>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Quantity */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-muted-foreground">Quantidade (1-4)</p>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4].map(n => (
+                        <button
+                          key={n}
+                          type="button"
+                          disabled={genLoading}
+                          onClick={() => setGenQuantity(n)}
+                          className={`flex-1 py-2 rounded-lg border-2 text-sm font-semibold transition-all disabled:opacity-50 ${
+                            genQuantity === n ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:border-primary/50'
+                          }`}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Total */}
+                  <div className="flex justify-between items-baseline pt-2 border-t border-primary/20">
+                    <span className="text-sm">Total estimado</span>
+                    <span className="font-heading text-xl font-bold gradient-text">
+                      {genFormat ? imageCreditCost(genFormat.w, genFormat.h) * genQuantity : 0}c
+                    </span>
+                  </div>
+
+                  <Button onClick={generateImagesForPost} disabled={genLoading || !genFormat} className="w-full">
+                    {genLoading ? (
+                      <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Gerando {genResults.length}/{genQuantity}...</>
+                    ) : (
+                      <><Sparkles className="h-4 w-4 mr-1" /> Gerar {genQuantity} imagem{genQuantity > 1 ? 'ns' : ''}</>
+                    )}
+                  </Button>
+
+                  {/* Generated images */}
+                  {genResults.length > 0 && (
+                    <div className="space-y-2 pt-2">
+                      <p className="text-xs font-medium text-muted-foreground">Imagens geradas:</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {genResults.map((url, idx) => (
+                          <div key={idx} className="rounded-lg overflow-hidden border border-border bg-muted relative group">
+                            <img src={url} alt={`Geração ${idx + 1}`} className="w-full h-auto object-cover" />
+                            <button
+                              onClick={() => downloadImage(url, `${activePost.title || 'conteudo'}-${idx + 1}.png`)}
+                              className="absolute top-2 right-2 p-1.5 rounded-lg bg-background/90 hover:bg-background opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Baixar"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      {genQuantity > 1 && (
+                        <p className="text-[11px] text-muted-foreground">
+                          A última imagem é salva no histórico. Baixe as outras antes de fechar.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-3 rounded-xl border border-border bg-card p-5">
                 {activePost.title && (
