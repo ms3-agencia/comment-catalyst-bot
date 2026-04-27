@@ -768,6 +768,15 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       });
       return;
     }
+    // If the content has a script, ensure each scene has its own image before rendering.
+    if (content.script) {
+      const fallback = content.image_url || null;
+      const missing = scenes.some(s => !s.imageUrl || s.imageUrl === fallback);
+      if (missing && !bulkGen.active) {
+        toast({ title: 'Gerando imagens das cenas', description: 'Cada cena receberá sua própria imagem antes do render.' });
+        await generateAllSceneImages(true);
+      }
+    }
     if (genKind === 'ai') {
       toast({
         title: 'Geração por IA em breve',
