@@ -106,6 +106,15 @@ const getFormats = (net: string | null, type: string | null): ImgFormat[] => {
   return FORMATS[`${net}:${type}`] || [{ ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' }];
 };
 
+// Custo por imagem baseado em megapixels totais.
+// Mantenha sincronizado com supabase/functions/generate-content-image/index.ts
+export const imageCreditCost = (w: number, h: number): number => {
+  const mp = (w * h) / 1_000_000;
+  if (mp <= 1.2) return 3;       // ex: 1080x1080, 1200x630
+  if (mp <= 1.6) return 4;       // ex: 1080x1350, 1000x1500
+  return 5;                       // HD: 1080x1920, 1920x1080, 1600x900+
+};
+
 type Step = 'project' | 'network' | 'type' | 'quantity' | 'results';
 
 const GenerateContent = () => {
@@ -364,22 +373,25 @@ const GenerateContent = () => {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
                   {getFormats(network, contentType).map(f => {
                     const active = selectedFormat?.ratio === f.ratio;
-                    // Visual preview box: scale aspect ratio into a fixed area
                     const maxBox = 56;
                     const ratio = f.w / f.h;
                     const bw = ratio >= 1 ? maxBox : Math.round(maxBox * ratio);
                     const bh = ratio >= 1 ? Math.round(maxBox / ratio) : maxBox;
+                    const cost = imageCreditCost(f.w, f.h);
                     return (
                       <button
                         key={f.ratio}
                         type="button"
                         onClick={() => setSelectedFormat(f)}
-                        className={`p-3 rounded-lg border-2 transition-all text-left ${
+                        className={`relative p-3 rounded-lg border-2 transition-all text-left ${
                           active
                             ? 'border-primary bg-primary/10 shadow-[0_0_0_3px_hsl(var(--primary)/0.15)]'
                             : 'border-border hover:border-primary/50 bg-card'
                         }`}
                       >
+                        <span className="absolute top-1.5 right-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/15 text-primary">
+                          {cost}c
+                        </span>
                         <div className="flex items-center gap-3">
                           <div
                             className={`shrink-0 rounded border-2 ${active ? 'border-primary bg-primary/20' : 'border-muted-foreground/40 bg-muted'}`}
@@ -395,6 +407,9 @@ const GenerateContent = () => {
                     );
                   })}
                 </div>
+                <p className="text-[11px] text-muted-foreground pt-1">
+                  Custo por imagem: <strong>3c</strong> até 1.2MP · <strong>4c</strong> até 1.6MP · <strong>5c</strong> em HD (1080p+)
+                </p>
               </div>
 
               <div>
@@ -404,14 +419,35 @@ const GenerateContent = () => {
                   onChange={e => setQuantity(Math.min(10, Math.max(1, parseInt(e.target.value) || 1)))}
                 />
               </div>
-              <div className="text-sm text-muted-foreground">
-                Custo: <span className="font-semibold text-foreground">{quantity * 2} créditos</span> (2 por conteúdo)
-                {selectedFormat && (
-                  <span className="block text-xs mt-1">
-                    + 3 créditos por imagem gerada ({selectedFormat.w}×{selectedFormat.h})
-                  </span>
-                )}
-              </div>
+
+              {/* Resumo de custo em tempo real */}
+              {(() => {
+                const textCost = quantity * 2;
+                const imgUnit = selectedFormat ? imageCreditCost(selectedFormat.w, selectedFormat.h) : 0;
+                const imgTotal = imgUnit * quantity;
+                const total = textCost + imgTotal;
+                return (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Texto ({quantity} × 2c)</span>
+                      <span className="font-semibold">{textCost}c</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        Imagens {selectedFormat ? `(${quantity} × ${imgUnit}c · ${selectedFormat.ratio})` : '(selecione um formato)'}
+                      </span>
+                      <span className="font-semibold">{selectedFormat ? `${imgTotal}c` : '—'}</span>
+                    </div>
+                    <div className="border-t border-primary/20 pt-2 flex justify-between items-baseline">
+                      <span className="text-sm font-semibold">Total estimado</span>
+                      <span className="font-heading text-2xl font-bold gradient-text">{total}c</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Texto é cobrado ao gerar. Imagens só cobram quando você clica em gerar imagem em cada conteúdo.
+                    </p>
+                  </div>
+                );
+              })()}
               <Button onClick={handleGenerate} disabled={generating} className="w-full">
                 {generating ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gerando...</>
@@ -528,8 +564,8 @@ const GenerateContent = () => {
                                   type="button"
                                   disabled={imagingId === c.id}
                                   onClick={() => generateImage(c, f)}
-                                  className="group flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-border hover:border-primary hover:bg-primary/5 transition-all disabled:opacity-50"
-                                  title={`${f.label} • ${f.w}×${f.h}`}
+                                  className="group relative flex items-center gap-2 px-3 py-2 pr-8 rounded-lg border-2 border-border hover:border-primary hover:bg-primary/5 transition-all disabled:opacity-50"
+                                  title={`${f.label} • ${f.w}×${f.h} • ${imageCreditCost(f.w, f.h)} créditos`}
                                 >
                                   <div
                                     className="rounded border-2 border-muted-foreground/40 group-hover:border-primary bg-muted"
@@ -539,6 +575,9 @@ const GenerateContent = () => {
                                     <div className="text-xs font-semibold">{f.ratio}</div>
                                     <div className="text-[10px] text-muted-foreground">{f.w}×{f.h}</div>
                                   </div>
+                                  <span className="absolute top-1 right-1 text-[9px] font-bold px-1 py-0.5 rounded bg-primary/15 text-primary">
+                                    {imageCreditCost(f.w, f.h)}c
+                                  </span>
                                 </button>
                               );
                             })}

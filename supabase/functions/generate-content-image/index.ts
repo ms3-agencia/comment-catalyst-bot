@@ -83,13 +83,23 @@ Deno.serve(async (req) => {
     const basePrompt = body.custom_prompt?.trim() || content.visual_idea || content.title || content.caption || "social media content";
     const finalPrompt = `Create a high-quality, eye-catching social media image for ${content.social_network} ${content.content_type}. ${formatHint}. Visual concept: ${basePrompt}. Style: modern, vibrant, professional, clean composition with strong focal point, no text overlays unless essential, optimized for high engagement on ${content.social_network}.`;
 
+    // Compute credit cost based on output megapixels (matches frontend imageCreditCost)
+    const computeCost = (w?: number, h?: number, baseCost = 3): number => {
+      if (!w || !h) return baseCost;
+      const mp = (w * h) / 1_000_000;
+      if (mp <= 1.2) return Math.max(baseCost, 3);
+      if (mp <= 1.6) return Math.max(baseCost, 4);
+      return Math.max(baseCost, 5);
+    };
+
     // Consume credits
     const { data: cost } = await admin
       .from("credit_action_costs")
       .select("cost")
       .eq("action_key", "generate_content_image")
       .maybeSingle();
-    const creditCost = cost?.cost ?? 3;
+    const baseCost = cost?.cost ?? 3;
+    const creditCost = computeCost(body.width, body.height, baseCost);
 
     const { data: consumeRes, error: consumeErr } = await userClient.rpc("consume_credits", {
       _amount: creditCost,
