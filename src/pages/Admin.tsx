@@ -607,6 +607,7 @@ const Admin = () => {
                       <TableHead>Plano</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Papel</TableHead>
+                      <TableHead>Créditos / Consumo</TableHead>
                       <TableHead>Criado em</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
