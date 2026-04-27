@@ -11,6 +11,8 @@ import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, E
 import { BrandingTab } from '@/components/admin/BrandingTab';
 import { VideoProvidersTab } from '@/components/admin/VideoProvidersTab';
 import { VideoStylePresetsTab } from '@/components/admin/VideoStylePresetsTab';
+import { IntegrationsTab } from '@/components/admin/IntegrationsTab';
+import { Plug } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -571,13 +573,14 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 h-auto">
+          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 h-auto">
             <TabsTrigger value="users"><Users size={14} className="mr-1.5" />Usuários</TabsTrigger>
             <TabsTrigger value="plans"><ShieldCheck size={14} className="mr-1.5" />Planos</TabsTrigger>
             <TabsTrigger value="packages"><Package size={14} className="mr-1.5" />Pacotes</TabsTrigger>
             <TabsTrigger value="costs"><Coins size={14} className="mr-1.5" />Custos</TabsTrigger>
             <TabsTrigger value="video"><Clapperboard size={14} className="mr-1.5" />Vídeo</TabsTrigger>
             <TabsTrigger value="payments"><Wallet size={14} className="mr-1.5" />Mercado Pago</TabsTrigger>
+            <TabsTrigger value="integrations"><Plug size={14} className="mr-1.5" />Integrações</TabsTrigger>
             <TabsTrigger value="branding"><Palette size={14} className="mr-1.5" />Personalização</TabsTrigger>
             <TabsTrigger value="settings"><Key size={14} className="mr-1.5" />APIs & IA</TabsTrigger>
           </TabsList>
@@ -588,6 +591,11 @@ const Admin = () => {
               <VideoStylePresetsTab />
             </div>
           </TabsContent>
+
+          <TabsContent value="integrations" className="mt-4">
+            <IntegrationsTab />
+          </TabsContent>
+
 
           <TabsContent value="users" className="mt-4">
             {/* Users table */}
