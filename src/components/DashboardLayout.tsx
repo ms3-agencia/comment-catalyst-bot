@@ -190,6 +190,59 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const openGenPanel = (c: HistoryItem) => {
+    const fmts = getFormats(c.social_network, c.content_type);
+    setGenFormat(fmts[0]);
+    setGenQuantity(1);
+    setGenResults([]);
+    setGenPanelOpen(true);
+  };
+
+  const generateImagesForPost = async () => {
+    if (!activePost || !genFormat) return;
+    setGenLoading(true);
+    const generated: string[] = [];
+    try {
+      for (let i = 0; i < genQuantity; i++) {
+        const { data, error } = await supabase.functions.invoke('generate-content-image', {
+          body: {
+            content_id: activePost.id,
+            image_format: genFormat.ratio,
+            width: genFormat.w,
+            height: genFormat.h,
+          },
+        });
+        if (error) throw error;
+        if ((data as any)?.error) throw new Error((data as any).error);
+        const url = (data as any).image_url as string;
+        generated.push(url);
+        setGenResults([...generated]);
+      }
+      // Update local state with the latest image (which is what's saved on the row)
+      const latest = generated[generated.length - 1];
+      setActivePost({ ...activePost, image_url: latest });
+      setAllHistory(prev => prev.map(h => h.id === activePost.id ? { ...h, image_url: latest } : h));
+      toast({ title: `${generated.length} imagem(ns) gerada(s)!` });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar imagem', description: e.message || 'Tente novamente', variant: 'destructive' });
+    } finally {
+      setGenLoading(false);
+    }
+  };
+
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (e: any) {
+      toast({ title: 'Erro ao baixar', description: e.message, variant: 'destructive' });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen bg-background">
       {sidebarOpen && <div className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />}
