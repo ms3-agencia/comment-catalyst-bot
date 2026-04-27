@@ -321,7 +321,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
           ) : activePost ? (
             // POST DETAIL VIEW
             <div className="space-y-4">
-              <Button variant="ghost" size="sm" onClick={() => setActivePost(null)}>
+              <Button variant="ghost" size="sm" onClick={() => { setActivePost(null); setGenPanelOpen(false); setGenResults([]); }}>
                 <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
               </Button>
 
