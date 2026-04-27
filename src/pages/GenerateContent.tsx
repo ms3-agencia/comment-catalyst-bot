@@ -106,6 +106,15 @@ const getFormats = (net: string | null, type: string | null): ImgFormat[] => {
   return FORMATS[`${net}:${type}`] || [{ ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' }];
 };
 
+// Custo por imagem baseado em megapixels totais.
+// Mantenha sincronizado com supabase/functions/generate-content-image/index.ts
+export const imageCreditCost = (w: number, h: number): number => {
+  const mp = (w * h) / 1_000_000;
+  if (mp <= 1.2) return 3;       // ex: 1080x1080, 1200x630
+  if (mp <= 1.6) return 4;       // ex: 1080x1350, 1000x1500
+  return 5;                       // HD: 1080x1920, 1920x1080, 1600x900+
+};
+
 type Step = 'project' | 'network' | 'type' | 'quantity' | 'results';
 
 const GenerateContent = () => {
