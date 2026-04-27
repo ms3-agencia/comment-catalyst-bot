@@ -971,6 +971,9 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     setRenderEta('');
     renderStartRef.current = performance.now();
 
+    // Auto-snapshot a version checkpoint before rendering, so users can always roll back.
+    createDraftVersion(content.id, currentDraftState(), `Antes do render ${new Date().toLocaleString()}`).catch(() => {});
+
     // If the content has a script, ensure each scene has its own image before rendering.
     if (content.script) {
       const fallback = content.image_url || null;
