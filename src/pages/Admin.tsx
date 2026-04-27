@@ -565,8 +565,11 @@ const Admin = () => {
             <TabsTrigger value="settings"><Key size={14} className="mr-1.5" />APIs & IA</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="video" className="mt-4">
+          <TabsContent value="video" className="mt-4 space-y-6">
             <VideoProvidersTab />
+            <div className="border-t pt-6">
+              <VideoStylePresetsTab />
+            </div>
           </TabsContent>
 
           <TabsContent value="users" className="mt-4">
