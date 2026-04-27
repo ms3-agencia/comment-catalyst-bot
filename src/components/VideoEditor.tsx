@@ -19,6 +19,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { AudioPanel } from './video/AudioPanel';
 import { defaultSceneAudio, type SceneAudio, type GlobalAudio } from './video/audioTypes';
 import { buildMixedAudioTrack } from './video/audioMixer';
+import { RenderHistoryDialog } from './video/RenderHistoryDialog';
+import { Progress } from '@/components/ui/progress';
+import { History } from 'lucide-react';
 
 // =================== Tipos ===================
 type ImageEffect = 'none' | 'zoom_in' | 'zoom_out' | 'pan_left' | 'pan_right' | 'pan_up' | 'pan_down';
