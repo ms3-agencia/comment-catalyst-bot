@@ -27,6 +27,8 @@ import {
   type ProviderRow as PSRow, type ResolvedProvider, type CostMap,
 } from '@/lib/providerSelector';
 import { saveLastRender, loadLastRender, clearLastRender, type StoredRender } from '@/lib/lastRenderStore';
+import { loadDraft, saveDraft, type EditorDraftState } from '@/lib/videoEditorDraft';
+import { Check, CloudUpload, RotateCcw } from 'lucide-react';
 
 // =================== Tipos ===================
 type ImageEffect = 'none' | 'zoom_in' | 'zoom_out' | 'pan_left' | 'pan_right' | 'pan_up' | 'pan_down';
@@ -496,34 +498,98 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const renderStartRef = useRef<number>(0);
   const [renderEta, setRenderEta] = useState<string>('');
 
+  // ===== Draft autosave =====
+  const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const draftSaveTimer = useRef<number | null>(null);
+  const draftHydratingRef = useRef(true);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const rafRef = useRef<number | null>(null);
   const playStartRef = useRef<number>(0);
 
-  // init scenes when opened (uses default preset if loaded)
+  // init scenes when opened — try to load saved draft first, fallback to defaults
   useEffect(() => {
     if (open) {
-      const def = presets.find(p => p.is_default) || presets[0];
-      setScenes(buildInitialScenes(content, def?.config || DEFAULT_PRESET));
-      setSelectedPresetId(def?.id || '');
-      setActiveIdx(0);
-      setPreviewProgress(0);
-      setPlaying(false);
-      const t = content.content_type;
-      if (['reels', 'shorts', 'story', 'video'].includes(t) && content.social_network !== 'youtube') {
-        setFormat(VIDEO_FORMATS[0]);
-      } else if (t === 'video' && content.social_network === 'youtube') {
-        setFormat(VIDEO_FORMATS[2]);
-      } else {
-        setFormat(VIDEO_FORMATS[1]);
-      }
+      draftHydratingRef.current = true;
+      setDraftLoaded(false);
+      setDraftStatus('idle');
+      (async () => {
+        const draft = await loadDraft(content.id);
+        if (draft && Array.isArray(draft.scenes) && draft.scenes.length > 0) {
+          setScenes(draft.scenes as Scene[]);
+          if (draft.format) setFormat(draft.format);
+          if (draft.globalAudio) setGlobalAudio(draft.globalAudio);
+          if (draft.selectedPresetId) setSelectedPresetId(draft.selectedPresetId);
+          if (draft.container) setContainer(draft.container as Container);
+          if (draft.codec) setCodec(draft.codec as CodecKey);
+          if (draft.quality) setQuality(draft.quality as QualityKey);
+          if (typeof draft.customBitrate === 'number') setCustomBitrate(draft.customBitrate);
+          if (typeof draft.resolutionScale === 'number') setResolutionScale(draft.resolutionScale as ResolutionScale);
+          if (draft.selectedProvider) setSelectedProvider(draft.selectedProvider);
+          if (draft.genKind) setGenKind(draft.genKind as GenKind);
+          setDraftStatus('saved');
+          toast({ title: 'Rascunho restaurado', description: 'Sua última edição foi carregada automaticamente.' });
+        } else {
+          const def = presets.find(p => p.is_default) || presets[0];
+          setScenes(buildInitialScenes(content, def?.config || DEFAULT_PRESET));
+          setSelectedPresetId(def?.id || '');
+          const t = content.content_type;
+          if (['reels', 'shorts', 'story', 'video'].includes(t) && content.social_network !== 'youtube') {
+            setFormat(VIDEO_FORMATS[0]);
+          } else if (t === 'video' && content.social_network === 'youtube') {
+            setFormat(VIDEO_FORMATS[2]);
+          } else {
+            setFormat(VIDEO_FORMATS[1]);
+          }
+        }
+        setActiveIdx(0);
+        setPreviewProgress(0);
+        setPlaying(false);
+        setDraftLoaded(true);
+        // small delay before enabling autosave to avoid saving during hydration
+        setTimeout(() => { draftHydratingRef.current = false; }, 300);
+      })();
     } else {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       setPlaying(false);
+      draftHydratingRef.current = true;
+      setDraftLoaded(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, content, presets.length]);
+
+  // Autosave draft (debounced) whenever editor state changes
+  useEffect(() => {
+    if (!open || !draftLoaded || draftHydratingRef.current) return;
+    if (draftSaveTimer.current) window.clearTimeout(draftSaveTimer.current);
+    setDraftStatus('saving');
+    draftSaveTimer.current = window.setTimeout(async () => {
+      const ok = await saveDraft(content.id, {
+        scenes, format, globalAudio, selectedPresetId,
+        container, codec, quality, customBitrate, resolutionScale,
+        selectedProvider, genKind,
+      });
+      setDraftStatus(ok ? 'saved' : 'error');
+    }, 1200);
+    return () => {
+      if (draftSaveTimer.current) window.clearTimeout(draftSaveTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scenes, format, globalAudio, selectedPresetId, container, codec, quality, customBitrate, resolutionScale, selectedProvider, genKind, draftLoaded, open, content.id]);
+
+  const resetDraft = async () => {
+    const def = presets.find(p => p.is_default) || presets[0];
+    draftHydratingRef.current = true;
+    setScenes(buildInitialScenes(content, def?.config || DEFAULT_PRESET));
+    setSelectedPresetId(def?.id || '');
+    setActiveIdx(0);
+    setPreviewProgress(0);
+    setPlaying(false);
+    setTimeout(() => { draftHydratingRef.current = false; }, 300);
+    toast({ title: 'Edição reiniciada', description: 'O rascunho será sobrescrito ao próximo salvamento.' });
+  };
 
   // load style presets
   useEffect(() => {
@@ -1686,9 +1752,21 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
               Edite cenas, efeitos e textos. Renderização local no navegador.
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} disabled={rendering} className="shrink-0">
-            <X className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground" title="Suas edições são salvas automaticamente">
+              {draftStatus === 'saving' && <><CloudUpload className="h-3.5 w-3.5 animate-pulse" /> Salvando…</>}
+              {draftStatus === 'saved' && <><Check className="h-3.5 w-3.5 text-green-500" /> Salvo</>}
+              {draftStatus === 'error' && <span className="text-destructive">Erro ao salvar</span>}
+              {draftStatus === 'idle' && draftLoaded && <span className="opacity-60">Pronto</span>}
+            </div>
+            <Button variant="ghost" size="sm" onClick={resetDraft} disabled={rendering} className="hidden sm:flex gap-1.5" title="Reiniciar edição (apaga rascunho)">
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">Reiniciar</span>
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onClose} disabled={rendering}>
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
 
         {/* Mobile: tabs. Desktop: side-by-side */}

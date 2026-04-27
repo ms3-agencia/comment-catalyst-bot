@@ -641,6 +641,36 @@ export type Database = {
         }
         Relationships: []
       }
+      video_editor_drafts: {
+        Row: {
+          content_id: string
+          created_at: string
+          id: string
+          state: Json
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          content_id: string
+          created_at?: string
+          id?: string
+          state?: Json
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          content_id?: string
+          created_at?: string
+          id?: string
+          state?: Json
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: []
+      }
       video_providers: {
         Row: {
           api_key_secret_name: string | null
