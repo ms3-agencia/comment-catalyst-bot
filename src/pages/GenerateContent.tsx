@@ -506,8 +506,11 @@ const GenerateContent = () => {
               <div className="grid lg:grid-cols-2 gap-4">
                 {results.map(c => (
                   <Card key={c.id} className="p-5 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <h3 className="font-semibold flex-1">{c.title}</h3>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-1.5 flex-1 min-w-0">
+                        <h3 className="font-semibold flex-1">{c.title}</h3>
+                        {c.title && <CopyIconButton value={c.title} label="Título" />}
+                      </div>
                       {c.engagement_score != null && (
                         <span className="flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-primary/15 text-primary shrink-0">
                           <TrendingUp className="h-3 w-3" /> {c.engagement_score}
@@ -515,21 +518,30 @@ const GenerateContent = () => {
                       )}
                     </div>
                     {c.caption && (
-                      <p className="text-sm whitespace-pre-wrap text-foreground/90">{c.caption}</p>
+                      <div className="flex items-start gap-1.5">
+                        <p className="text-sm whitespace-pre-wrap text-foreground/90 flex-1">{c.caption}</p>
+                        <CopyIconButton value={c.caption} label="Conteúdo" />
+                      </div>
                     )}
                     {c.hashtags && c.hashtags.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {c.hashtags.map((h, i) => (
-                          <span key={i} className="text-xs text-primary inline-flex items-center">
-                            <Hash className="h-3 w-3" />{h}
-                          </span>
-                        ))}
+                      <div className="flex items-start gap-1.5">
+                        <div className="flex flex-wrap gap-1 flex-1">
+                          {c.hashtags.map((h, i) => (
+                            <span key={i} className="text-xs text-primary inline-flex items-center">
+                              <Hash className="h-3 w-3" />{h}
+                            </span>
+                          ))}
+                        </div>
+                        <CopyIconButton value={c.hashtags.map(h => `#${h}`).join(' ')} label="Hashtags" />
                       </div>
                     )}
                     {c.cta && (
-                      <div className="text-sm border-l-2 border-primary pl-3">
-                        <span className="text-xs uppercase text-muted-foreground">CTA</span>
-                        <p>{c.cta}</p>
+                      <div className="flex items-start gap-1.5">
+                        <div className="text-sm border-l-2 border-primary pl-3 flex-1">
+                          <span className="text-xs uppercase text-muted-foreground">CTA</span>
+                          <p>{c.cta}</p>
+                        </div>
+                        <CopyIconButton value={c.cta} label="CTA" />
                       </div>
                     )}
                     {c.script && (
