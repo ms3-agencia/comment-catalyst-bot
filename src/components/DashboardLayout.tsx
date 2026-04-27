@@ -471,37 +471,55 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
               <div className="space-y-3 rounded-xl border border-border bg-card p-5">
                 {activePost.title && (
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Título</p>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Título</p>
+                      <CopyIconButton value={activePost.title} label="Título" />
+                    </div>
                     <h3 className="font-heading text-lg font-semibold">{activePost.title}</h3>
                   </div>
                 )}
                 {activePost.caption && (
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Legenda</p>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Legenda</p>
+                      <CopyIconButton value={activePost.caption} label="Conteúdo" />
+                    </div>
                     <p className="text-sm whitespace-pre-wrap">{activePost.caption}</p>
                   </div>
                 )}
                 {activePost.hashtags && activePost.hashtags.length > 0 && (
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Hashtags</p>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Hashtags</p>
+                      <CopyIconButton value={activePost.hashtags.map(h => `#${h}`).join(' ')} label="Hashtags" />
+                    </div>
                     <p className="text-sm text-primary">{activePost.hashtags.map(h => `#${h}`).join(' ')}</p>
                   </div>
                 )}
                 {activePost.cta && (
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">CTA</p>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">CTA</p>
+                      <CopyIconButton value={activePost.cta} label="CTA" />
+                    </div>
                     <p className="text-sm">👉 {activePost.cta}</p>
                   </div>
                 )}
                 {activePost.script && (
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Roteiro</p>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Roteiro</p>
+                      <CopyIconButton value={activePost.script} label="Roteiro" />
+                    </div>
                     <p className="text-sm whitespace-pre-wrap text-muted-foreground">{activePost.script}</p>
                   </div>
                 )}
                 {activePost.visual_idea && (
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Ideia visual</p>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Ideia visual</p>
+                      <CopyIconButton value={activePost.visual_idea} label="Ideia visual" />
+                    </div>
                     <p className="text-sm whitespace-pre-wrap text-muted-foreground">{activePost.visual_idea}</p>
                   </div>
                 )}
