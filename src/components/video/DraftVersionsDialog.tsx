@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, History, RotateCcw, Trash2, Save } from 'lucide-react';
+import { Loader2, History, RotateCcw, Trash2, Save, Download, Upload } from 'lucide-react';
 import {
   listDraftVersions,
   createDraftVersion,
@@ -13,6 +13,9 @@ import {
   type EditorDraftState,
 } from '@/lib/videoEditorDraft';
 import { useToast } from '@/hooks/use-toast';
+
+const DRAFT_FILE_KIND = 'commentiq.video-editor-draft';
+const DRAFT_FILE_VERSION = 1;
 
 interface DraftVersionsDialogProps {
   open: boolean;
@@ -77,6 +80,62 @@ export function DraftVersionsDialog({
     }
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExport = () => {
+    const payload = {
+      kind: DRAFT_FILE_KIND,
+      fileVersion: DRAFT_FILE_VERSION,
+      contentId,
+      exportedAt: new Date().toISOString(),
+      state: currentState,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `editor-draft-${contentId.slice(0, 6)}-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    toast({ title: 'Rascunho exportado', description: 'Salve o arquivo .json e importe em outro dispositivo.' });
+  };
+
+  const handleImportClick = () => fileInputRef.current?.click();
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const state: EditorDraftState | undefined =
+        parsed?.kind === DRAFT_FILE_KIND ? parsed.state : (parsed?.scenes ? parsed : undefined);
+      if (!state || !Array.isArray((state as any).scenes)) {
+        throw new Error('Arquivo inválido: estrutura não reconhecida.');
+      }
+      if (parsed?.contentId && parsed.contentId !== contentId) {
+        const ok = window.confirm(
+          'Este rascunho foi exportado de outro conteúdo. Deseja importar mesmo assim? As cenas serão aplicadas ao conteúdo atual.'
+        );
+        if (!ok) return;
+      }
+      onRestore(state);
+      // Also keep an automatic version checkpoint of the import.
+      await createDraftVersion(contentId, state, `Importado ${new Date().toLocaleString()}`).catch(() => {});
+      toast({ title: 'Rascunho importado', description: 'Edição carregada e salva como nova versão.' });
+      onOpenChange(false);
+    } catch (err: any) {
+      toast({
+        title: 'Falha ao importar',
+        description: err?.message || 'Arquivo .json inválido.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -100,6 +159,25 @@ export function DraftVersionsDialog({
           <Button onClick={handleSaveCurrent} disabled={saving} className="shrink-0">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4 mr-1" /> Salvar atual</>}
           </Button>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" /> Exportar rascunho (.json)
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleImportClick} className="gap-1.5">
+            <Upload className="h-3.5 w-3.5" /> Importar rascunho
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={handleImportFile}
+          />
+          <p className="basis-full text-[11px] text-muted-foreground">
+            Use para continuar a edição em outro dispositivo ou navegador.
+          </p>
         </div>
 
         <ScrollArea className="h-[340px] pr-2">
