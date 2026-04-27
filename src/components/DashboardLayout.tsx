@@ -230,18 +230,6 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
     }
   };
 
-      a.href = blobUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-    } catch (e: any) {
-      toast({ title: 'Erro ao baixar', description: e.message, variant: 'destructive' });
-    } finally {
-      setDownloading(false);
-    }
-  };
 
   return (
     <div className="flex min-h-screen bg-background">
