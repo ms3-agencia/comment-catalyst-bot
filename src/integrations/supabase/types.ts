@@ -256,6 +256,8 @@ export type Database = {
           engagement_score: number | null
           hashtags: string[] | null
           id: string
+          image_prompt: string | null
+          image_url: string | null
           project_id: string
           script: string | null
           social_network: string
@@ -272,6 +274,8 @@ export type Database = {
           engagement_score?: number | null
           hashtags?: string[] | null
           id?: string
+          image_prompt?: string | null
+          image_url?: string | null
           project_id: string
           script?: string | null
           social_network: string
@@ -288,6 +292,8 @@ export type Database = {
           engagement_score?: number | null
           hashtags?: string[] | null
           id?: string
+          image_prompt?: string | null
+          image_url?: string | null
           project_id?: string
           script?: string | null
           social_network?: string
