@@ -469,6 +469,17 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const [presets, setPresets] = useState<Array<{ id: string; name: string; is_default: boolean; config: StylePreset }>>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
 
+  // ===== Export options =====
+  const [container, setContainer] = useState<Container>('webm');
+  const [codec, setCodec] = useState<CodecKey>('vp9');
+  const [quality, setQuality] = useState<QualityKey>('high');
+  const [customBitrate, setCustomBitrate] = useState<number>(6000); // kbps
+  const [resolutionScale, setResolutionScale] = useState<ResolutionScale>(1);
+  const [renderPhase, setRenderPhase] = useState<string>('');
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const renderStartRef = useRef<number>(0);
+  const [renderEta, setRenderEta] = useState<string>('');
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const rafRef = useRef<number | null>(null);
