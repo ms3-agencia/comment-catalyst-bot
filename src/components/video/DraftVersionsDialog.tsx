@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, History, RotateCcw, Trash2, Save } from 'lucide-react';
+import { Loader2, History, RotateCcw, Trash2, Save, Download, Upload } from 'lucide-react';
 import {
   listDraftVersions,
   createDraftVersion,
@@ -13,6 +13,9 @@ import {
   type EditorDraftState,
 } from '@/lib/videoEditorDraft';
 import { useToast } from '@/hooks/use-toast';
+
+const DRAFT_FILE_KIND = 'commentiq.video-editor-draft';
+const DRAFT_FILE_VERSION = 1;
 
 interface DraftVersionsDialogProps {
   open: boolean;
