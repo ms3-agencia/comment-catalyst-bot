@@ -564,8 +564,8 @@ const GenerateContent = () => {
                                   type="button"
                                   disabled={imagingId === c.id}
                                   onClick={() => generateImage(c, f)}
-                                  className="group flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-border hover:border-primary hover:bg-primary/5 transition-all disabled:opacity-50"
-                                  title={`${f.label} • ${f.w}×${f.h}`}
+                                  className="group relative flex items-center gap-2 px-3 py-2 pr-8 rounded-lg border-2 border-border hover:border-primary hover:bg-primary/5 transition-all disabled:opacity-50"
+                                  title={`${f.label} • ${f.w}×${f.h} • ${imageCreditCost(f.w, f.h)} créditos`}
                                 >
                                   <div
                                     className="rounded border-2 border-muted-foreground/40 group-hover:border-primary bg-muted"
@@ -575,6 +575,9 @@ const GenerateContent = () => {
                                     <div className="text-xs font-semibold">{f.ratio}</div>
                                     <div className="text-[10px] text-muted-foreground">{f.w}×{f.h}</div>
                                   </div>
+                                  <span className="absolute top-1 right-1 text-[9px] font-bold px-1 py-0.5 rounded bg-primary/15 text-primary">
+                                    {imageCreditCost(f.w, f.h)}c
+                                  </span>
                                 </button>
                               );
                             })}
