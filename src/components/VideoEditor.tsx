@@ -498,6 +498,12 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const renderStartRef = useRef<number>(0);
   const [renderEta, setRenderEta] = useState<string>('');
 
+  // ===== Draft autosave =====
+  const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const draftSaveTimer = useRef<number | null>(null);
+  const draftHydratingRef = useRef(true);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const rafRef = useRef<number | null>(null);
