@@ -740,6 +740,44 @@ const Admin = () => {
               </DialogContent>
             </Dialog>
 
+            {/* Add credits dialog */}
+            <Dialog open={!!creditsUser} onOpenChange={(open) => !open && setCreditsUser(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Adicionar créditos</DialogTitle>
+                  <DialogDescription>
+                    Ajuste o saldo de <strong>{creditsUser?.email}</strong>. Use valor negativo para remover créditos.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <Label>Quantidade de créditos</Label>
+                    <Input
+                      type="number"
+                      value={creditsAmount}
+                      onChange={e => setCreditsAmount(Number(e.target.value))}
+                      placeholder="100"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Descrição</Label>
+                    <Input
+                      value={creditsDescription}
+                      onChange={e => setCreditsDescription(e.target.value)}
+                      placeholder="Ajuste manual"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setCreditsUser(null)}>Cancelar</Button>
+                  <Button onClick={handleAddCredits} disabled={creditsSaving} className="glow-primary">
+                    {creditsSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Coins className="mr-2 h-4 w-4" />} Confirmar
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
             {/* Delete confirmation */}
             <AlertDialog open={!!deleteUser} onOpenChange={(open) => !open && setDeleteUser(null)}>
               <AlertDialogContent>
