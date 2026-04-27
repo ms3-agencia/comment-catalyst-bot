@@ -22,6 +22,10 @@ import { buildMixedAudioTrack } from './video/audioMixer';
 import { RenderHistoryDialog } from './video/RenderHistoryDialog';
 import { Progress } from '@/components/ui/progress';
 import { History } from 'lucide-react';
+import {
+  loadProvidersAndCosts, selectWeightedProvider, computeRenderCost, chargeRenderCredits,
+  type ProviderRow as PSRow, type ResolvedProvider, type CostMap,
+} from '@/lib/providerSelector';
 
 // =================== Tipos ===================
 type ImageEffect = 'none' | 'zoom_in' | 'zoom_out' | 'pan_left' | 'pan_right' | 'pan_up' | 'pan_down';
@@ -472,6 +476,13 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const [presets, setPresets] = useState<Array<{ id: string; name: string; is_default: boolean; config: StylePreset }>>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
 
+  // Providers + costs (weighted selection)
+  const [allProviders, setAllProviders] = useState<PSRow[]>([]);
+  const [costsMap, setCostsMap] = useState<CostMap>({});
+  const [resolvedVideo, setResolvedVideo] = useState<ResolvedProvider | null>(null);
+  const [resolvedTts, setResolvedTts] = useState<ResolvedProvider | null>(null);
+  const [resolvedMusic, setResolvedMusic] = useState<ResolvedProvider | null>(null);
+
   // ===== Export options =====
   const [container, setContainer] = useState<Container>('webm');
   const [codec, setCodec] = useState<CodecKey>('vp9');
@@ -528,32 +539,25 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     })();
   }, [open]);
 
-  // load costs + providers
+  // load costs + providers (full set, used for weighted selection of all kinds)
   useEffect(() => {
     if (!open) return;
     (async () => {
-      const { data: costs } = await supabase
-        .from('credit_action_costs')
-        .select('action_key, cost')
-        .in('action_key', ['video_render_basic', 'video_render_ai']);
-      costs?.forEach((c: any) => {
-        if (c.action_key === 'video_render_basic') setCostBasic(c.cost);
-        if (c.action_key === 'video_render_ai') setCostAi(c.cost);
-      });
+      const { providers, costs } = await loadProvidersAndCosts();
+      setAllProviders(providers);
+      setCostsMap(costs);
 
-      const { data: provs } = await supabase
-        .from('video_providers')
-        .select('kind, provider, weight, config, enabled')
-        .eq('kind', 'video_ai')
-        .eq('enabled', true)
-        .order('weight', { ascending: false });
+      // Keep legacy cost states for the existing UI labels
+      if (costs.video_render_basic != null) setCostBasic(costs.video_render_basic);
+      if (costs.video_render_ai != null) setCostAi(costs.video_render_ai);
 
-      const basics = (provs || []).filter((p: any) => p.provider === 'browser_canvas');
-      const ais = (provs || []).filter((p: any) => p.provider !== 'browser_canvas');
+      // Legacy basic/ai split (UI radio)
+      const basics = providers.filter(p => p.kind === 'video_ai' && p.provider === 'browser_canvas')
+        .map(p => ({ provider: p.provider, weight: p.weight, config: p.config }));
+      const ais = providers.filter(p => p.kind === 'video_ai' && p.provider !== 'browser_canvas')
+        .map(p => ({ provider: p.provider, weight: p.weight, config: p.config }));
       setProvidersBasic(basics);
       setProvidersAi(ais);
-
-      // default selection
       if (basics.length) {
         setGenKind('basic');
         setSelectedProvider(basics[0].provider);
@@ -564,12 +568,41 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     })();
   }, [open]);
 
-  const totalDuration = useMemo(() => scenes.reduce((s, x) => s + x.duration, 0), [scenes]);
-  const totalCost = useMemo(() => {
-    if (genKind === 'ai') return Math.max(1, scenes.length * costAi);
-    return Math.max(1, Math.ceil(totalDuration * costBasic));
-  }, [genKind, scenes.length, costAi, totalDuration, costBasic]);
+  // Re-select weighted providers whenever the pool changes or genKind toggles
+  useEffect(() => {
+    if (!allProviders.length) return;
+    const videoFilter = genKind === 'ai'
+      ? (p: PSRow) => p.provider !== 'browser_canvas'
+      : (p: PSRow) => p.provider === 'browser_canvas';
+    setResolvedVideo(selectWeightedProvider(allProviders, 'video_ai', costsMap, videoFilter));
+    setResolvedTts(selectWeightedProvider(allProviders, 'tts', costsMap, p => p.provider !== 'none'));
+    setResolvedMusic(selectWeightedProvider(allProviders, 'music', costsMap, p => p.provider !== 'none'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allProviders, costsMap, genKind]);
 
+  const totalDuration = useMemo(() => scenes.reduce((s, x) => s + x.duration, 0), [scenes]);
+
+  // narration character total (only counts scenes with narration enabled)
+  const ttsCharsTotal = useMemo(() => scenes.reduce((s, sc) => {
+    if (!sc.audio?.narrationEnabled) return s;
+    if (sc.audio.narrationProvider === 'upload') return s; // uploads don't consume TTS
+    const txt = (sc.audio.narrationText || sc.text || '').trim();
+    return s + txt.length;
+  }, 0), [scenes]);
+
+  const hasMusic = !!globalAudio.musicUrl || scenes.some(s => s.audio?.musicUrl);
+
+  const costBreakdown = useMemo(() => computeRenderCost({
+    videoProvider: resolvedVideo,
+    ttsProvider: resolvedTts,
+    musicProvider: resolvedMusic,
+    totalDurationSec: totalDuration,
+    scenesCount: scenes.length,
+    ttsCharsTotal,
+    hasMusic,
+  }), [resolvedVideo, resolvedTts, resolvedMusic, totalDuration, scenes.length, ttsCharsTotal, hasMusic]);
+
+  const totalCost = costBreakdown.total || 1;
   const balance = credits?.balance ?? 0;
   const insufficient = balance < totalCost;
   const activeProviders = genKind === 'basic' ? providersBasic : providersAi;
@@ -752,20 +785,19 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     };
 
     try {
-      const actionKey: string = 'video_render_basic';
       setRenderPhase('Cobrando créditos…');
-      const { data: cred, error: credErr } = await supabase.rpc('consume_credits', {
-        _amount: totalCost,
-        _action_key: actionKey,
-        _description: `Vídeo ${genKind} ${format.ratio} ${W}x${H} ${finalCodec} ${bitrateKbps}kbps (${Math.round(totalDuration)}s) - ${content.id}`,
-        _reference_id: content.id,
+      // Charge each component (video + tts + music) using weighted-selected providers
+      const charge = await chargeRenderCredits({
+        breakdown: costBreakdown.breakdown,
+        referenceId: content.id,
       });
-      if (credErr) throw credErr;
-      if (!(cred as any)?.success) {
-        await updateHistory({ status: 'error', message: 'Créditos insuficientes', phase: 'Cobrança' });
+      if (!charge.success) {
+        await updateHistory({ status: 'error', message: charge.error || 'Erro de cobrança', phase: 'Cobrança' });
         toast({
-          title: 'Créditos insuficientes',
-          description: `Necessário: ${totalCost}, disponível: ${(cred as any)?.balance ?? 0}`,
+          title: charge.error === 'insufficient_credits' ? 'Créditos insuficientes' : 'Erro ao cobrar créditos',
+          description: charge.error === 'insufficient_credits'
+            ? `Necessário: ${totalCost}, disponível: ${charge.finalBalance ?? balance}`
+            : (charge.error || 'Tente novamente'),
           variant: 'destructive',
         });
         setRendering(false);
@@ -1075,6 +1107,26 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
             </div>
           )}
         </div>
+
+        {/* ===== Detalhamento de créditos (provedores escolhidos por peso) ===== */}
+        {costBreakdown.breakdown.length > 0 && (
+          <div className="rounded-lg border border-border bg-background/50 p-2 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Cobrança detalhada</Label>
+              <span className="text-[10px] text-muted-foreground">selecionado por peso %</span>
+            </div>
+            {costBreakdown.breakdown.map((b, i) => (
+              <div key={i} className="flex items-center justify-between text-[11px]">
+                <span className="truncate text-muted-foreground" title={b.detail}>{b.label}</span>
+                <span className="font-medium">{b.amount} créd</span>
+              </div>
+            ))}
+            <div className="flex items-center justify-between text-xs pt-1 border-t border-border">
+              <span className="font-semibold">Total</span>
+              <span className="font-semibold">{totalCost} créd</span>
+            </div>
+          </div>
+        )}
 
         {/* ===== Opções de exportação ===== */}
         <div className="rounded-lg border border-border bg-background/50 p-2 space-y-2">

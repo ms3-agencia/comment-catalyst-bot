@@ -27,20 +27,23 @@ const KIND_META = {
   music: { label: 'Música de fundo', icon: Music, desc: 'Trilha sonora para o vídeo' },
 };
 
+type CostAction = { action_key: string; display_name: string; cost: number };
+
 export const VideoProvidersTab = () => {
   const { toast } = useToast();
   const [providers, setProviders] = useState<Provider[]>([]);
+  const [costs, setCosts] = useState<CostAction[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('video_providers')
-      .select('*')
-      .order('kind')
-      .order('display_name');
-    setProviders((data as Provider[]) || []);
+    const [{ data: provs }, { data: costRows }] = await Promise.all([
+      supabase.from('video_providers').select('*').order('kind').order('display_name'),
+      supabase.from('credit_action_costs').select('action_key, display_name, cost').order('action_key'),
+    ]);
+    setProviders((provs as Provider[]) || []);
+    setCosts((costRows as CostAction[]) || []);
     setLoading(false);
   };
 
@@ -55,6 +58,18 @@ export const VideoProvidersTab = () => {
       return;
     }
     setProviders(prev => prev.map(p => p.id === id ? { ...p, ...patch } as Provider : p));
+  };
+
+  const updateCostKey = async (provider: Provider, costKey: string) => {
+    const newConfig = { ...(provider.config || {}), cost_action_key: costKey };
+    await update(provider.id, { config: newConfig } as any);
+  };
+
+  const filterCostsForKind = (kind: Provider['kind']): CostAction[] => {
+    if (kind === 'video_ai') return costs.filter(c => c.action_key.startsWith('video_'));
+    if (kind === 'tts') return costs.filter(c => c.action_key.startsWith('tts_') || c.action_key === 'video_tts_narration');
+    if (kind === 'music') return costs.filter(c => c.action_key.startsWith('music_'));
+    return costs;
   };
 
   if (loading) {
@@ -99,38 +114,65 @@ export const VideoProvidersTab = () => {
               </Badge>
             </div>
             <div className="space-y-2">
-              {list.map(p => (
+              {list.map(p => {
+                const availCosts = filterCostsForKind(p.kind);
+                const currentCostKey = p.config?.cost_action_key || '';
+                const currentCost = costs.find(c => c.action_key === currentCostKey);
+                return (
                 <div
                   key={p.id}
-                  className="flex flex-col md:flex-row md:items-center gap-3 p-3 rounded-lg border border-border bg-background/50"
+                  className="flex flex-col gap-3 p-3 rounded-lg border border-border bg-background/50"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{p.display_name}</span>
-                      <code className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{p.provider}</code>
+                  <div className="flex flex-col md:flex-row md:items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm">{p.display_name}</span>
+                        <code className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{p.provider}</code>
+                        {currentCost && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {currentCost.cost} créd · {currentCost.action_key}
+                          </Badge>
+                        )}
+                      </div>
+                      {p.config?.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{p.config.description}</p>
+                      )}
                     </div>
-                    {p.config?.description && (
-                      <p className="text-xs text-muted-foreground mt-0.5">{p.config.description}</p>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs">Peso</Label>
+                      <Input
+                        type="number"
+                        min={0} max={100}
+                        value={p.weight}
+                        onChange={(e) => update(p.id, { weight: parseInt(e.target.value || '0', 10) })}
+                        disabled={!p.enabled || saving === p.id}
+                        className="w-20 h-8"
+                      />
+                      <Switch
+                        checked={p.enabled}
+                        onCheckedChange={(v) => update(p.id, { enabled: v })}
+                        disabled={saving === p.id}
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs">Peso</Label>
-                    <Input
-                      type="number"
-                      min={0} max={100}
-                      value={p.weight}
-                      onChange={(e) => update(p.id, { weight: parseInt(e.target.value || '0', 10) })}
-                      disabled={!p.enabled || saving === p.id}
-                      className="w-20 h-8"
-                    />
-                    <Switch
-                      checked={p.enabled}
-                      onCheckedChange={(v) => update(p.id, { enabled: v })}
+                  <div className="flex items-center gap-2 pt-2 border-t border-border">
+                    <Label className="text-xs whitespace-nowrap">Cobrança:</Label>
+                    <select
+                      value={currentCostKey}
+                      onChange={(e) => updateCostKey(p, e.target.value)}
                       disabled={saving === p.id}
-                    />
+                      className="flex-1 h-8 text-xs rounded border border-border bg-background px-2"
+                    >
+                      <option value="">— sem cobrança —</option>
+                      {availCosts.map(c => (
+                        <option key={c.action_key} value={c.action_key}>
+                          {c.display_name} ({c.cost} créd)
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              ))}
+              );})}
               {list.length === 0 && (
                 <p className="text-xs text-muted-foreground italic">Nenhum provedor cadastrado.</p>
               )}
