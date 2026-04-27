@@ -571,9 +571,21 @@ const GenerateContent = () => {
                               </a>
                             </Button>
                             <Button
+                              variant={editingId === c.id ? 'default' : 'outline'}
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => {
+                                setEditingId(editingId === c.id ? null : c.id);
+                                setEditPrompt('');
+                              }}
+                              disabled={imagingId === c.id || editLoading}
+                            >
+                              <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
+                            </Button>
+                            <Button
                               variant="outline" size="sm" className="flex-1"
                               onClick={() => generateImage(c)}
-                              disabled={imagingId === c.id}
+                              disabled={imagingId === c.id || editLoading}
                             >
                               {imagingId === c.id ? (
                                 <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Gerando...</>
@@ -582,6 +594,67 @@ const GenerateContent = () => {
                               )}
                             </Button>
                           </div>
+
+                          {/* Mini chat de edição */}
+                          {editingId === c.id && (
+                            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2 animate-fade-in">
+                              <div className="flex items-center justify-between">
+                                <p className="text-xs font-semibold flex items-center gap-1.5">
+                                  <Wand2 className="h-3.5 w-3.5 text-primary" /> Como deseja modificar?
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={() => { setEditingId(null); setEditPrompt(''); }}
+                                  className="text-muted-foreground hover:text-foreground"
+                                  disabled={editLoading}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {EDIT_SUGGESTIONS.map(s => (
+                                  <button
+                                    key={s}
+                                    type="button"
+                                    onClick={() => setEditPrompt(s)}
+                                    disabled={editLoading}
+                                    className="text-[11px] px-2 py-1 rounded-full border border-border bg-card hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+                                  >
+                                    {s}
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="flex gap-2">
+                                <Input
+                                  value={editPrompt}
+                                  onChange={(e) => setEditPrompt(e.target.value)}
+                                  placeholder="Ex: tirar o texto, mudar cor para azul..."
+                                  className="h-9 text-sm"
+                                  disabled={editLoading}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !editLoading && editPrompt.trim()) {
+                                      e.preventDefault();
+                                      editImage(c, editPrompt);
+                                    }
+                                  }}
+                                />
+                                <Button
+                                  size="sm"
+                                  onClick={() => editImage(c, editPrompt)}
+                                  disabled={editLoading || !editPrompt.trim()}
+                                >
+                                  {editLoading ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Send className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
+                              </div>
+                              <p className="text-[10px] text-muted-foreground">
+                                Cada edição consome créditos como uma nova geração.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <Button
