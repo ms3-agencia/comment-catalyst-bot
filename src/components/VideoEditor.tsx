@@ -16,6 +16,9 @@ import {
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { AudioPanel } from './video/AudioPanel';
+import { defaultSceneAudio, type SceneAudio, type GlobalAudio } from './video/audioTypes';
+import { buildMixedAudioTrack } from './video/audioMixer';
 
 // =================== Tipos ===================
 type ImageEffect = 'none' | 'zoom_in' | 'zoom_out' | 'pan_left' | 'pan_right' | 'pan_up' | 'pan_down';
@@ -43,6 +46,7 @@ export type Scene = {
   textBg: string; // 'none' | hex (with alpha as rgba)
   fontFamily: FontFamily;
   fontSize: number; // 0.5..1.5 multiplier
+  audio: SceneAudio;
 };
 
 type SourceContent = {
@@ -147,6 +151,7 @@ function buildInitialScenes(content: SourceContent): Scene[] {
     textBg: 'rgba(0,0,0,0.45)',
     fontFamily: i === 0 ? 'display' : 'sans',
     fontSize: i === 0 ? 1.2 : 1.0,
+    audio: defaultSceneAudio(),
   }));
 }
 
@@ -409,6 +414,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const [providersBasic, setProvidersBasic] = useState<ProviderRow[]>([]);
   const [providersAi, setProvidersAi] = useState<ProviderRow[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string>('browser_canvas');
+  const [globalAudio, setGlobalAudio] = useState<GlobalAudio>({ musicUrl: null, musicVolume: 0.6 });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -564,6 +570,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       id: uid(), text: 'Nova cena', imageUrl: fallbackImg, duration: 4,
       imageEffect: 'zoom_in', textEffect: 'fade', textPosition: 'center',
       textColor: '#ffffff', textBg: 'rgba(0,0,0,0.45)', fontFamily: 'sans', fontSize: 1.0,
+      audio: defaultSceneAudio(),
     }]);
     setActiveIdx(scenes.length);
   };
@@ -633,13 +640,20 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       const ctx = off.getContext('2d')!;
       const stream = (off as any).captureStream(fps) as MediaStream;
 
+      // ===== Audio mix =====
+      const audioSpecs = scenes.map(s => ({ duration: s.duration, text: s.text, audio: s.audio }));
+      const mix = await buildMixedAudioTrack(globalAudio, audioSpecs).catch(() => null);
+      if (mix?.track) stream.addTrack(mix.track);
+
       // pick best mime
       const mimes = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
       const mime = mimes.find(m => (window as any).MediaRecorder?.isTypeSupported?.(m)) || 'video/webm';
       const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000 });
       const chunks: Blob[] = [];
       recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-      const stopped = new Promise<void>(res => { recorder.onstop = () => res(); });
+      const stopped = new Promise<void>(res => {
+        recorder.onstop = async () => { await mix?.cleanup?.(); res(); };
+      });
       recorder.start(100);
 
       // ensure cache fresh
@@ -1061,6 +1075,19 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
             <><Wand2 className="h-3.5 w-3.5 mr-1" /> Gerar imagem desta cena (3 créd.)</>
           )}
         </Button>
+      </div>
+
+      {/* Áudio da cena */}
+      <div className="border-t border-border pt-3">
+        <AudioPanel
+          globalAudio={globalAudio}
+          onGlobalAudioChange={setGlobalAudio}
+          sceneAudio={activeScene.audio}
+          onSceneAudioChange={(a) => updateScene(activeIdx, { audio: a })}
+          sceneText={activeScene.text}
+          sceneDuration={activeScene.duration}
+          rendering={rendering}
+        />
       </div>
     </Card>
   ) : (

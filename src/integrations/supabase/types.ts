@@ -68,6 +68,54 @@ export type Database = {
         }
         Relationships: []
       }
+      audio_library: {
+        Row: {
+          author: string | null
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          is_active: boolean
+          kind: string
+          license: string | null
+          mood: string | null
+          preview_url: string | null
+          sort_order: number
+          title: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          author?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          is_active?: boolean
+          kind?: string
+          license?: string | null
+          mood?: string | null
+          preview_url?: string | null
+          sort_order?: number
+          title: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          author?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          is_active?: boolean
+          kind?: string
+          license?: string | null
+          mood?: string | null
+          preview_url?: string | null
+          sort_order?: number
+          title?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       branding_settings: {
         Row: {
           context: string
