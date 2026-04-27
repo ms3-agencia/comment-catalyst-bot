@@ -711,7 +711,53 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     }
   };
 
-  // ============= Render to MP4/WebM =============
+  // Generate images for ALL scenes sequentially, placing each one on the
+  // timeline as soon as it is ready. If `onlyMissing` is true, scenes that
+  // already have a custom image are skipped.
+  const generateAllSceneImages = async (onlyMissing = false) => {
+    if (!scenes.length || bulkGen.active) return;
+    const fallback = content.image_url || null;
+    const targets: number[] = [];
+    scenes.forEach((s, i) => {
+      if (!onlyMissing || !s.imageUrl || s.imageUrl === fallback) targets.push(i);
+    });
+    if (!targets.length) {
+      toast({ title: 'Nada a gerar', description: 'Todas as cenas já têm imagem personalizada.' });
+      return;
+    }
+    setBulkGen({ active: true, current: 0, total: targets.length });
+    let done = 0;
+    let failed = 0;
+    for (const idx of targets) {
+      const sc = scenes[idx];
+      if (!sc) continue;
+      setRegenIdx(idx);
+      setActiveIdx(idx);
+      try {
+        const url = await onImageRegen(idx, sc.text);
+        if (url) {
+          updateScene(idx, { imageUrl: url });
+          try { cacheRef.current.set(url, await loadImage(url)); } catch { /* ignore */ }
+          drawAt(previewProgress);
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+      done++;
+      setBulkGen({ active: true, current: done, total: targets.length });
+      refreshCredits();
+    }
+    setRegenIdx(null);
+    setBulkGen({ active: false, current: 0, total: 0 });
+    toast({
+      title: 'Imagens geradas',
+      description: `${done - failed}/${targets.length} cenas atualizadas${failed ? ` · ${failed} falha(s)` : ''}`,
+      variant: failed && failed === targets.length ? 'destructive' : 'default',
+    });
+  };
+
   const exportVideo = async () => {
     if (!scenes.length) return;
     if (insufficient) {
