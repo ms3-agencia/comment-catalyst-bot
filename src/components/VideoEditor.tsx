@@ -785,20 +785,19 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     };
 
     try {
-      const actionKey: string = 'video_render_basic';
       setRenderPhase('Cobrando créditos…');
-      const { data: cred, error: credErr } = await supabase.rpc('consume_credits', {
-        _amount: totalCost,
-        _action_key: actionKey,
-        _description: `Vídeo ${genKind} ${format.ratio} ${W}x${H} ${finalCodec} ${bitrateKbps}kbps (${Math.round(totalDuration)}s) - ${content.id}`,
-        _reference_id: content.id,
+      // Charge each component (video + tts + music) using weighted-selected providers
+      const charge = await chargeRenderCredits({
+        breakdown: costBreakdown.breakdown,
+        referenceId: content.id,
       });
-      if (credErr) throw credErr;
-      if (!(cred as any)?.success) {
-        await updateHistory({ status: 'error', message: 'Créditos insuficientes', phase: 'Cobrança' });
+      if (!charge.success) {
+        await updateHistory({ status: 'error', message: charge.error || 'Erro de cobrança', phase: 'Cobrança' });
         toast({
-          title: 'Créditos insuficientes',
-          description: `Necessário: ${totalCost}, disponível: ${(cred as any)?.balance ?? 0}`,
+          title: charge.error === 'insufficient_credits' ? 'Créditos insuficientes' : 'Erro ao cobrar créditos',
+          description: charge.error === 'insufficient_credits'
+            ? `Necessário: ${totalCost}, disponível: ${charge.finalBalance ?? balance}`
+            : (charge.error || 'Tente novamente'),
           variant: 'destructive',
         });
         setRendering(false);
