@@ -683,6 +683,75 @@ export type Database = {
         }
         Relationships: []
       }
+      video_render_history: {
+        Row: {
+          bitrate_kbps: number
+          codec: string
+          container: string
+          content_id: string | null
+          created_at: string
+          credits_spent: number
+          duration_seconds: number
+          file_size_bytes: number | null
+          format_ratio: string
+          height: number
+          id: string
+          message: string | null
+          phase: string | null
+          preset_name: string | null
+          progress: number
+          scenes_count: number
+          status: string
+          updated_at: string
+          user_id: string
+          width: number
+        }
+        Insert: {
+          bitrate_kbps: number
+          codec: string
+          container: string
+          content_id?: string | null
+          created_at?: string
+          credits_spent?: number
+          duration_seconds?: number
+          file_size_bytes?: number | null
+          format_ratio: string
+          height: number
+          id?: string
+          message?: string | null
+          phase?: string | null
+          preset_name?: string | null
+          progress?: number
+          scenes_count?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+          width: number
+        }
+        Update: {
+          bitrate_kbps?: number
+          codec?: string
+          container?: string
+          content_id?: string | null
+          created_at?: string
+          credits_spent?: number
+          duration_seconds?: number
+          file_size_bytes?: number | null
+          format_ratio?: string
+          height?: number
+          id?: string
+          message?: string | null
+          phase?: string | null
+          preset_name?: string | null
+          progress?: number
+          scenes_count?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+          width?: number
+        }
+        Relationships: []
+      }
       video_style_presets: {
         Row: {
           config: Json

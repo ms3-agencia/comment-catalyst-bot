@@ -19,6 +19,9 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { AudioPanel } from './video/AudioPanel';
 import { defaultSceneAudio, type SceneAudio, type GlobalAudio } from './video/audioTypes';
 import { buildMixedAudioTrack } from './video/audioMixer';
+import { RenderHistoryDialog } from './video/RenderHistoryDialog';
+import { Progress } from '@/components/ui/progress';
+import { History } from 'lucide-react';
 
 // =================== Tipos ===================
 type ImageEffect = 'none' | 'zoom_in' | 'zoom_out' | 'pan_left' | 'pan_right' | 'pan_up' | 'pan_down';
@@ -415,6 +418,35 @@ type Props = {
 type GenKind = 'basic' | 'ai';
 type ProviderRow = { provider: string; weight: number; config: any };
 
+type Container = 'webm' | 'mp4';
+type CodecKey = 'vp9' | 'vp8' | 'av1' | 'h264' | 'auto';
+type QualityKey = 'low' | 'medium' | 'high' | 'ultra' | 'custom';
+type ResolutionScale = 0.5 | 0.75 | 1 | 1.5;
+
+const QUALITY_BITRATES: Record<Exclude<QualityKey, 'custom'>, number> = {
+  low: 2_000,        // kbps
+  medium: 4_000,
+  high: 8_000,
+  ultra: 14_000,
+};
+
+const CODEC_MIME: Record<CodecKey, string[]> = {
+  vp9: ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp9'],
+  vp8: ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp8'],
+  av1: ['video/webm;codecs=av01,opus', 'video/webm;codecs=av01'],
+  h264: ['video/mp4;codecs=h264,aac', 'video/mp4;codecs=avc1,mp4a', 'video/mp4'],
+  auto: ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'],
+};
+
+function pickSupportedMime(codec: CodecKey, container: Container): string {
+  const candidates = container === 'mp4'
+    ? ['video/mp4;codecs=h264,aac', 'video/mp4;codecs=avc1,mp4a', 'video/mp4', ...CODEC_MIME[codec]]
+    : [...CODEC_MIME[codec], 'video/webm'];
+  for (const m of candidates) {
+    if ((window as any).MediaRecorder?.isTypeSupported?.(m)) return m;
+  }
+  return container === 'mp4' ? 'video/mp4' : 'video/webm';
+}
 export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => {
   const { toast } = useToast();
   const { credits, refresh: refreshCredits } = useCredits();
@@ -439,6 +471,17 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const [globalAudio, setGlobalAudio] = useState<GlobalAudio>({ musicUrl: null, musicVolume: 0.6 });
   const [presets, setPresets] = useState<Array<{ id: string; name: string; is_default: boolean; config: StylePreset }>>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
+
+  // ===== Export options =====
+  const [container, setContainer] = useState<Container>('webm');
+  const [codec, setCodec] = useState<CodecKey>('vp9');
+  const [quality, setQuality] = useState<QualityKey>('high');
+  const [customBitrate, setCustomBitrate] = useState<number>(6000); // kbps
+  const [resolutionScale, setResolutionScale] = useState<ResolutionScale>(1);
+  const [renderPhase, setRenderPhase] = useState<string>('');
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const renderStartRef = useRef<number>(0);
+  const [renderEta, setRenderEta] = useState<string>('');
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -655,17 +698,71 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     }
     setRendering(true);
     setRenderProgress(0);
+    setRenderPhase('Iniciando…');
+    setRenderEta('');
+    renderStartRef.current = performance.now();
+
+    // Compute output settings
+    const W = Math.round(format.w * resolutionScale);
+    const H = Math.round(format.h * resolutionScale);
+    const bitrateKbps = quality === 'custom' ? customBitrate : QUALITY_BITRATES[quality];
+    const mime = pickSupportedMime(codec, container);
+    const finalContainer: Container = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
+    const finalCodec = mime.includes('vp9') ? 'vp9'
+      : mime.includes('vp8') ? 'vp8'
+      : mime.includes('av01') ? 'av1'
+      : mime.includes('h264') || mime.includes('avc1') ? 'h264'
+      : codec;
+    const presetName = presets.find(p => p.id === selectedPresetId)?.name || null;
+
+    // Create history record
+    let historyId: string | null = null;
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user?.id;
+      if (uid) {
+        const { data: rec } = await supabase
+          .from('video_render_history' as any)
+          .insert({
+            user_id: uid,
+            content_id: content.id,
+            format_ratio: format.ratio,
+            width: W,
+            height: H,
+            codec: finalCodec,
+            container: finalContainer,
+            bitrate_kbps: bitrateKbps,
+            duration_seconds: totalDuration,
+            scenes_count: scenes.length,
+            credits_spent: 0,
+            status: 'rendering',
+            progress: 0,
+            phase: 'Iniciando',
+            preset_name: presetName,
+          } as any)
+          .select('id')
+          .single();
+        historyId = (rec as any)?.id || null;
+      }
+    } catch {}
+
+    const updateHistory = async (patch: any) => {
+      if (!historyId) return;
+      await supabase.from('video_render_history' as any).update(patch as any).eq('id', historyId);
+    };
+
     try {
       const actionKey: string = 'video_render_basic';
-      // consume credits server-side
+      setRenderPhase('Cobrando créditos…');
       const { data: cred, error: credErr } = await supabase.rpc('consume_credits', {
         _amount: totalCost,
         _action_key: actionKey,
-        _description: `Vídeo ${genKind} (${Math.round(totalDuration)}s, ${selectedProvider}) - ${content.id}`,
+        _description: `Vídeo ${genKind} ${format.ratio} ${W}x${H} ${finalCodec} ${bitrateKbps}kbps (${Math.round(totalDuration)}s) - ${content.id}`,
         _reference_id: content.id,
       });
       if (credErr) throw credErr;
       if (!(cred as any)?.success) {
+        await updateHistory({ status: 'error', message: 'Créditos insuficientes', phase: 'Cobrança' });
         toast({
           title: 'Créditos insuficientes',
           description: `Necessário: ${totalCost}, disponível: ${(cred as any)?.balance ?? 0}`,
@@ -674,23 +771,29 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         setRendering(false);
         return;
       }
+      await updateHistory({ credits_spent: totalCost });
 
-      const W = format.w, H = format.h;
+      setRenderPhase('Carregando imagens…');
+      await updateHistory({ phase: 'Carregando imagens', progress: 2 });
+      cacheRef.current = await preloadAll(scenes);
+
+      setRenderPhase('Preparando áudio…');
+      await updateHistory({ phase: 'Preparando áudio', progress: 5 });
+
       const fps = 30;
       const off = document.createElement('canvas');
       off.width = W; off.height = H;
       const ctx = off.getContext('2d')!;
       const stream = (off as any).captureStream(fps) as MediaStream;
 
-      // ===== Audio mix =====
       const audioSpecs = scenes.map(s => ({ duration: s.duration, text: s.text, audio: s.audio }));
       const mix = await buildMixedAudioTrack(globalAudio, audioSpecs).catch(() => null);
       if (mix?.track) stream.addTrack(mix.track);
 
-      // pick best mime
-      const mimes = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
-      const mime = mimes.find(m => (window as any).MediaRecorder?.isTypeSupported?.(m)) || 'video/webm';
-      const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000 });
+      const recorder = new MediaRecorder(stream, {
+        mimeType: mime,
+        videoBitsPerSecond: bitrateKbps * 1000,
+      });
       const chunks: Blob[] = [];
       recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
       const stopped = new Promise<void>(res => {
@@ -698,17 +801,14 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       });
       recorder.start(100);
 
-      // ensure cache fresh
-      cacheRef.current = await preloadAll(scenes);
-
+      setRenderPhase('Renderizando frames…');
       const totalFrames = Math.ceil(totalDuration * fps);
       const frameMs = 1000 / fps;
-      let acc = 0;
       let sceneStart = 0;
       let sIdx = 0;
+      let lastHistoryUpdate = 0;
       for (let f = 0; f < totalFrames; f++) {
         const tSec = f / fps;
-        // find scene
         while (sIdx < scenes.length && tSec >= sceneStart + scenes[sIdx].duration) {
           sceneStart += scenes[sIdx].duration;
           sIdx++;
@@ -716,32 +816,59 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         const scene = scenes[Math.min(sIdx, scenes.length - 1)];
         const inSceneT = (tSec - sceneStart) / scene.duration;
         drawScene(ctx, scene, cacheRef.current, W, H, Math.max(0, Math.min(1, inSceneT)));
-        // pace recorder roughly real-time so MediaRecorder samples at fps
         await new Promise(r => setTimeout(r, frameMs * 0.5));
-        if (f % 5 === 0) setRenderProgress(Math.round((f / totalFrames) * 100));
-        acc++;
+        if (f % 5 === 0) {
+          const pct = Math.round((f / totalFrames) * 95);
+          setRenderProgress(pct);
+          // ETA
+          const elapsed = (performance.now() - renderStartRef.current) / 1000;
+          if (f > 10) {
+            const remaining = Math.max(0, (elapsed / f) * (totalFrames - f));
+            setRenderEta(`~${Math.ceil(remaining)}s restantes`);
+          }
+          // Persist history every ~3s
+          const now = performance.now();
+          if (historyId && now - lastHistoryUpdate > 3000) {
+            lastHistoryUpdate = now;
+            updateHistory({ progress: pct, phase: `Renderizando cena ${Math.min(sIdx + 1, scenes.length)}/${scenes.length}` });
+          }
+        }
       }
-      setRenderProgress(100);
+      setRenderPhase('Finalizando arquivo…');
+      setRenderProgress(98);
+      await updateHistory({ progress: 98, phase: 'Finalizando arquivo' });
       recorder.stop();
       await stopped;
 
-      const blob = new Blob(chunks, { type: mime.startsWith('video/mp4') ? 'video/mp4' : 'video/webm' });
-      const ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
+      const blob = new Blob(chunks, { type: mime });
+      const ext = finalContainer;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `video-${content.id.slice(0, 6)}-${format.ratio.replace(':', 'x')}.${ext}`;
+      a.download = `video-${content.id.slice(0, 6)}-${format.ratio.replace(':', 'x')}-${W}x${H}.${ext}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
 
+      setRenderProgress(100);
+      setRenderPhase('Concluído');
+      await updateHistory({
+        status: 'done',
+        progress: 100,
+        phase: 'Concluído',
+        file_size_bytes: blob.size,
+        message: `Arquivo .${ext} (${(blob.size / (1024 * 1024)).toFixed(2)} MB)`,
+      });
+
       refreshCredits();
-      toast({ title: 'Vídeo gerado!', description: `Baixe seu vídeo .${ext}` });
+      toast({ title: 'Vídeo gerado!', description: `${ext.toUpperCase()} • ${(blob.size / (1024 * 1024)).toFixed(1)} MB` });
     } catch (e: any) {
+      await updateHistory({ status: 'error', message: e?.message || 'Erro desconhecido', phase: 'Erro' });
       toast({ title: 'Erro ao gerar vídeo', description: e.message || 'Tente novamente', variant: 'destructive' });
     } finally {
       setRendering(false);
+      setRenderEta('');
     }
   };
 
@@ -949,6 +1076,109 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           )}
         </div>
 
+        {/* ===== Opções de exportação ===== */}
+        <div className="rounded-lg border border-border bg-background/50 p-2 space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Exportação</Label>
+            <Button variant="ghost" size="sm" className="h-7 text-[11px]" onClick={() => setHistoryOpen(true)}>
+              <History className="h-3 w-3 mr-1" /> Histórico
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Formato</Label>
+              <select
+                value={container}
+                onChange={(e) => {
+                  const v = e.target.value as Container;
+                  setContainer(v);
+                  if (v === 'mp4') setCodec('h264');
+                  else if (codec === 'h264') setCodec('vp9');
+                }}
+                disabled={rendering}
+                className="w-full mt-1 h-8 text-xs rounded border border-border bg-background px-2"
+              >
+                <option value="webm">WebM</option>
+                <option value="mp4">MP4 (se suportado)</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Codec</Label>
+              <select
+                value={codec}
+                onChange={(e) => setCodec(e.target.value as CodecKey)}
+                disabled={rendering}
+                className="w-full mt-1 h-8 text-xs rounded border border-border bg-background px-2"
+              >
+                {container === 'webm' ? (
+                  <>
+                    <option value="vp9">VP9 (recomendado)</option>
+                    <option value="vp8">VP8 (compat.)</option>
+                    <option value="av1">AV1 (moderno)</option>
+                    <option value="auto">Auto</option>
+                  </>
+                ) : (
+                  <option value="h264">H.264</option>
+                )}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Qualidade</Label>
+              <select
+                value={quality}
+                onChange={(e) => setQuality(e.target.value as QualityKey)}
+                disabled={rendering}
+                className="w-full mt-1 h-8 text-xs rounded border border-border bg-background px-2"
+              >
+                <option value="low">Baixa (2 Mbps)</option>
+                <option value="medium">Média (4 Mbps)</option>
+                <option value="high">Alta (8 Mbps)</option>
+                <option value="ultra">Ultra (14 Mbps)</option>
+                <option value="custom">Personalizado</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Resolução</Label>
+              <select
+                value={resolutionScale}
+                onChange={(e) => setResolutionScale(parseFloat(e.target.value) as ResolutionScale)}
+                disabled={rendering}
+                className="w-full mt-1 h-8 text-xs rounded border border-border bg-background px-2"
+              >
+                <option value={0.5}>50% ({Math.round(format.w * 0.5)}×{Math.round(format.h * 0.5)})</option>
+                <option value={0.75}>75% ({Math.round(format.w * 0.75)}×{Math.round(format.h * 0.75)})</option>
+                <option value={1}>100% ({format.w}×{format.h})</option>
+                <option value={1.5}>150% ({Math.round(format.w * 1.5)}×{Math.round(format.h * 1.5)})</option>
+              </select>
+            </div>
+          </div>
+
+          {quality === 'custom' && (
+            <div>
+              <Label className="text-[10px] text-muted-foreground">Bitrate (kbps): {customBitrate}</Label>
+              <input
+                type="range"
+                min={500}
+                max={20000}
+                step={500}
+                value={customBitrate}
+                onChange={(e) => setCustomBitrate(parseInt(e.target.value))}
+                disabled={rendering}
+                className="w-full mt-1"
+              />
+            </div>
+          )}
+
+          <p className="text-[10px] text-muted-foreground">
+            {container.toUpperCase()} · {Math.round(format.w * resolutionScale)}×{Math.round(format.h * resolutionScale)} ·{' '}
+            {quality === 'custom' ? customBitrate : QUALITY_BITRATES[quality]} kbps
+          </p>
+        </div>
+
         <Button
           className="w-full h-11"
           onClick={exportVideo}
@@ -962,6 +1192,17 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
             <><Download className="h-4 w-4 mr-2" /> <span className="truncate">Gerar e baixar ({totalCost} créd.)</span></>
           )}
         </Button>
+
+        {rendering && (
+          <div className="space-y-1">
+            <Progress value={renderProgress} />
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+              <span className="truncate">{renderPhase}</span>
+              <span>{renderEta}</span>
+            </div>
+          </div>
+        )}
+
         {totalDuration > 60 && (
           <p className="text-xs text-destructive text-center">
             Duração máxima: 60s. Atual: {totalDuration}s. Reduza a duração das cenas.
@@ -1216,6 +1457,13 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           </div>
         )}
       </div>
+
+      <RenderHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        contentId={content.id}
+        activeRender={rendering ? { progress: renderProgress, phase: renderPhase, eta: renderEta } : null}
+      />
     </div>
   );
 };
