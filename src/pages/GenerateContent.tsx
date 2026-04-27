@@ -59,6 +59,53 @@ const TYPE_META: Record<string, { label: string; icon: any }> = {
   idea_pin: { label: 'Idea Pin', icon: Pin },
 };
 
+// Image formats per network+type. First option = recommended/default.
+type ImgFormat = { ratio: string; w: number; h: number; label: string };
+const FORMATS: Record<string, ImgFormat[]> = {
+  'instagram:post': [
+    { ratio: '4:5', w: 1080, h: 1350, label: 'Vertical (recomendado)' },
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+  ],
+  'instagram:carrossel': [
+    { ratio: '4:5', w: 1080, h: 1350, label: 'Vertical (recomendado)' },
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+  ],
+  'instagram:reels': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'instagram:story': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'tiktok:video': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'youtube:video': [{ ratio: '16:9', w: 1920, h: 1080, label: 'Horizontal HD' }],
+  'youtube:shorts': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'facebook:post': [
+    { ratio: '1.91:1', w: 1200, h: 630, label: 'Link/Imagem' },
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+  ],
+  'facebook:video': [
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+    { ratio: '16:9', w: 1920, h: 1080, label: 'Horizontal' },
+  ],
+  'facebook:reels': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'linkedin:post': [
+    { ratio: '1.91:1', w: 1200, h: 627, label: 'Horizontal' },
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+  ],
+  'linkedin:carrossel': [{ ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' }],
+  'linkedin:video': [
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+    { ratio: '16:9', w: 1920, h: 1080, label: 'Horizontal' },
+  ],
+  'x:post': [{ ratio: '16:9', w: 1600, h: 900, label: 'Horizontal' }],
+  'x:thread': [{ ratio: '16:9', w: 1600, h: 900, label: 'Horizontal' }],
+  'pinterest:pin': [{ ratio: '2:3', w: 1000, h: 1500, label: 'Vertical' }],
+  'pinterest:idea_pin': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'threads:post': [{ ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' }],
+  'threads:thread': [{ ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' }],
+};
+
+const getFormats = (net: string | null, type: string | null): ImgFormat[] => {
+  if (!net || !type) return [{ ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' }];
+  return FORMATS[`${net}:${type}`] || [{ ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' }];
+};
+
 type Step = 'project' | 'network' | 'type' | 'quantity' | 'results';
 
 const GenerateContent = () => {
