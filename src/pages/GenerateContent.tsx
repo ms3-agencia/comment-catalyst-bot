@@ -136,6 +136,40 @@ const GenerateContent = () => {
   const [historyNetwork, setHistoryNetwork] = useState<string | null>(null);
   const [imagingId, setImagingId] = useState<string | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<ImgFormat | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editPrompt, setEditPrompt] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+
+  const EDIT_SUGGESTIONS = [
+    'Arrumar a escrita',
+    'Tirar o texto',
+    'Cores mais vibrantes',
+    'Estilo mais minimalista',
+    'Adicionar fundo desfocado',
+    'Tom mais profissional',
+  ];
+
+  const editImage = async (content: GeneratedContent, prompt: string) => {
+    if (!prompt.trim()) return;
+    setEditLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('edit-content-image', {
+        body: { content_id: content.id, edit_prompt: prompt.trim() },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const updated = { image_url: (data as any).image_url, image_prompt: (data as any).image_prompt };
+      setResults(prev => prev.map(r => r.id === content.id ? { ...r, ...updated } : r));
+      setHistory(prev => prev.map(r => r.id === content.id ? { ...r, ...updated } : r));
+      refreshCredits();
+      setEditPrompt('');
+      toast({ title: 'Imagem editada!', description: 'Modificação aplicada com sucesso.' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao editar', description: e.message || 'Tente novamente', variant: 'destructive' });
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   const loadHistory = async (projectId: string) => {
     setHistoryLoading(true);
