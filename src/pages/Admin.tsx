@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2, CreditCard, Package, Coins, Wallet, Plus, Pencil, Palette } from 'lucide-react';
+import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2, CreditCard, Package, Coins, Wallet, Plus, Pencil, Palette, Clapperboard } from 'lucide-react';
 import { BrandingTab } from '@/components/admin/BrandingTab';
+import { VideoProvidersTab } from '@/components/admin/VideoProvidersTab';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
