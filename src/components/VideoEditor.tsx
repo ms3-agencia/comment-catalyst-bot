@@ -385,9 +385,12 @@ type Props = {
   onImageRegen: (sceneIdx: number, prompt: string) => Promise<string | null>;
 };
 
+type GenKind = 'basic' | 'ai';
+type ProviderRow = { provider: string; weight: number; config: any };
+
 export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => {
   const { toast } = useToast();
-  const { refresh: refreshCredits } = useCredits();
+  const { credits, refresh: refreshCredits } = useCredits();
   const isMobile = useIsMobile();
 
   const [format, setFormat] = useState<VideoFormat>(VIDEO_FORMATS[0]);
@@ -397,9 +400,15 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const [previewProgress, setPreviewProgress] = useState(0); // 0..total
   const [rendering, setRendering] = useState(false);
   const [renderProgress, setRenderProgress] = useState(0);
-  const [costPerSecond, setCostPerSecond] = useState<number>(1);
+  const [costBasic, setCostBasic] = useState<number>(1); // per second
+  const [costAi, setCostAi] = useState<number>(50); // per scene
   const [regenIdx, setRegenIdx] = useState<number | null>(null);
   const [mobileTab, setMobileTab] = useState<'preview' | 'edit'>('preview');
+
+  const [genKind, setGenKind] = useState<GenKind>('basic');
+  const [providersBasic, setProvidersBasic] = useState<ProviderRow[]>([]);
+  const [providersAi, setProvidersAi] = useState<ProviderRow[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<string>('browser_canvas');
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -428,20 +437,51 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     }
   }, [open, content]);
 
-  // load cost from db
+  // load costs + providers
   useEffect(() => {
+    if (!open) return;
     (async () => {
-      const { data } = await supabase
+      const { data: costs } = await supabase
         .from('credit_action_costs')
-        .select('cost')
-        .eq('action_key', 'video_render_basic')
-        .maybeSingle();
-      if (data?.cost) setCostPerSecond(data.cost);
+        .select('action_key, cost')
+        .in('action_key', ['video_render_basic', 'video_render_ai']);
+      costs?.forEach((c: any) => {
+        if (c.action_key === 'video_render_basic') setCostBasic(c.cost);
+        if (c.action_key === 'video_render_ai') setCostAi(c.cost);
+      });
+
+      const { data: provs } = await supabase
+        .from('video_providers')
+        .select('kind, provider, weight, config, enabled')
+        .eq('kind', 'video_ai')
+        .eq('enabled', true)
+        .order('weight', { ascending: false });
+
+      const basics = (provs || []).filter((p: any) => p.provider === 'browser_canvas');
+      const ais = (provs || []).filter((p: any) => p.provider !== 'browser_canvas');
+      setProvidersBasic(basics);
+      setProvidersAi(ais);
+
+      // default selection
+      if (basics.length) {
+        setGenKind('basic');
+        setSelectedProvider(basics[0].provider);
+      } else if (ais.length) {
+        setGenKind('ai');
+        setSelectedProvider(ais[0].provider);
+      }
     })();
   }, [open]);
 
   const totalDuration = useMemo(() => scenes.reduce((s, x) => s + x.duration, 0), [scenes]);
-  const totalCost = Math.max(1, Math.ceil(totalDuration * costPerSecond));
+  const totalCost = useMemo(() => {
+    if (genKind === 'ai') return Math.max(1, scenes.length * costAi);
+    return Math.max(1, Math.ceil(totalDuration * costBasic));
+  }, [genKind, scenes.length, costAi, totalDuration, costBasic]);
+
+  const balance = credits?.balance ?? 0;
+  const insufficient = balance < totalCost;
+  const activeProviders = genKind === 'basic' ? providersBasic : providersAi;
 
   // preload images on scene change
   useEffect(() => {
