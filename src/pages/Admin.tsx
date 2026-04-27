@@ -11,6 +11,8 @@ import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, E
 import { BrandingTab } from '@/components/admin/BrandingTab';
 import { VideoProvidersTab } from '@/components/admin/VideoProvidersTab';
 import { VideoStylePresetsTab } from '@/components/admin/VideoStylePresetsTab';
+import { IntegrationsTab } from '@/components/admin/IntegrationsTab';
+import { Plug } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
