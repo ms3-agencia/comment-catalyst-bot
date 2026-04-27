@@ -80,6 +80,62 @@ export function DraftVersionsDialog({
     }
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleExport = () => {
+    const payload = {
+      kind: DRAFT_FILE_KIND,
+      fileVersion: DRAFT_FILE_VERSION,
+      contentId,
+      exportedAt: new Date().toISOString(),
+      state: currentState,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `editor-draft-${contentId.slice(0, 6)}-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    toast({ title: 'Rascunho exportado', description: 'Salve o arquivo .json e importe em outro dispositivo.' });
+  };
+
+  const handleImportClick = () => fileInputRef.current?.click();
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const state: EditorDraftState | undefined =
+        parsed?.kind === DRAFT_FILE_KIND ? parsed.state : (parsed?.scenes ? parsed : undefined);
+      if (!state || !Array.isArray((state as any).scenes)) {
+        throw new Error('Arquivo inválido: estrutura não reconhecida.');
+      }
+      if (parsed?.contentId && parsed.contentId !== contentId) {
+        const ok = window.confirm(
+          'Este rascunho foi exportado de outro conteúdo. Deseja importar mesmo assim? As cenas serão aplicadas ao conteúdo atual.'
+        );
+        if (!ok) return;
+      }
+      onRestore(state);
+      // Also keep an automatic version checkpoint of the import.
+      await createDraftVersion(contentId, state, `Importado ${new Date().toLocaleString()}`).catch(() => {});
+      toast({ title: 'Rascunho importado', description: 'Edição carregada e salva como nova versão.' });
+      onOpenChange(false);
+    } catch (err: any) {
+      toast({
+        title: 'Falha ao importar',
+        description: err?.message || 'Arquivo .json inválido.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
