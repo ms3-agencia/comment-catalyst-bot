@@ -14,12 +14,22 @@ interface Body {
 }
 
 const FORMAT_HINTS: Record<string, string> = {
-  "9:16": "vertical 9:16 portrait composition (1080x1920)",
-  "1:1": "square 1:1 composition (1080x1080)",
-  "4:5": "vertical 4:5 portrait composition (1080x1350)",
-  "16:9": "horizontal 16:9 landscape composition (1920x1080)",
-  "2:3": "vertical 2:3 portrait composition (1000x1500)",
-  "1.91:1": "horizontal 1.91:1 landscape composition (1200x630)",
+  "9:16": "STRICT vertical 9:16 portrait aspect ratio (taller than wide), target 1080x1920 px",
+  "1:1": "STRICT square 1:1 aspect ratio (equal width and height), target 1080x1080 px",
+  "4:5": "STRICT vertical 4:5 portrait aspect ratio (taller than wide), target 1080x1350 px",
+  "16:9": "STRICT horizontal 16:9 landscape aspect ratio (wider than tall), target 1920x1080 px",
+  "2:3": "STRICT vertical 2:3 portrait aspect ratio (taller than wide), target 1000x1500 px",
+  "1.91:1": "STRICT horizontal 1.91:1 landscape aspect ratio (wider than tall), target 1200x630 px",
+};
+
+// Map our ratio strings to Gemini's supported aspect_ratio enum values
+const GEMINI_ASPECT: Record<string, string> = {
+  "1:1": "1:1",
+  "9:16": "9:16",
+  "16:9": "16:9",
+  "4:5": "4:5",
+  "2:3": "3:4",      // closest supported
+  "1.91:1": "16:9",  // closest supported
 };
 
 Deno.serve(async (req) => {
