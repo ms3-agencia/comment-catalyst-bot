@@ -114,38 +114,65 @@ export const VideoProvidersTab = () => {
               </Badge>
             </div>
             <div className="space-y-2">
-              {list.map(p => (
+              {list.map(p => {
+                const availCosts = filterCostsForKind(p.kind);
+                const currentCostKey = p.config?.cost_action_key || '';
+                const currentCost = costs.find(c => c.action_key === currentCostKey);
+                return (
                 <div
                   key={p.id}
-                  className="flex flex-col md:flex-row md:items-center gap-3 p-3 rounded-lg border border-border bg-background/50"
+                  className="flex flex-col gap-3 p-3 rounded-lg border border-border bg-background/50"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{p.display_name}</span>
-                      <code className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{p.provider}</code>
+                  <div className="flex flex-col md:flex-row md:items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm">{p.display_name}</span>
+                        <code className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{p.provider}</code>
+                        {currentCost && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {currentCost.cost} créd · {currentCost.action_key}
+                          </Badge>
+                        )}
+                      </div>
+                      {p.config?.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{p.config.description}</p>
+                      )}
                     </div>
-                    {p.config?.description && (
-                      <p className="text-xs text-muted-foreground mt-0.5">{p.config.description}</p>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs">Peso</Label>
+                      <Input
+                        type="number"
+                        min={0} max={100}
+                        value={p.weight}
+                        onChange={(e) => update(p.id, { weight: parseInt(e.target.value || '0', 10) })}
+                        disabled={!p.enabled || saving === p.id}
+                        className="w-20 h-8"
+                      />
+                      <Switch
+                        checked={p.enabled}
+                        onCheckedChange={(v) => update(p.id, { enabled: v })}
+                        disabled={saving === p.id}
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs">Peso</Label>
-                    <Input
-                      type="number"
-                      min={0} max={100}
-                      value={p.weight}
-                      onChange={(e) => update(p.id, { weight: parseInt(e.target.value || '0', 10) })}
-                      disabled={!p.enabled || saving === p.id}
-                      className="w-20 h-8"
-                    />
-                    <Switch
-                      checked={p.enabled}
-                      onCheckedChange={(v) => update(p.id, { enabled: v })}
+                  <div className="flex items-center gap-2 pt-2 border-t border-border">
+                    <Label className="text-xs whitespace-nowrap">Cobrança:</Label>
+                    <select
+                      value={currentCostKey}
+                      onChange={(e) => updateCostKey(p, e.target.value)}
                       disabled={saving === p.id}
-                    />
+                      className="flex-1 h-8 text-xs rounded border border-border bg-background px-2"
+                    >
+                      <option value="">— sem cobrança —</option>
+                      {availCosts.map(c => (
+                        <option key={c.action_key} value={c.action_key}>
+                          {c.display_name} ({c.cost} créd)
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              ))}
+              );})}
               {list.length === 0 && (
                 <p className="text-xs text-muted-foreground italic">Nenhum provedor cadastrado.</p>
               )}
