@@ -451,6 +451,59 @@ const GenerateContent = () => {
                         <p className="mt-2 text-foreground/90">{c.visual_idea}</p>
                       </details>
                     )}
+                    {/* AI Image */}
+                    <div className="border-t border-border pt-3 space-y-2">
+                      {c.image_url ? (
+                        <div className="space-y-2">
+                          <div className="relative rounded-lg overflow-hidden border border-border bg-muted">
+                            <img
+                              src={c.image_url}
+                              alt={c.title || 'Imagem gerada'}
+                              className="w-full h-auto object-cover"
+                              loading="lazy"
+                            />
+                          </div>
+                          {c.image_prompt && (
+                            <details className="text-xs">
+                              <summary className="cursor-pointer text-muted-foreground flex items-center gap-1">
+                                <Wand2 className="h-3 w-3" /> Prompt da imagem
+                              </summary>
+                              <p className="mt-1 p-2 rounded bg-muted/50 text-foreground/80 whitespace-pre-wrap">{c.image_prompt}</p>
+                            </details>
+                          )}
+                          <div className="flex gap-2">
+                            <Button asChild variant="outline" size="sm" className="flex-1">
+                              <a href={c.image_url} target="_blank" rel="noopener noreferrer" download>
+                                <Download className="h-3.5 w-3.5 mr-1" /> Baixar
+                              </a>
+                            </Button>
+                            <Button
+                              variant="outline" size="sm" className="flex-1"
+                              onClick={() => generateImage(c)}
+                              disabled={imagingId === c.id}
+                            >
+                              {imagingId === c.id ? (
+                                <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Gerando...</>
+                              ) : (
+                                <><RefreshCw className="h-3.5 w-3.5 mr-1" /> Refazer</>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          variant="default" size="sm" className="w-full bg-gradient-to-r from-primary to-accent"
+                          onClick={() => generateImage(c)}
+                          disabled={imagingId === c.id}
+                        >
+                          {imagingId === c.id ? (
+                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gerando imagem...</>
+                          ) : (
+                            <><Wand2 className="h-4 w-4 mr-2" /> Gerar imagem com IA (3 créditos)</>
+                          )}
+                        </Button>
+                      )}
+                    </div>
                     <Button variant="outline" size="sm" onClick={() => copyContent(c)} className="w-full">
                       {copiedId === c.id ? <><Check className="h-4 w-4 mr-1" /> Copiado</> : <><Copy className="h-4 w-4 mr-1" /> Copiar</>}
                     </Button>
