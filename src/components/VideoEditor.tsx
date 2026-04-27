@@ -1752,9 +1752,21 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
               Edite cenas, efeitos e textos. Renderização local no navegador.
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} disabled={rendering} className="shrink-0">
-            <X className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground" title="Suas edições são salvas automaticamente">
+              {draftStatus === 'saving' && <><CloudUpload className="h-3.5 w-3.5 animate-pulse" /> Salvando…</>}
+              {draftStatus === 'saved' && <><Check className="h-3.5 w-3.5 text-green-500" /> Salvo</>}
+              {draftStatus === 'error' && <span className="text-destructive">Erro ao salvar</span>}
+              {draftStatus === 'idle' && draftLoaded && <span className="opacity-60">Pronto</span>}
+            </div>
+            <Button variant="ghost" size="sm" onClick={resetDraft} disabled={rendering} className="hidden sm:flex gap-1.5" title="Reiniciar edição (apaga rascunho)">
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">Reiniciar</span>
+            </Button>
+            <Button variant="ghost" size="icon" onClick={onClose} disabled={rendering}>
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
 
         {/* Mobile: tabs. Desktop: side-by-side */}
