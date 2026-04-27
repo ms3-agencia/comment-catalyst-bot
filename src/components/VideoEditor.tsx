@@ -437,6 +437,8 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const [providersAi, setProvidersAi] = useState<ProviderRow[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string>('browser_canvas');
   const [globalAudio, setGlobalAudio] = useState<GlobalAudio>({ musicUrl: null, musicVolume: 0.6 });
+  const [presets, setPresets] = useState<Array<{ id: string; name: string; is_default: boolean; config: StylePreset }>>([]);
+  const [selectedPresetId, setSelectedPresetId] = useState<string>('');
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
