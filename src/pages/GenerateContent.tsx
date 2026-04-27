@@ -550,48 +550,19 @@ const GenerateContent = () => {
                           </div>
                         </div>
                       ) : (
-                        <div className="space-y-2">
-                          <div className="text-xs text-muted-foreground">Escolha o formato:</div>
-                          <div className="flex flex-wrap gap-2">
-                            {getFormats(c.social_network, c.content_type).map(f => {
-                              const ratio = f.w / f.h;
-                              const maxBox = 36;
-                              const bw = ratio >= 1 ? maxBox : Math.round(maxBox * ratio);
-                              const bh = ratio >= 1 ? Math.round(maxBox / ratio) : maxBox;
-                              return (
-                                <button
-                                  key={f.ratio}
-                                  type="button"
-                                  disabled={imagingId === c.id}
-                                  onClick={() => generateImage(c, f)}
-                                  className="group relative flex items-center gap-2 px-3 py-2 pr-8 rounded-lg border-2 border-border hover:border-primary hover:bg-primary/5 transition-all disabled:opacity-50"
-                                  title={`${f.label} • ${f.w}×${f.h} • ${imageCreditCost(f.w, f.h)} créditos`}
-                                >
-                                  <div
-                                    className="rounded border-2 border-muted-foreground/40 group-hover:border-primary bg-muted"
-                                    style={{ width: bw, height: bh }}
-                                  />
-                                  <div className="text-left">
-                                    <div className="text-xs font-semibold">{f.ratio}</div>
-                                    <div className="text-[10px] text-muted-foreground">{f.w}×{f.h}</div>
-                                  </div>
-                                  <span className="absolute top-1 right-1 text-[9px] font-bold px-1 py-0.5 rounded bg-primary/15 text-primary">
-                                    {imageCreditCost(f.w, f.h)}c
-                                  </span>
-                                </button>
-                              );
-                            })}
-                          </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => generateImage(c)}
+                          disabled={imagingId === c.id}
+                        >
                           {imagingId === c.id ? (
-                            <div className="flex items-center gap-2 text-xs text-primary pt-1">
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Gerando imagem...
-                            </div>
+                            <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Gerando imagem...</>
                           ) : (
-                            <div className="text-[11px] text-muted-foreground">
-                              <Wand2 className="h-3 w-3 inline mr-1" /> Clique no formato para gerar (3 créditos)
-                            </div>
+                            <><Wand2 className="h-3.5 w-3.5 mr-1" /> Gerar imagem</>
                           )}
-                        </div>
+                        </Button>
                       )}
                     </div>
                     <Button variant="outline" size="sm" onClick={() => copyContent(c)} className="w-full">
