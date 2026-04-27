@@ -1855,6 +1855,14 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         contentId={content.id}
         activeRender={rendering ? { progress: renderProgress, phase: renderPhase, eta: renderEta } : null}
       />
+
+      <DraftVersionsDialog
+        open={versionsOpen}
+        onOpenChange={setVersionsOpen}
+        contentId={content.id}
+        currentState={currentDraftState()}
+        onRestore={(state) => applyDraftState(state)}
+      />
     </div>
   );
 };
