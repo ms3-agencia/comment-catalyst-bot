@@ -151,6 +151,7 @@ function buildInitialScenes(content: SourceContent): Scene[] {
     textBg: 'rgba(0,0,0,0.45)',
     fontFamily: i === 0 ? 'display' : 'sans',
     fontSize: i === 0 ? 1.2 : 1.0,
+    audio: defaultSceneAudio(),
   }));
 }
 
