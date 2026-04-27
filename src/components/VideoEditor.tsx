@@ -795,13 +795,77 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           </button>
         </div>
 
+        {/* Tipo de geração + provedor */}
+        <div className="rounded-lg border border-border bg-background/50 p-2 space-y-2">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                setGenKind('basic');
+                if (providersBasic[0]) setSelectedProvider(providersBasic[0].provider);
+              }}
+              disabled={rendering || providersBasic.length === 0}
+              className={`flex-1 text-[11px] sm:text-xs px-2 py-2 rounded border transition-colors ${
+                genKind === 'basic'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border hover:border-primary/40'
+              } disabled:opacity-40`}
+            >
+              <div className="font-semibold">Básico (Canvas)</div>
+              <div className="opacity-70">{costBasic} créd/s</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setGenKind('ai');
+                if (providersAi[0]) setSelectedProvider(providersAi[0].provider);
+              }}
+              disabled={rendering || providersAi.length === 0}
+              className={`flex-1 text-[11px] sm:text-xs px-2 py-2 rounded border transition-colors ${
+                genKind === 'ai'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border hover:border-primary/40'
+              } disabled:opacity-40`}
+              title={providersAi.length === 0 ? 'Nenhum provedor de IA ativo' : ''}
+            >
+              <div className="font-semibold">IA (vídeo real)</div>
+              <div className="opacity-70">{costAi} créd/cena</div>
+            </button>
+          </div>
+
+          {activeProviders.length > 0 && (
+            <div>
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Provedor</Label>
+              <select
+                value={selectedProvider}
+                onChange={(e) => setSelectedProvider(e.target.value)}
+                disabled={rendering || activeProviders.length <= 1}
+                className="w-full mt-1 h-8 text-xs rounded border border-border bg-background px-2"
+              >
+                {activeProviders.map(p => (
+                  <option key={p.provider} value={p.provider}>
+                    {p.provider} · peso {p.weight}
+                  </option>
+                ))}
+              </select>
+              {activeProviders[0]?.config?.description && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {(activeProviders.find(p => p.provider === selectedProvider)?.config?.description) || ''}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
         <Button
           className="w-full h-11"
           onClick={exportVideo}
-          disabled={rendering || scenes.length === 0 || totalDuration > 60}
+          disabled={rendering || scenes.length === 0 || totalDuration > 60 || insufficient}
         >
           {rendering ? (
             <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Renderizando... {renderProgress}%</>
+          ) : insufficient ? (
+            <><Coins className="h-4 w-4 mr-2" /> <span className="truncate">Créditos insuficientes ({balance}/{totalCost})</span></>
           ) : (
             <><Download className="h-4 w-4 mr-2" /> <span className="truncate">Gerar e baixar ({totalCost} créd.)</span></>
           )}
@@ -809,6 +873,11 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         {totalDuration > 60 && (
           <p className="text-xs text-destructive text-center">
             Duração máxima: 60s. Atual: {totalDuration}s. Reduza a duração das cenas.
+          </p>
+        )}
+        {insufficient && totalDuration <= 60 && (
+          <p className="text-xs text-destructive text-center">
+            Você tem {balance} créditos. Precisa de {totalCost}. Reduza cenas/duração ou adquira mais créditos.
           </p>
         )}
       </div>
