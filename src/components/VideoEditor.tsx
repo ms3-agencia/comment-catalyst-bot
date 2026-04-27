@@ -503,6 +503,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   // ===== Draft autosave =====
   const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [draftLoaded, setDraftLoaded] = useState(false);
+  const [versionsOpen, setVersionsOpen] = useState(false);
   const draftSaveTimer = useRef<number | null>(null);
   const draftHydratingRef = useRef(true);
 
