@@ -695,17 +695,71 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     }
     setRendering(true);
     setRenderProgress(0);
+    setRenderPhase('Iniciando…');
+    setRenderEta('');
+    renderStartRef.current = performance.now();
+
+    // Compute output settings
+    const W = Math.round(format.w * resolutionScale);
+    const H = Math.round(format.h * resolutionScale);
+    const bitrateKbps = quality === 'custom' ? customBitrate : QUALITY_BITRATES[quality];
+    const mime = pickSupportedMime(codec, container);
+    const finalContainer: Container = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
+    const finalCodec = mime.includes('vp9') ? 'vp9'
+      : mime.includes('vp8') ? 'vp8'
+      : mime.includes('av01') ? 'av1'
+      : mime.includes('h264') || mime.includes('avc1') ? 'h264'
+      : codec;
+    const presetName = presets.find(p => p.id === selectedPresetId)?.name || null;
+
+    // Create history record
+    let historyId: string | null = null;
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user?.id;
+      if (uid) {
+        const { data: rec } = await supabase
+          .from('video_render_history' as any)
+          .insert({
+            user_id: uid,
+            content_id: content.id,
+            format_ratio: format.ratio,
+            width: W,
+            height: H,
+            codec: finalCodec,
+            container: finalContainer,
+            bitrate_kbps: bitrateKbps,
+            duration_seconds: totalDuration,
+            scenes_count: scenes.length,
+            credits_spent: 0,
+            status: 'rendering',
+            progress: 0,
+            phase: 'Iniciando',
+            preset_name: presetName,
+          } as any)
+          .select('id')
+          .single();
+        historyId = (rec as any)?.id || null;
+      }
+    } catch {}
+
+    const updateHistory = async (patch: any) => {
+      if (!historyId) return;
+      await supabase.from('video_render_history' as any).update(patch as any).eq('id', historyId);
+    };
+
     try {
       const actionKey: string = 'video_render_basic';
-      // consume credits server-side
+      setRenderPhase('Cobrando créditos…');
       const { data: cred, error: credErr } = await supabase.rpc('consume_credits', {
         _amount: totalCost,
         _action_key: actionKey,
-        _description: `Vídeo ${genKind} (${Math.round(totalDuration)}s, ${selectedProvider}) - ${content.id}`,
+        _description: `Vídeo ${genKind} ${format.ratio} ${W}x${H} ${finalCodec} ${bitrateKbps}kbps (${Math.round(totalDuration)}s) - ${content.id}`,
         _reference_id: content.id,
       });
       if (credErr) throw credErr;
       if (!(cred as any)?.success) {
+        await updateHistory({ status: 'error', message: 'Créditos insuficientes', phase: 'Cobrança' });
         toast({
           title: 'Créditos insuficientes',
           description: `Necessário: ${totalCost}, disponível: ${(cred as any)?.balance ?? 0}`,
@@ -714,23 +768,29 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         setRendering(false);
         return;
       }
+      await updateHistory({ credits_spent: totalCost });
 
-      const W = format.w, H = format.h;
+      setRenderPhase('Carregando imagens…');
+      await updateHistory({ phase: 'Carregando imagens', progress: 2 });
+      cacheRef.current = await preloadAll(scenes);
+
+      setRenderPhase('Preparando áudio…');
+      await updateHistory({ phase: 'Preparando áudio', progress: 5 });
+
       const fps = 30;
       const off = document.createElement('canvas');
       off.width = W; off.height = H;
       const ctx = off.getContext('2d')!;
       const stream = (off as any).captureStream(fps) as MediaStream;
 
-      // ===== Audio mix =====
       const audioSpecs = scenes.map(s => ({ duration: s.duration, text: s.text, audio: s.audio }));
       const mix = await buildMixedAudioTrack(globalAudio, audioSpecs).catch(() => null);
       if (mix?.track) stream.addTrack(mix.track);
 
-      // pick best mime
-      const mimes = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'];
-      const mime = mimes.find(m => (window as any).MediaRecorder?.isTypeSupported?.(m)) || 'video/webm';
-      const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000 });
+      const recorder = new MediaRecorder(stream, {
+        mimeType: mime,
+        videoBitsPerSecond: bitrateKbps * 1000,
+      });
       const chunks: Blob[] = [];
       recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
       const stopped = new Promise<void>(res => {
@@ -738,17 +798,14 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       });
       recorder.start(100);
 
-      // ensure cache fresh
-      cacheRef.current = await preloadAll(scenes);
-
+      setRenderPhase('Renderizando frames…');
       const totalFrames = Math.ceil(totalDuration * fps);
       const frameMs = 1000 / fps;
-      let acc = 0;
       let sceneStart = 0;
       let sIdx = 0;
+      let lastHistoryUpdate = 0;
       for (let f = 0; f < totalFrames; f++) {
         const tSec = f / fps;
-        // find scene
         while (sIdx < scenes.length && tSec >= sceneStart + scenes[sIdx].duration) {
           sceneStart += scenes[sIdx].duration;
           sIdx++;
@@ -756,32 +813,59 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         const scene = scenes[Math.min(sIdx, scenes.length - 1)];
         const inSceneT = (tSec - sceneStart) / scene.duration;
         drawScene(ctx, scene, cacheRef.current, W, H, Math.max(0, Math.min(1, inSceneT)));
-        // pace recorder roughly real-time so MediaRecorder samples at fps
         await new Promise(r => setTimeout(r, frameMs * 0.5));
-        if (f % 5 === 0) setRenderProgress(Math.round((f / totalFrames) * 100));
-        acc++;
+        if (f % 5 === 0) {
+          const pct = Math.round((f / totalFrames) * 95);
+          setRenderProgress(pct);
+          // ETA
+          const elapsed = (performance.now() - renderStartRef.current) / 1000;
+          if (f > 10) {
+            const remaining = Math.max(0, (elapsed / f) * (totalFrames - f));
+            setRenderEta(`~${Math.ceil(remaining)}s restantes`);
+          }
+          // Persist history every ~3s
+          const now = performance.now();
+          if (historyId && now - lastHistoryUpdate > 3000) {
+            lastHistoryUpdate = now;
+            updateHistory({ progress: pct, phase: `Renderizando cena ${Math.min(sIdx + 1, scenes.length)}/${scenes.length}` });
+          }
+        }
       }
-      setRenderProgress(100);
+      setRenderPhase('Finalizando arquivo…');
+      setRenderProgress(98);
+      await updateHistory({ progress: 98, phase: 'Finalizando arquivo' });
       recorder.stop();
       await stopped;
 
-      const blob = new Blob(chunks, { type: mime.startsWith('video/mp4') ? 'video/mp4' : 'video/webm' });
-      const ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
+      const blob = new Blob(chunks, { type: mime });
+      const ext = finalContainer;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `video-${content.id.slice(0, 6)}-${format.ratio.replace(':', 'x')}.${ext}`;
+      a.download = `video-${content.id.slice(0, 6)}-${format.ratio.replace(':', 'x')}-${W}x${H}.${ext}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
 
+      setRenderProgress(100);
+      setRenderPhase('Concluído');
+      await updateHistory({
+        status: 'done',
+        progress: 100,
+        phase: 'Concluído',
+        file_size_bytes: blob.size,
+        message: `Arquivo .${ext} (${(blob.size / (1024 * 1024)).toFixed(2)} MB)`,
+      });
+
       refreshCredits();
-      toast({ title: 'Vídeo gerado!', description: `Baixe seu vídeo .${ext}` });
+      toast({ title: 'Vídeo gerado!', description: `${ext.toUpperCase()} • ${(blob.size / (1024 * 1024)).toFixed(1)} MB` });
     } catch (e: any) {
+      await updateHistory({ status: 'error', message: e?.message || 'Erro desconhecido', phase: 'Erro' });
       toast({ title: 'Erro ao gerar vídeo', description: e.message || 'Tente novamente', variant: 'destructive' });
     } finally {
       setRendering(false);
+      setRenderEta('');
     }
   };
 
