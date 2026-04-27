@@ -134,23 +134,45 @@ function splitScriptIntoScenes(c: SourceContent): string[] {
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
 
-function buildInitialScenes(content: SourceContent): Scene[] {
+export type StylePreset = {
+  imageEffects: ImageEffect[];
+  textEffects: TextEffect[];
+  fonts: FontFamily[];
+  textColors: string[];
+  textBg: string;
+  fontSize: number;
+  textPosition: TextPosition;
+};
+
+const DEFAULT_PRESET: StylePreset = {
+  imageEffects: ['zoom_in', 'pan_right', 'zoom_out', 'pan_left', 'pan_up'],
+  textEffects: ['fade', 'slide_up', 'typewriter', 'pop', 'slide_left', 'bounce'],
+  fonts: ['display', 'sans'],
+  textColors: ['#ffffff'],
+  textBg: 'rgba(0,0,0,0.45)',
+  fontSize: 1.0,
+  textPosition: 'bottom',
+};
+
+function buildInitialScenes(content: SourceContent, preset: StylePreset = DEFAULT_PRESET): Scene[] {
   const texts = splitScriptIntoScenes(content);
   const fallbackImg = content.image_url || null;
-  const effects: ImageEffect[] = ['zoom_in', 'pan_right', 'zoom_out', 'pan_left', 'pan_up', 'zoom_in'];
-  const textEffects: TextEffect[] = ['fade', 'slide_up', 'typewriter', 'pop', 'slide_left', 'bounce'];
+  const imgFx = preset.imageEffects.length ? preset.imageEffects : DEFAULT_PRESET.imageEffects;
+  const txtFx = preset.textEffects.length ? preset.textEffects : DEFAULT_PRESET.textEffects;
+  const fonts = preset.fonts.length ? preset.fonts : DEFAULT_PRESET.fonts;
+  const colors = preset.textColors.length ? preset.textColors : DEFAULT_PRESET.textColors;
   return texts.map((t, i) => ({
     id: uid(),
     text: t,
     imageUrl: fallbackImg,
     duration: Math.min(8, Math.max(3, Math.ceil(t.length / 18))),
-    imageEffect: effects[i % effects.length],
-    textEffect: textEffects[i % textEffects.length],
-    textPosition: i === 0 ? 'center' : i === texts.length - 1 ? 'center' : 'bottom',
-    textColor: '#ffffff',
-    textBg: 'rgba(0,0,0,0.45)',
-    fontFamily: i === 0 ? 'display' : 'sans',
-    fontSize: i === 0 ? 1.2 : 1.0,
+    imageEffect: imgFx[i % imgFx.length],
+    textEffect: txtFx[i % txtFx.length],
+    textPosition: i === 0 ? 'center' : preset.textPosition,
+    textColor: colors[i % colors.length],
+    textBg: preset.textBg,
+    fontFamily: i === 0 ? (fonts.includes('display') ? 'display' : fonts[0]) : fonts[i % fonts.length],
+    fontSize: i === 0 ? Math.min(1.5, preset.fontSize * 1.15) : preset.fontSize,
     audio: defaultSceneAudio(),
   }));
 }
@@ -415,20 +437,23 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const [providersAi, setProvidersAi] = useState<ProviderRow[]>([]);
   const [selectedProvider, setSelectedProvider] = useState<string>('browser_canvas');
   const [globalAudio, setGlobalAudio] = useState<GlobalAudio>({ musicUrl: null, musicVolume: 0.6 });
+  const [presets, setPresets] = useState<Array<{ id: string; name: string; is_default: boolean; config: StylePreset }>>([]);
+  const [selectedPresetId, setSelectedPresetId] = useState<string>('');
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const rafRef = useRef<number | null>(null);
   const playStartRef = useRef<number>(0);
 
-  // init scenes when opened
+  // init scenes when opened (uses default preset if loaded)
   useEffect(() => {
     if (open) {
-      setScenes(buildInitialScenes(content));
+      const def = presets.find(p => p.is_default) || presets[0];
+      setScenes(buildInitialScenes(content, def?.config || DEFAULT_PRESET));
+      setSelectedPresetId(def?.id || '');
       setActiveIdx(0);
       setPreviewProgress(0);
       setPlaying(false);
-      // pick default format from content type
       const t = content.content_type;
       if (['reels', 'shorts', 'story', 'video'].includes(t) && content.social_network !== 'youtube') {
         setFormat(VIDEO_FORMATS[0]);
@@ -441,7 +466,24 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       setPlaying(false);
     }
-  }, [open, content]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, content, presets.length]);
+
+  // load style presets
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data } = await supabase
+        .from('video_style_presets' as any)
+        .select('id, name, is_default, config')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+      setPresets(((data as any[]) || []).map(p => ({
+        id: p.id, name: p.name, is_default: p.is_default,
+        config: { ...DEFAULT_PRESET, ...(p.config || {}) },
+      })));
+    })();
+  }, [open]);
 
   // load costs + providers
   useEffect(() => {
@@ -707,6 +749,16 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
 
   const activeScene = scenes[activeIdx];
 
+  const applyPresetAndRegenerate = (presetId: string) => {
+    setSelectedPresetId(presetId);
+    const p = presets.find(x => x.id === presetId);
+    setScenes(buildInitialScenes(content, p?.config || DEFAULT_PRESET));
+    setActiveIdx(0);
+    setPreviewProgress(0);
+    setPlaying(false);
+    toast({ title: 'Cenas geradas', description: p ? `Estilo: ${p.name}` : 'Estilo padrão aplicado' });
+  };
+
   // ============= Reusable Blocks =============
   const PreviewBlock = (
     <Card className="p-2 sm:p-3 bg-card">
@@ -729,6 +781,32 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           <Coins className="h-3 w-3" /> {totalCost} créd · saldo {balance} · {totalDuration}s
         </Badge>
       </div>
+
+      {presets.length > 0 && (
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+          <Label className="text-xs whitespace-nowrap">Estilo:</Label>
+          <select
+            className="h-8 rounded-md border bg-background px-2 text-xs flex-1 min-w-[120px]"
+            value={selectedPresetId}
+            onChange={e => setSelectedPresetId(e.target.value)}
+            disabled={rendering}
+          >
+            {presets.map(p => (
+              <option key={p.id} value={p.id}>{p.name}{p.is_default ? ' ★' : ''}</option>
+            ))}
+          </select>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => applyPresetAndRegenerate(selectedPresetId)}
+            disabled={rendering || !selectedPresetId}
+            className="h-8 text-xs"
+          >
+            <RefreshCw className="h-3 w-3 mr-1" /> Gerar cenas
+          </Button>
+        </div>
+      )}
 
       <div
         className="relative bg-black rounded-lg overflow-hidden mx-auto"
