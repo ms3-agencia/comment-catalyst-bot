@@ -91,6 +91,12 @@ const Admin = () => {
   const [deleteUser, setDeleteUser] = useState<UserProfile | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Add credits
+  const [creditsUser, setCreditsUser] = useState<UserProfile | null>(null);
+  const [creditsAmount, setCreditsAmount] = useState<number>(100);
+  const [creditsDescription, setCreditsDescription] = useState('Ajuste manual');
+  const [creditsSaving, setCreditsSaving] = useState(false);
+
   // API Key state
   const [youtubeApiKey, setYoutubeApiKey] = useState('');
   const [apiKeySaved, setApiKeySaved] = useState(false);
