@@ -938,11 +938,20 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       });
       return;
     }
+    // Activate the visual overlay BEFORE we start generating images, so the user
+    // sees a single continuous progress experience: images -> render -> done.
+    setRendering(true);
+    setRenderProgress(0);
+    setRenderPhase('Preparando…');
+    setRenderEta('');
+    renderStartRef.current = performance.now();
+
     // If the content has a script, ensure each scene has its own image before rendering.
     if (content.script) {
       const fallback = content.image_url || null;
       const missing = scenes.some(s => !s.imageUrl || s.imageUrl === fallback);
       if (missing && !bulkGen.active) {
+        setRenderPhase('Gerando imagens das cenas…');
         toast({ title: 'Gerando imagens das cenas', description: 'Cada cena receberá sua própria imagem antes do render.' });
         await generateAllSceneImages(true);
       }
@@ -953,13 +962,9 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         description: `Provedor "${selectedProvider}" ainda não está disponível para renderização. Use o modo Básico (Canvas).`,
         variant: 'destructive',
       });
+      setRendering(false);
       return;
     }
-    setRendering(true);
-    setRenderProgress(0);
-    setRenderPhase('Iniciando…');
-    setRenderEta('');
-    renderStartRef.current = performance.now();
 
     // Compute output settings
     const W = Math.round(format.w * resolutionScale);
