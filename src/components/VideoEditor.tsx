@@ -954,22 +954,60 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
 
       refreshCredits();
 
-      // Rich success notification with link to re-download the file
+      // Rich success notification with link to re-download the file and copy URL
       const { toast: sonnerToast } = await import('sonner');
+      const reDownload = () => {
+        const a2 = document.createElement('a');
+        a2.href = url;
+        a2.download = fileName;
+        document.body.appendChild(a2);
+        a2.click();
+        a2.remove();
+      };
+      const copyLink = async () => {
+        try {
+          await navigator.clipboard.writeText(url);
+          sonnerToast.success('Link copiado', {
+            description: 'URL temporária do arquivo (válida nesta aba por ~5 min)',
+            duration: 4000,
+          });
+        } catch {
+          sonnerToast.error('Não foi possível copiar', {
+            description: 'Copie manualmente o link a partir do histórico de renders.',
+          });
+        }
+      };
       sonnerToast.success('Render concluído com sucesso', {
-        description: `${fileName} • ${ext.toUpperCase()} • ${sizeMb} MB`,
-        duration: 15000,
-        action: {
-          label: 'Baixar novamente',
-          onClick: () => {
-            const a2 = document.createElement('a');
-            a2.href = url;
-            a2.download = fileName;
-            document.body.appendChild(a2);
-            a2.click();
-            a2.remove();
-          },
-        },
+        duration: 20000,
+        description: React.createElement(
+          'div',
+          { className: 'flex flex-col gap-2 mt-1' },
+          React.createElement(
+            'div',
+            { className: 'text-xs text-muted-foreground break-all' },
+            `${fileName} • ${ext.toUpperCase()} • ${sizeMb} MB`,
+          ),
+          React.createElement(
+            'div',
+            { className: 'flex flex-wrap gap-2 mt-1' },
+            React.createElement(
+              'button',
+              {
+                onClick: reDownload,
+                className: 'inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground px-2.5 py-1 text-xs font-medium hover:opacity-90',
+              },
+              'Baixar novamente',
+            ),
+            React.createElement(
+              'button',
+              {
+                onClick: copyLink,
+                className: 'inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted',
+              },
+              'Copiar link',
+            ),
+          ),
+        ),
       });
     } catch (e: any) {
       await updateHistory({ status: 'error', message: e?.message || 'Erro desconhecido', phase: 'Erro' });
