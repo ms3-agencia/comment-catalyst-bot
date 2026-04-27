@@ -11,7 +11,7 @@ import { useCredits } from '@/hooks/useCredits';
 import {
   Sparkles, Loader2, ArrowLeft, FolderOpen, Instagram, Youtube, Facebook, Linkedin,
   Music2, MessageCircle, Image as ImageIcon, Video, Film, Layers, FileText, Pin,
-  Twitter, Hash, Copy, Check, TrendingUp,
+  Twitter, Hash, Copy, Check, TrendingUp, Wand2, Download, RefreshCw,
 } from 'lucide-react';
 
 type Project = {
