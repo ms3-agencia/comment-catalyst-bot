@@ -861,6 +861,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, content.id]);
 
+  const exportVideo = async () => {
     if (!scenes.length) return;
     if (insufficient) {
       toast({
