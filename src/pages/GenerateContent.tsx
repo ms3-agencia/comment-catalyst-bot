@@ -76,17 +76,38 @@ const GenerateContent = () => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [history, setHistory] = useState<GeneratedContent[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [imagingId, setImagingId] = useState<string | null>(null);
 
   const loadHistory = async (projectId: string) => {
     setHistoryLoading(true);
     const { data } = await supabase
       .from('generated_contents')
-      .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type')
+      .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type, image_url, image_prompt')
       .eq('project_id', projectId)
       .order('created_at', { ascending: false })
       .limit(30);
     setHistory((data as GeneratedContent[]) || []);
     setHistoryLoading(false);
+  };
+
+  const generateImage = async (content: GeneratedContent) => {
+    setImagingId(content.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-content-image', {
+        body: { content_id: content.id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const updated = { image_url: (data as any).image_url, image_prompt: (data as any).image_prompt };
+      setResults(prev => prev.map(r => r.id === content.id ? { ...r, ...updated } : r));
+      setHistory(prev => prev.map(r => r.id === content.id ? { ...r, ...updated } : r));
+      refreshCredits();
+      toast({ title: 'Imagem gerada!', description: 'Imagem criada com sucesso.' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar imagem', description: e.message || 'Tente novamente', variant: 'destructive' });
+    } finally {
+      setImagingId(null);
+    }
   };
 
   const selectProject = (p: Project) => {
