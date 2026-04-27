@@ -32,6 +32,8 @@ type GeneratedContent = {
   engagement_score: number | null;
   social_network: string;
   content_type: string;
+  image_url?: string | null;
+  image_prompt?: string | null;
 };
 
 const NETWORKS = [
