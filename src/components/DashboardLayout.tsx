@@ -6,6 +6,7 @@ import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderO
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CreditsWidget } from '@/components/CreditsWidget';
+import { CopyIconButton } from '@/components/CopyIconButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
