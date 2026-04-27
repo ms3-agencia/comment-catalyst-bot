@@ -35,16 +35,62 @@ export async function loadDraft(contentId: string): Promise<EditorDraftState | n
   return ((data as any).state as EditorDraftState) || null;
 }
 
-export async function saveDraft(contentId: string, state: EditorDraftState): Promise<boolean> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
+// Per-key serialization: ensures only one upsert is in-flight per (user, content)
+// at a time. If new saves arrive while one is running, only the LATEST pending
+// state is kept and persisted next — older intermediate states are discarded
+// (coalesced) since the latest already supersedes them.
+type PendingSave = {
+  state: EditorDraftState;
+  resolve: (ok: boolean) => void;
+};
+const inflight = new Map<string, Promise<boolean>>();
+const pending = new Map<string, PendingSave>();
+
+async function runUpsert(userId: string, contentId: string, state: EditorDraftState): Promise<boolean> {
   const { error } = await supabase
     .from('video_editor_drafts' as any)
     .upsert(
-      { user_id: user.id, content_id: contentId, state: state as any, updated_at: new Date().toISOString() },
-      { onConflict: 'user_id,content_id' }
+      {
+        user_id: userId,
+        content_id: contentId,
+        state: state as any,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,content_id' },
     );
   return !error;
+}
+
+export async function saveDraft(contentId: string, state: EditorDraftState): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const key = `${user.id}:${contentId}`;
+
+  // If a save is already running, queue this one as the next-to-run, replacing
+  // any previously queued state (we only care about the most recent snapshot).
+  if (inflight.has(key)) {
+    return new Promise<boolean>((resolve) => {
+      const prev = pending.get(key);
+      if (prev) prev.resolve(true); // superseded by a newer state
+      pending.set(key, { state, resolve });
+    });
+  }
+
+  const run = async (): Promise<boolean> => {
+    const ok = await runUpsert(user.id, contentId, state);
+    // Drain any pending newer state that arrived while we were saving.
+    const next = pending.get(key);
+    if (next) {
+      pending.delete(key);
+      const nextOk = await runUpsert(user.id, contentId, next.state);
+      next.resolve(nextOk);
+    }
+    return ok;
+  };
+
+  const promise = run().finally(() => inflight.delete(key));
+  inflight.set(key, promise);
+  return promise;
 }
 
 export async function deleteDraft(contentId: string): Promise<void> {
