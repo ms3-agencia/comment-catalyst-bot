@@ -1530,9 +1530,11 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         <Button
           className="w-full h-11"
           onClick={exportVideo}
-          disabled={rendering || scenes.length === 0 || totalDuration > 60 || insufficient}
+          disabled={rendering || bulkGen.active || scenes.length === 0 || totalDuration > 60 || insufficient}
         >
-          {rendering ? (
+          {bulkGen.active ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Criando imagens {bulkGen.current}/{bulkGen.total}…</>
+          ) : rendering ? (
             <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Renderizando... {renderProgress}%</>
           ) : insufficient ? (
             <><Coins className="h-4 w-4 mr-2" /> <span className="truncate">Créditos insuficientes ({balance}/{totalCost})</span></>
