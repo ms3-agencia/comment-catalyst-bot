@@ -2,7 +2,7 @@ import { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins, UserCircle } from 'lucide-react';
+import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins, UserCircle, Sparkles } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CreditsWidget } from '@/components/CreditsWidget';
 
@@ -10,6 +10,7 @@ const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/dashboard/extract', icon: Youtube, label: 'Extrair Comentários' },
   { to: '/dashboard/projects', icon: FolderOpen, label: 'Meus Projetos' },
+  { to: '/dashboard/generate', icon: Sparkles, label: 'Gerar Conteúdo' },
   { to: '/dashboard/credits', icon: Coins, label: 'Créditos & Planos' },
 ];
 
