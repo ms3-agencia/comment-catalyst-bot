@@ -415,6 +415,35 @@ type Props = {
 type GenKind = 'basic' | 'ai';
 type ProviderRow = { provider: string; weight: number; config: any };
 
+type Container = 'webm' | 'mp4';
+type CodecKey = 'vp9' | 'vp8' | 'av1' | 'h264' | 'auto';
+type QualityKey = 'low' | 'medium' | 'high' | 'ultra' | 'custom';
+type ResolutionScale = 0.5 | 0.75 | 1 | 1.5;
+
+const QUALITY_BITRATES: Record<Exclude<QualityKey, 'custom'>, number> = {
+  low: 2_000,        // kbps
+  medium: 4_000,
+  high: 8_000,
+  ultra: 14_000,
+};
+
+const CODEC_MIME: Record<CodecKey, string[]> = {
+  vp9: ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp9'],
+  vp8: ['video/webm;codecs=vp8,opus', 'video/webm;codecs=vp8'],
+  av1: ['video/webm;codecs=av01,opus', 'video/webm;codecs=av01'],
+  h264: ['video/mp4;codecs=h264,aac', 'video/mp4;codecs=avc1,mp4a', 'video/mp4'],
+  auto: ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4'],
+};
+
+function pickSupportedMime(codec: CodecKey, container: Container): string {
+  const candidates = container === 'mp4'
+    ? ['video/mp4;codecs=h264,aac', 'video/mp4;codecs=avc1,mp4a', 'video/mp4', ...CODEC_MIME[codec]]
+    : [...CODEC_MIME[codec], 'video/webm'];
+  for (const m of candidates) {
+    if ((window as any).MediaRecorder?.isTypeSupported?.(m)) return m;
+  }
+  return container === 'mp4' ? 'video/mp4' : 'video/webm';
+}
 export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => {
   const { toast } = useToast();
   const { credits, refresh: refreshCredits } = useCredits();
