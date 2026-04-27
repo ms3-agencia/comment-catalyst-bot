@@ -27,20 +27,23 @@ const KIND_META = {
   music: { label: 'Música de fundo', icon: Music, desc: 'Trilha sonora para o vídeo' },
 };
 
+type CostAction = { action_key: string; display_name: string; cost: number };
+
 export const VideoProvidersTab = () => {
   const { toast } = useToast();
   const [providers, setProviders] = useState<Provider[]>([]);
+  const [costs, setCosts] = useState<CostAction[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('video_providers')
-      .select('*')
-      .order('kind')
-      .order('display_name');
-    setProviders((data as Provider[]) || []);
+    const [{ data: provs }, { data: costRows }] = await Promise.all([
+      supabase.from('video_providers').select('*').order('kind').order('display_name'),
+      supabase.from('credit_action_costs').select('action_key, display_name, cost').order('action_key'),
+    ]);
+    setProviders((provs as Provider[]) || []);
+    setCosts((costRows as CostAction[]) || []);
     setLoading(false);
   };
 
