@@ -607,7 +607,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     setRendering(true);
     setRenderProgress(0);
     try {
-      const actionKey = genKind === 'ai' ? 'video_render_ai' : 'video_render_basic';
+      const actionKey: string = 'video_render_basic';
       // consume credits server-side
       const { data: cred, error: credErr } = await supabase.rpc('consume_credits', {
         _amount: totalCost,
