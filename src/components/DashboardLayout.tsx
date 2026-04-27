@@ -112,6 +112,12 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const [activePost, setActivePost] = useState<HistoryItem | null>(null);
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  // Inline image generation in history detail
+  const [genPanelOpen, setGenPanelOpen] = useState(false);
+  const [genFormat, setGenFormat] = useState<ImgFormat | null>(null);
+  const [genQuantity, setGenQuantity] = useState(1);
+  const [genLoading, setGenLoading] = useState(false);
+  const [genResults, setGenResults] = useState<string[]>([]);
 
   const allItems = [...navItems, ...(isAdmin ? adminItems : [])];
 
