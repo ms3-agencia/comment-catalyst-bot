@@ -352,9 +352,51 @@ const GenerateContent = () => {
 
         {/* STEP: Quantity */}
         {step === 'quantity' && (
-          <div className="space-y-4 max-w-md">
-            <h2 className="font-heading text-xl font-semibold">4. Quantos conteúdos?</h2>
-            <Card className="p-6 space-y-4">
+          <div className="space-y-4 max-w-2xl">
+            <h2 className="font-heading text-xl font-semibold">4. Formato e quantidade</h2>
+            <Card className="p-6 space-y-5">
+              {/* Format picker */}
+              <div className="space-y-2">
+                <Label>Formato da imagem</Label>
+                <p className="text-xs text-muted-foreground">
+                  Tamanho otimizado para {networkMeta?.label} {contentType ? `(${TYPE_META[contentType]?.label || contentType})` : ''}
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
+                  {getFormats(network, contentType).map(f => {
+                    const active = selectedFormat?.ratio === f.ratio;
+                    // Visual preview box: scale aspect ratio into a fixed area
+                    const maxBox = 56;
+                    const ratio = f.w / f.h;
+                    const bw = ratio >= 1 ? maxBox : Math.round(maxBox * ratio);
+                    const bh = ratio >= 1 ? Math.round(maxBox / ratio) : maxBox;
+                    return (
+                      <button
+                        key={f.ratio}
+                        type="button"
+                        onClick={() => setSelectedFormat(f)}
+                        className={`p-3 rounded-lg border-2 transition-all text-left ${
+                          active
+                            ? 'border-primary bg-primary/10 shadow-[0_0_0_3px_hsl(var(--primary)/0.15)]'
+                            : 'border-border hover:border-primary/50 bg-card'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`shrink-0 rounded border-2 ${active ? 'border-primary bg-primary/20' : 'border-muted-foreground/40 bg-muted'}`}
+                            style={{ width: bw, height: bh }}
+                          />
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold">{f.ratio}</div>
+                            <div className="text-[11px] text-muted-foreground">{f.w}×{f.h}</div>
+                            <div className="text-[10px] text-muted-foreground line-clamp-1">{f.label}</div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div>
                 <Label>Quantidade (1-10)</Label>
                 <Input
@@ -364,6 +406,11 @@ const GenerateContent = () => {
               </div>
               <div className="text-sm text-muted-foreground">
                 Custo: <span className="font-semibold text-foreground">{quantity * 2} créditos</span> (2 por conteúdo)
+                {selectedFormat && (
+                  <span className="block text-xs mt-1">
+                    + 3 créditos por imagem gerada ({selectedFormat.w}×{selectedFormat.h})
+                  </span>
+                )}
               </div>
               <Button onClick={handleGenerate} disabled={generating} className="w-full">
                 {generating ? (
