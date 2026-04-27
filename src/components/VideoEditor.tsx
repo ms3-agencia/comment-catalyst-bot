@@ -466,6 +466,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const [costBasic, setCostBasic] = useState<number>(1); // per second
   const [costAi, setCostAi] = useState<number>(50); // per scene
   const [regenIdx, setRegenIdx] = useState<number | null>(null);
+  const [bulkGen, setBulkGen] = useState<{ active: boolean; current: number; total: number }>({ active: false, current: 0, total: 0 });
   const [mobileTab, setMobileTab] = useState<'preview' | 'edit'>('preview');
 
   const [genKind, setGenKind] = useState<GenKind>('basic');
@@ -710,7 +711,53 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     }
   };
 
-  // ============= Render to MP4/WebM =============
+  // Generate images for ALL scenes sequentially, placing each one on the
+  // timeline as soon as it is ready. If `onlyMissing` is true, scenes that
+  // already have a custom image are skipped.
+  const generateAllSceneImages = async (onlyMissing = false) => {
+    if (!scenes.length || bulkGen.active) return;
+    const fallback = content.image_url || null;
+    const targets: number[] = [];
+    scenes.forEach((s, i) => {
+      if (!onlyMissing || !s.imageUrl || s.imageUrl === fallback) targets.push(i);
+    });
+    if (!targets.length) {
+      toast({ title: 'Nada a gerar', description: 'Todas as cenas já têm imagem personalizada.' });
+      return;
+    }
+    setBulkGen({ active: true, current: 0, total: targets.length });
+    let done = 0;
+    let failed = 0;
+    for (const idx of targets) {
+      const sc = scenes[idx];
+      if (!sc) continue;
+      setRegenIdx(idx);
+      setActiveIdx(idx);
+      try {
+        const url = await onImageRegen(idx, sc.text);
+        if (url) {
+          updateScene(idx, { imageUrl: url });
+          try { cacheRef.current.set(url, await loadImage(url)); } catch { /* ignore */ }
+          drawAt(previewProgress);
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+      done++;
+      setBulkGen({ active: true, current: done, total: targets.length });
+      refreshCredits();
+    }
+    setRegenIdx(null);
+    setBulkGen({ active: false, current: 0, total: 0 });
+    toast({
+      title: 'Imagens geradas',
+      description: `${done - failed}/${targets.length} cenas atualizadas${failed ? ` · ${failed} falha(s)` : ''}`,
+      variant: failed && failed === targets.length ? 'destructive' : 'default',
+    });
+  };
+
   const exportVideo = async () => {
     if (!scenes.length) return;
     if (insufficient) {
@@ -720,6 +767,15 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         variant: 'destructive',
       });
       return;
+    }
+    // If the content has a script, ensure each scene has its own image before rendering.
+    if (content.script) {
+      const fallback = content.image_url || null;
+      const missing = scenes.some(s => !s.imageUrl || s.imageUrl === fallback);
+      if (missing && !bulkGen.active) {
+        toast({ title: 'Gerando imagens das cenas', description: 'Cada cena receberá sua própria imagem antes do render.' });
+        await generateAllSceneImages(true);
+      }
     }
     if (genKind === 'ai') {
       toast({
@@ -991,6 +1047,37 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
             className="h-8 text-xs"
           >
             <RefreshCw className="h-3 w-3 mr-1" /> Gerar cenas
+          </Button>
+        </div>
+      )}
+
+      {!!content.script && scenes.length > 0 && (
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          <Label className="text-xs whitespace-nowrap">
+            Imagens das cenas: {bulkGen.active ? `${bulkGen.current}/${bulkGen.total}` : `${scenes.length} cena(s)`}
+          </Label>
+          <Button
+            size="sm"
+            variant="default"
+            onClick={() => generateAllSceneImages(false)}
+            disabled={rendering || bulkGen.active}
+            className="h-8 text-xs"
+          >
+            {bulkGen.active ? (
+              <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Gerando {bulkGen.current}/{bulkGen.total}…</>
+            ) : (
+              <><Sparkles className="h-3 w-3 mr-1" /> Gerar imagens das cenas</>
+            )}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => generateAllSceneImages(true)}
+            disabled={rendering || bulkGen.active}
+            className="h-8 text-xs"
+          >
+            Apenas as faltantes
           </Button>
         </div>
       )}
