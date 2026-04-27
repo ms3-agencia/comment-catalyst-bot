@@ -20,6 +20,7 @@ import { AudioPanel } from './video/AudioPanel';
 import { defaultSceneAudio, type SceneAudio, type GlobalAudio } from './video/audioTypes';
 import { buildMixedAudioTrack } from './video/audioMixer';
 import { RenderHistoryDialog } from './video/RenderHistoryDialog';
+import { RenderOverlay } from './video/RenderOverlay';
 import { Progress } from '@/components/ui/progress';
 import { History } from 'lucide-react';
 import {
