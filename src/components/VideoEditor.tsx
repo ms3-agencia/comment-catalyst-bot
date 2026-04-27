@@ -1108,6 +1108,26 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           )}
         </div>
 
+        {/* ===== Detalhamento de créditos (provedores escolhidos por peso) ===== */}
+        {costBreakdown.breakdown.length > 0 && (
+          <div className="rounded-lg border border-border bg-background/50 p-2 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Cobrança detalhada</Label>
+              <span className="text-[10px] text-muted-foreground">selecionado por peso %</span>
+            </div>
+            {costBreakdown.breakdown.map((b, i) => (
+              <div key={i} className="flex items-center justify-between text-[11px]">
+                <span className="truncate text-muted-foreground" title={b.detail}>{b.label}</span>
+                <span className="font-medium">{b.amount} créd</span>
+              </div>
+            ))}
+            <div className="flex items-center justify-between text-xs pt-1 border-t border-border">
+              <span className="font-semibold">Total</span>
+              <span className="font-semibold">{totalCost} créd</span>
+            </div>
+          </div>
+        )}
+
         {/* ===== Opções de exportação ===== */}
         <div className="rounded-lg border border-border bg-background/50 p-2 space-y-2">
           <div className="flex items-center justify-between">
