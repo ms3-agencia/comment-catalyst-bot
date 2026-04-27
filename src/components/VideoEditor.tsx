@@ -711,8 +711,8 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
             </Button>
           ))}
         </div>
-        <Badge variant="outline" className="gap-1 text-xs">
-          <Coins className="h-3 w-3" /> {totalCost} créd · {totalDuration}s
+        <Badge variant={insufficient ? 'destructive' : 'outline'} className="gap-1 text-xs">
+          <Coins className="h-3 w-3" /> {totalCost} créd · saldo {balance} · {totalDuration}s
         </Badge>
       </div>
 
