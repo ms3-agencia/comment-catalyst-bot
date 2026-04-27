@@ -1457,6 +1457,13 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           </div>
         )}
       </div>
+
+      <RenderHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        contentId={content.id}
+        activeRender={rendering ? { progress: renderProgress, phase: renderPhase, eta: renderEta } : null}
+      />
     </div>
   );
 };
