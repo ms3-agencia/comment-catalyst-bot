@@ -91,6 +91,12 @@ const Admin = () => {
   const [deleteUser, setDeleteUser] = useState<UserProfile | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Add credits
+  const [creditsUser, setCreditsUser] = useState<UserProfile | null>(null);
+  const [creditsAmount, setCreditsAmount] = useState<number>(100);
+  const [creditsDescription, setCreditsDescription] = useState('Ajuste manual');
+  const [creditsSaving, setCreditsSaving] = useState(false);
+
   // API Key state
   const [youtubeApiKey, setYoutubeApiKey] = useState('');
   const [apiKeySaved, setApiKeySaved] = useState(false);
@@ -442,6 +448,30 @@ const Admin = () => {
     }
   };
 
+  const handleAddCredits = async () => {
+    if (!creditsUser) return;
+    const amt = Number(creditsAmount);
+    if (!Number.isFinite(amt) || amt === 0) {
+      toast({ title: 'Informe um valor diferente de zero', variant: 'destructive' });
+      return;
+    }
+    setCreditsSaving(true);
+    const { error } = await supabase.rpc('admin_add_credits', {
+      _user_id: creditsUser.user_id,
+      _amount: Math.trunc(amt),
+      _description: creditsDescription || 'Ajuste manual',
+    });
+    setCreditsSaving(false);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: amt > 0 ? `+${amt} créditos adicionados` : `${amt} créditos removidos` });
+      setCreditsUser(null);
+      setCreditsAmount(100);
+      setCreditsDescription('Ajuste manual');
+    }
+  };
+
   const handleSaveApiKey = async () => {
     if (!youtubeApiKey.trim()) {
       toast({ title: 'Informe a chave da API', variant: 'destructive' });
@@ -609,6 +639,9 @@ const Admin = () => {
                                 <DropdownMenuItem onClick={() => { setPwdUser(u); setNewPassword(''); }}>
                                   <KeyRound className="mr-2 h-4 w-4" /> Mudar senha
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { setCreditsUser(u); setCreditsAmount(100); setCreditsDescription('Ajuste manual'); }}>
+                                  <Coins className="mr-2 h-4 w-4" /> Adicionar créditos
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => toggleAdmin(u)} disabled={isSelf}>
                                   {u.is_admin ? (
@@ -702,6 +735,44 @@ const Admin = () => {
                   <Button variant="outline" onClick={() => setPwdUser(null)}>Cancelar</Button>
                   <Button onClick={handleChangePassword} disabled={pwdSaving} className="glow-primary">
                     {pwdSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />} Alterar senha
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Add credits dialog */}
+            <Dialog open={!!creditsUser} onOpenChange={(open) => !open && setCreditsUser(null)}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Adicionar créditos</DialogTitle>
+                  <DialogDescription>
+                    Ajuste o saldo de <strong>{creditsUser?.email}</strong>. Use valor negativo para remover créditos.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <Label>Quantidade de créditos</Label>
+                    <Input
+                      type="number"
+                      value={creditsAmount}
+                      onChange={e => setCreditsAmount(Number(e.target.value))}
+                      placeholder="100"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Descrição</Label>
+                    <Input
+                      value={creditsDescription}
+                      onChange={e => setCreditsDescription(e.target.value)}
+                      placeholder="Ajuste manual"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setCreditsUser(null)}>Cancelar</Button>
+                  <Button onClick={handleAddCredits} disabled={creditsSaving} className="glow-primary">
+                    {creditsSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Coins className="mr-2 h-4 w-4" />} Confirmar
                   </Button>
                 </DialogFooter>
               </DialogContent>
