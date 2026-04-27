@@ -448,7 +448,29 @@ const Admin = () => {
     }
   };
 
-  const handleSaveApiKey = async () => {
+  const handleAddCredits = async () => {
+    if (!creditsUser) return;
+    const amt = Number(creditsAmount);
+    if (!Number.isFinite(amt) || amt === 0) {
+      toast({ title: 'Informe um valor diferente de zero', variant: 'destructive' });
+      return;
+    }
+    setCreditsSaving(true);
+    const { error } = await supabase.rpc('admin_add_credits', {
+      _user_id: creditsUser.user_id,
+      _amount: Math.trunc(amt),
+      _description: creditsDescription || 'Ajuste manual',
+    });
+    setCreditsSaving(false);
+    if (error) {
+      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: amt > 0 ? `+${amt} créditos adicionados` : `${amt} créditos removidos` });
+      setCreditsUser(null);
+      setCreditsAmount(100);
+      setCreditsDescription('Ajuste manual');
+    }
+  };
     if (!youtubeApiKey.trim()) {
       toast({ title: 'Informe a chave da API', variant: 'destructive' });
       return;
