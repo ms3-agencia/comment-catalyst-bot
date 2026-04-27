@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, CheckCircle2, XCircle, Loader, Trash2 } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, Loader, Trash2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { loadLastRender, type StoredRender } from '@/lib/lastRenderStore';
 
 type Row = {
   id: string;
@@ -38,9 +39,9 @@ export const RenderHistoryDialog = ({
 }) => {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stored, setStored] = useState<StoredRender | null>(null);
 
   const load = async () => {
-    setLoading(true);
     let q = supabase.from('video_render_history' as any)
       .select('*')
       .order('created_at', { ascending: false })
@@ -53,15 +54,61 @@ export const RenderHistoryDialog = ({
 
   useEffect(() => {
     if (!open) return;
+    setLoading(true);
     load();
-    // refresh while there are active renders
-    const t = setInterval(load, 4000);
-    return () => clearInterval(t);
+    loadLastRender().then(setStored);
+
+    // Realtime subscription for live progress updates
+    const channel = supabase
+      .channel('video_render_history_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'video_render_history' },
+        (payload) => {
+          setRows((prev) => {
+            const newRow = (payload.new as Row) || null;
+            const oldRow = (payload.old as Row) || null;
+            if (payload.eventType === 'DELETE' && oldRow) {
+              return prev.filter((r) => r.id !== oldRow.id);
+            }
+            if (!newRow) return prev;
+            if (contentId && newRow.content_id !== contentId) return prev;
+            const idx = prev.findIndex((r) => r.id === newRow.id);
+            if (idx >= 0) {
+              const next = [...prev];
+              next[idx] = newRow;
+              return next;
+            }
+            return [newRow, ...prev].slice(0, 30);
+          });
+          // Refresh stored blob when a render finishes
+          if ((payload.new as Row)?.status === 'done') {
+            loadLastRender().then(setStored);
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [open, contentId]);
 
   const remove = async (id: string) => {
     await supabase.from('video_render_history' as any).delete().eq('id', id);
-    load();
+    setRows((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const downloadStored = (row: Row) => {
+    if (!stored || stored.sizeBytes !== row.file_size_bytes) return;
+    const url = URL.createObjectURL(stored.blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = stored.fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   };
 
   const fmtBytes = (b: number | null) => {
@@ -98,13 +145,42 @@ export const RenderHistoryDialog = ({
           <p className="text-sm text-muted-foreground text-center py-8">Nenhuma renderização ainda.</p>
         ) : (
           <div className="space-y-2">
-            {rows.map(r => (
+            {rows.map(r => {
+              const canDownload = r.status === 'done'
+                && stored
+                && stored.contentId === r.content_id
+                && stored.sizeBytes === r.file_size_bytes;
+              return (
               <div key={r.id} className="rounded-lg border border-border p-3 bg-card space-y-2">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {r.status === 'done' ? <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                      : r.status === 'error' ? <XCircle className="h-4 w-4 text-destructive" />
-                      : <Loader className="h-4 w-4 animate-spin text-primary" />}
+                    {r.status === 'done' ? (
+                      canDownload ? (
+                        <button
+                          onClick={() => downloadStored(r)}
+                          className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 px-2 py-1 text-xs font-medium transition-colors"
+                          title="Baixar arquivo"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Baixar
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-500/10 text-emerald-500 px-2 py-1 text-xs font-medium" title="Arquivo não disponível mais nesta sessão">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Concluído
+                        </span>
+                      )
+                    ) : r.status === 'error' ? (
+                      <span className="inline-flex items-center gap-1.5 rounded-md bg-destructive/10 text-destructive px-2 py-1 text-xs font-medium">
+                        <XCircle className="h-3.5 w-3.5" />
+                        Erro
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-md bg-primary/10 text-primary px-2 py-1 text-xs font-medium">
+                        <Loader className="h-3.5 w-3.5 animate-spin" />
+                        Renderizando
+                      </span>
+                    )}
                     <span className="text-sm font-medium">{r.format_ratio} · {r.width}×{r.height}</span>
                     <Badge variant="outline" className="text-[10px] uppercase">{r.container} / {r.codec}</Badge>
                     <Badge variant="secondary" className="text-[10px]">{r.bitrate_kbps} kbps</Badge>
@@ -137,7 +213,8 @@ export const RenderHistoryDialog = ({
                   {r.message && <span className="truncate max-w-[60%]" title={r.message}>{r.message}</span>}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </DialogContent>
