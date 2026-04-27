@@ -263,6 +263,11 @@ const GenerateContent = () => {
                           {typeMeta.label}
                         </span>
                       </div>
+                      {h.image_url && (
+                        <div className="mb-2 -mx-1 rounded-lg overflow-hidden border border-border aspect-video bg-muted">
+                          <img src={h.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        </div>
+                      )}
                       <p className="text-sm font-semibold line-clamp-2 leading-snug min-h-[2.5rem]">
                         {h.title || h.caption || 'Sem título'}
                       </p>
