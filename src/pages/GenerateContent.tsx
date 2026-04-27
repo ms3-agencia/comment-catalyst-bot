@@ -128,6 +128,7 @@ const GenerateContent = () => {
       setResults((data as any).contents || []);
       setStep('results');
       refreshCredits();
+      if (project) loadHistory(project.id);
       toast({ title: 'Conteúdos gerados!', description: `${(data as any).contents?.length || 0} conteúdo(s) criado(s).` });
     } catch (e: any) {
       toast({ title: 'Erro ao gerar', description: e.message || 'Tente novamente', variant: 'destructive' });
