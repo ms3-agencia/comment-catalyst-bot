@@ -1042,6 +1042,37 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         </div>
       )}
 
+      {!!content.script && scenes.length > 0 && (
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          <Label className="text-xs whitespace-nowrap">
+            Imagens das cenas: {bulkGen.active ? `${bulkGen.current}/${bulkGen.total}` : `${scenes.length} cena(s)`}
+          </Label>
+          <Button
+            size="sm"
+            variant="default"
+            onClick={() => generateAllSceneImages(false)}
+            disabled={rendering || bulkGen.active}
+            className="h-8 text-xs"
+          >
+            {bulkGen.active ? (
+              <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Gerando {bulkGen.current}/{bulkGen.total}…</>
+            ) : (
+              <><Sparkles className="h-3 w-3 mr-1" /> Gerar imagens das cenas</>
+            )}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => generateAllSceneImages(true)}
+            disabled={rendering || bulkGen.active}
+            className="h-8 text-xs"
+          >
+            Apenas as faltantes
+          </Button>
+        </div>
+      )}
+
       <div
         className="relative bg-black rounded-lg overflow-hidden mx-auto"
         style={{
