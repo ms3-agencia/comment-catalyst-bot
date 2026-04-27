@@ -759,7 +759,108 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     });
   };
 
-  const exportVideo = async () => {
+  // Shared toast for both fresh renders and restored ones (after refresh)
+  const showRenderSuccessToast = async (
+    meta: { blob: Blob; fileName: string; ext: string; sizeBytes: number },
+    existingUrl?: string,
+  ) => {
+    const { toast: sonnerToast } = await import('sonner');
+    const url = existingUrl ?? URL.createObjectURL(meta.blob);
+    if (!existingUrl) {
+      // revoke after 5 minutes for restored renders too
+      setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+    }
+    const sizeMb = (meta.sizeBytes / (1024 * 1024)).toFixed(2);
+    const reDownload = () => {
+      const a2 = document.createElement('a');
+      a2.href = url;
+      a2.download = meta.fileName;
+      document.body.appendChild(a2);
+      a2.click();
+      a2.remove();
+    };
+    const copyLink = async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        sonnerToast.success('Link copiado', {
+          description: 'URL temporária do arquivo (válida nesta aba por ~5 min)',
+          duration: 4000,
+        });
+      } catch {
+        sonnerToast.error('Não foi possível copiar', {
+          description: 'Copie manualmente o link a partir do histórico de renders.',
+        });
+      }
+    };
+    sonnerToast.success('Render concluído com sucesso', {
+      duration: 20000,
+      description: React.createElement(
+        'div',
+        { className: 'flex flex-col gap-2 mt-1' },
+        React.createElement(
+          'div',
+          { className: 'text-xs text-muted-foreground break-all' },
+          `${meta.fileName} • ${meta.ext.toUpperCase()} • ${sizeMb} MB`,
+        ),
+        React.createElement(
+          'div',
+          { className: 'flex flex-wrap gap-2 mt-1' },
+          React.createElement(
+            'button',
+            {
+              onClick: reDownload,
+              className: 'inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground px-2.5 py-1 text-xs font-medium hover:opacity-90',
+            },
+            'Baixar novamente',
+          ),
+          React.createElement(
+            'button',
+            {
+              onClick: copyLink,
+              className: 'inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted',
+            },
+            'Copiar link',
+          ),
+          React.createElement(
+            'button',
+            {
+              onClick: async () => {
+                await clearLastRender();
+                sonnerToast.dismiss();
+              },
+              className: 'inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted text-muted-foreground',
+            },
+            'Descartar',
+          ),
+        ),
+      ),
+    });
+  };
+
+  // Restore last render after page refresh (within 24h, same content)
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      const stored = await loadLastRender();
+      if (cancelled || !stored) return;
+      const ageHours = (Date.now() - stored.createdAt) / (1000 * 60 * 60);
+      if (ageHours > 24) {
+        await clearLastRender();
+        return;
+      }
+      if (stored.contentId !== content.id) return;
+      await showRenderSuccessToast({
+        blob: stored.blob,
+        fileName: stored.fileName,
+        ext: stored.ext,
+        sizeBytes: stored.sizeBytes,
+      });
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, content.id]);
+
     if (!scenes.length) return;
     if (insufficient) {
       toast({
