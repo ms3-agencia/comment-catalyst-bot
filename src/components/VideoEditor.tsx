@@ -22,6 +22,10 @@ import { buildMixedAudioTrack } from './video/audioMixer';
 import { RenderHistoryDialog } from './video/RenderHistoryDialog';
 import { Progress } from '@/components/ui/progress';
 import { History } from 'lucide-react';
+import {
+  loadProvidersAndCosts, selectWeightedProvider, computeRenderCost, chargeRenderCredits,
+  type ProviderRow as PSRow, type ResolvedProvider, type CostMap,
+} from '@/lib/providerSelector';
 
 // =================== Tipos ===================
 type ImageEffect = 'none' | 'zoom_in' | 'zoom_out' | 'pan_left' | 'pan_right' | 'pan_up' | 'pan_down';
