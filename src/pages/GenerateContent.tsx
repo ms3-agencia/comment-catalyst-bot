@@ -334,7 +334,11 @@ const GenerateContent = () => {
                 const meta = TYPE_META[t] || { label: t, icon: FileText };
                 const Icon = meta.icon;
                 return (
-                  <button key={t} onClick={() => { setContentType(t); setStep('quantity'); }}>
+                  <button key={t} onClick={() => {
+                    setContentType(t);
+                    setSelectedFormat(getFormats(network, t)[0]);
+                    setStep('quantity');
+                  }}>
                     <Card className="p-5 hover:border-primary transition-colors text-center">
                       <Icon className="h-8 w-8 mx-auto mb-2 text-primary" />
                       <h3 className="font-semibold">{meta.label}</h3>
