@@ -858,6 +858,7 @@ export type Database = {
         Returns: Json
       }
       admin_delete_user: { Args: { _user_id: string }; Returns: undefined }
+      admin_run_draft_cleanup: { Args: never; Returns: Json }
       admin_update_user_email: {
         Args: { _new_email: string; _user_id: string }
         Returns: undefined
@@ -866,6 +867,7 @@ export type Database = {
         Args: { _new_password: string; _user_id: string }
         Returns: undefined
       }
+      cleanup_video_editor_drafts: { Args: never; Returns: Json }
       consume_credits: {
         Args: {
           _action_key: string
