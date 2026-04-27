@@ -59,6 +59,53 @@ const TYPE_META: Record<string, { label: string; icon: any }> = {
   idea_pin: { label: 'Idea Pin', icon: Pin },
 };
 
+// Image formats per network+type. First option = recommended/default.
+type ImgFormat = { ratio: string; w: number; h: number; label: string };
+const FORMATS: Record<string, ImgFormat[]> = {
+  'instagram:post': [
+    { ratio: '4:5', w: 1080, h: 1350, label: 'Vertical (recomendado)' },
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+  ],
+  'instagram:carrossel': [
+    { ratio: '4:5', w: 1080, h: 1350, label: 'Vertical (recomendado)' },
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+  ],
+  'instagram:reels': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'instagram:story': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'tiktok:video': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'youtube:video': [{ ratio: '16:9', w: 1920, h: 1080, label: 'Horizontal HD' }],
+  'youtube:shorts': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'facebook:post': [
+    { ratio: '1.91:1', w: 1200, h: 630, label: 'Link/Imagem' },
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+  ],
+  'facebook:video': [
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+    { ratio: '16:9', w: 1920, h: 1080, label: 'Horizontal' },
+  ],
+  'facebook:reels': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'linkedin:post': [
+    { ratio: '1.91:1', w: 1200, h: 627, label: 'Horizontal' },
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+  ],
+  'linkedin:carrossel': [{ ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' }],
+  'linkedin:video': [
+    { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' },
+    { ratio: '16:9', w: 1920, h: 1080, label: 'Horizontal' },
+  ],
+  'x:post': [{ ratio: '16:9', w: 1600, h: 900, label: 'Horizontal' }],
+  'x:thread': [{ ratio: '16:9', w: 1600, h: 900, label: 'Horizontal' }],
+  'pinterest:pin': [{ ratio: '2:3', w: 1000, h: 1500, label: 'Vertical' }],
+  'pinterest:idea_pin': [{ ratio: '9:16', w: 1080, h: 1920, label: 'Vertical' }],
+  'threads:post': [{ ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' }],
+  'threads:thread': [{ ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' }],
+};
+
+const getFormats = (net: string | null, type: string | null): ImgFormat[] => {
+  if (!net || !type) return [{ ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' }];
+  return FORMATS[`${net}:${type}`] || [{ ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado' }];
+};
+
 type Step = 'project' | 'network' | 'type' | 'quantity' | 'results';
 
 const GenerateContent = () => {
@@ -79,6 +126,7 @@ const GenerateContent = () => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyNetwork, setHistoryNetwork] = useState<string | null>(null);
   const [imagingId, setImagingId] = useState<string | null>(null);
+  const [selectedFormat, setSelectedFormat] = useState<ImgFormat | null>(null);
 
   const loadHistory = async (projectId: string) => {
     setHistoryLoading(true);
@@ -92,11 +140,17 @@ const GenerateContent = () => {
     setHistoryLoading(false);
   };
 
-  const generateImage = async (content: GeneratedContent) => {
+  const generateImage = async (content: GeneratedContent, format?: ImgFormat) => {
     setImagingId(content.id);
     try {
+      const fmt = format || selectedFormat || getFormats(content.social_network, content.content_type)[0];
       const { data, error } = await supabase.functions.invoke('generate-content-image', {
-        body: { content_id: content.id },
+        body: {
+          content_id: content.id,
+          image_format: fmt.ratio,
+          width: fmt.w,
+          height: fmt.h,
+        },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
@@ -134,7 +188,7 @@ const GenerateContent = () => {
   const reset = () => {
     setStep('project'); setProject(null); setNetwork(null);
     setContentType(null); setQuantity(3); setResults([]);
-    setHistoryOpen(false); setHistoryNetwork(null);
+    setHistoryOpen(false); setHistoryNetwork(null); setSelectedFormat(null);
   };
 
   const handleGenerate = async () => {
@@ -280,7 +334,11 @@ const GenerateContent = () => {
                 const meta = TYPE_META[t] || { label: t, icon: FileText };
                 const Icon = meta.icon;
                 return (
-                  <button key={t} onClick={() => { setContentType(t); setStep('quantity'); }}>
+                  <button key={t} onClick={() => {
+                    setContentType(t);
+                    setSelectedFormat(getFormats(network, t)[0]);
+                    setStep('quantity');
+                  }}>
                     <Card className="p-5 hover:border-primary transition-colors text-center">
                       <Icon className="h-8 w-8 mx-auto mb-2 text-primary" />
                       <h3 className="font-semibold">{meta.label}</h3>
@@ -294,9 +352,51 @@ const GenerateContent = () => {
 
         {/* STEP: Quantity */}
         {step === 'quantity' && (
-          <div className="space-y-4 max-w-md">
-            <h2 className="font-heading text-xl font-semibold">4. Quantos conteúdos?</h2>
-            <Card className="p-6 space-y-4">
+          <div className="space-y-4 max-w-2xl">
+            <h2 className="font-heading text-xl font-semibold">4. Formato e quantidade</h2>
+            <Card className="p-6 space-y-5">
+              {/* Format picker */}
+              <div className="space-y-2">
+                <Label>Formato da imagem</Label>
+                <p className="text-xs text-muted-foreground">
+                  Tamanho otimizado para {networkMeta?.label} {contentType ? `(${TYPE_META[contentType]?.label || contentType})` : ''}
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
+                  {getFormats(network, contentType).map(f => {
+                    const active = selectedFormat?.ratio === f.ratio;
+                    // Visual preview box: scale aspect ratio into a fixed area
+                    const maxBox = 56;
+                    const ratio = f.w / f.h;
+                    const bw = ratio >= 1 ? maxBox : Math.round(maxBox * ratio);
+                    const bh = ratio >= 1 ? Math.round(maxBox / ratio) : maxBox;
+                    return (
+                      <button
+                        key={f.ratio}
+                        type="button"
+                        onClick={() => setSelectedFormat(f)}
+                        className={`p-3 rounded-lg border-2 transition-all text-left ${
+                          active
+                            ? 'border-primary bg-primary/10 shadow-[0_0_0_3px_hsl(var(--primary)/0.15)]'
+                            : 'border-border hover:border-primary/50 bg-card'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`shrink-0 rounded border-2 ${active ? 'border-primary bg-primary/20' : 'border-muted-foreground/40 bg-muted'}`}
+                            style={{ width: bw, height: bh }}
+                          />
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold">{f.ratio}</div>
+                            <div className="text-[11px] text-muted-foreground">{f.w}×{f.h}</div>
+                            <div className="text-[10px] text-muted-foreground line-clamp-1">{f.label}</div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div>
                 <Label>Quantidade (1-10)</Label>
                 <Input
@@ -306,6 +406,11 @@ const GenerateContent = () => {
               </div>
               <div className="text-sm text-muted-foreground">
                 Custo: <span className="font-semibold text-foreground">{quantity * 2} créditos</span> (2 por conteúdo)
+                {selectedFormat && (
+                  <span className="block text-xs mt-1">
+                    + 3 créditos por imagem gerada ({selectedFormat.w}×{selectedFormat.h})
+                  </span>
+                )}
               </div>
               <Button onClick={handleGenerate} disabled={generating} className="w-full">
                 {generating ? (
@@ -409,17 +514,45 @@ const GenerateContent = () => {
                           </div>
                         </div>
                       ) : (
-                        <Button
-                          variant="default" size="sm" className="w-full bg-gradient-to-r from-primary to-accent"
-                          onClick={() => generateImage(c)}
-                          disabled={imagingId === c.id}
-                        >
+                        <div className="space-y-2">
+                          <div className="text-xs text-muted-foreground">Escolha o formato:</div>
+                          <div className="flex flex-wrap gap-2">
+                            {getFormats(c.social_network, c.content_type).map(f => {
+                              const ratio = f.w / f.h;
+                              const maxBox = 36;
+                              const bw = ratio >= 1 ? maxBox : Math.round(maxBox * ratio);
+                              const bh = ratio >= 1 ? Math.round(maxBox / ratio) : maxBox;
+                              return (
+                                <button
+                                  key={f.ratio}
+                                  type="button"
+                                  disabled={imagingId === c.id}
+                                  onClick={() => generateImage(c, f)}
+                                  className="group flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-border hover:border-primary hover:bg-primary/5 transition-all disabled:opacity-50"
+                                  title={`${f.label} • ${f.w}×${f.h}`}
+                                >
+                                  <div
+                                    className="rounded border-2 border-muted-foreground/40 group-hover:border-primary bg-muted"
+                                    style={{ width: bw, height: bh }}
+                                  />
+                                  <div className="text-left">
+                                    <div className="text-xs font-semibold">{f.ratio}</div>
+                                    <div className="text-[10px] text-muted-foreground">{f.w}×{f.h}</div>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
                           {imagingId === c.id ? (
-                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gerando imagem...</>
+                            <div className="flex items-center gap-2 text-xs text-primary pt-1">
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Gerando imagem...
+                            </div>
                           ) : (
-                            <><Wand2 className="h-4 w-4 mr-2" /> Gerar imagem com IA (3 créditos)</>
+                            <div className="text-[11px] text-muted-foreground">
+                              <Wand2 className="h-3 w-3 inline mr-1" /> Clique no formato para gerar (3 créditos)
+                            </div>
                           )}
-                        </Button>
+                        </div>
                       )}
                     </div>
                     <Button variant="outline" size="sm" onClick={() => copyContent(c)} className="w-full">

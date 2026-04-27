@@ -8,7 +8,19 @@ const corsHeaders = {
 interface Body {
   content_id: string;
   custom_prompt?: string;
+  image_format?: string; // e.g. "9:16", "1:1", "4:5", "16:9", "2:3", "1.91:1"
+  width?: number;
+  height?: number;
 }
+
+const FORMAT_HINTS: Record<string, string> = {
+  "9:16": "vertical 9:16 portrait composition (1080x1920)",
+  "1:1": "square 1:1 composition (1080x1080)",
+  "4:5": "vertical 4:5 portrait composition (1080x1350)",
+  "16:9": "horizontal 16:9 landscape composition (1920x1080)",
+  "2:3": "vertical 2:3 portrait composition (1000x1500)",
+  "1.91:1": "horizontal 1.91:1 landscape composition (1200x630)",
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -53,15 +65,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Aspect ratio hints per network/type
+    // Aspect ratio hints per network/type (fallback if not provided)
     const formatHint = (() => {
+      if (body.image_format && FORMAT_HINTS[body.image_format]) {
+        return FORMAT_HINTS[body.image_format];
+      }
       const t = content.content_type;
       const n = content.social_network;
-      if (["reels", "shorts", "story", "idea_pin"].includes(t)) return "vertical 9:16 portrait composition";
-      if (t === "video" && (n === "youtube" || n === "facebook")) return "horizontal 16:9 landscape composition";
-      if (t === "pin") return "vertical 2:3 portrait composition";
-      if (t === "carrossel" || t === "post") return "square 1:1 composition";
-      return "square 1:1 composition";
+      if (["reels", "shorts", "story", "idea_pin"].includes(t)) return FORMAT_HINTS["9:16"];
+      if (t === "video" && (n === "youtube" || n === "facebook")) return FORMAT_HINTS["16:9"];
+      if (t === "pin") return FORMAT_HINTS["2:3"];
+      if (t === "carrossel" && n === "instagram") return FORMAT_HINTS["4:5"];
+      if (t === "post" && (n === "facebook" || n === "linkedin")) return FORMAT_HINTS["1.91:1"];
+      return FORMAT_HINTS["1:1"];
     })();
 
     const basePrompt = body.custom_prompt?.trim() || content.visual_idea || content.title || content.caption || "social media content";
