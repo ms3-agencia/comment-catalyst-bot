@@ -782,6 +782,32 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         </Badge>
       </div>
 
+      {presets.length > 0 && (
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+          <Label className="text-xs whitespace-nowrap">Estilo:</Label>
+          <select
+            className="h-8 rounded-md border bg-background px-2 text-xs flex-1 min-w-[120px]"
+            value={selectedPresetId}
+            onChange={e => setSelectedPresetId(e.target.value)}
+            disabled={rendering}
+          >
+            {presets.map(p => (
+              <option key={p.id} value={p.id}>{p.name}{p.is_default ? ' ★' : ''}</option>
+            ))}
+          </select>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => applyPresetAndRegenerate(selectedPresetId)}
+            disabled={rendering || !selectedPresetId}
+            className="h-8 text-xs"
+          >
+            <RefreshCw className="h-3 w-3 mr-1" /> Gerar cenas
+          </Button>
+        </div>
+      )}
+
       <div
         className="relative bg-black rounded-lg overflow-hidden mx-auto"
         style={{
