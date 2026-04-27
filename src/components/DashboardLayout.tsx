@@ -16,6 +16,7 @@ const navItems = [
   { to: '/dashboard/extract', icon: Youtube, label: 'Extrair Comentários' },
   { to: '/dashboard/projects', icon: FolderOpen, label: 'Meus Projetos' },
   { to: '/dashboard/generate', icon: Sparkles, label: 'Gerar Conteúdo' },
+  { to: '/dashboard/drafts', icon: Clapperboard, label: 'Rascunhos do Editor' },
   { to: '/dashboard/credits', icon: Coins, label: 'Créditos & Planos' },
 ];
 
