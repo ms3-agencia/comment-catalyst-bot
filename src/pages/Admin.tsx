@@ -136,7 +136,22 @@ const Admin = () => {
     const adminIds = new Set((roles || []).map(r => r.user_id));
     const { count: pCount } = await supabase.from('projects').select('*', { count: 'exact', head: true });
     const { count: cCount } = await supabase.from('comments').select('*', { count: 'exact', head: true });
-    const enriched = ((profiles as any[]) || []).map(p => ({ ...p, is_admin: adminIds.has(p.user_id) })) as UserProfile[];
+    const { data: credits } = await supabase.from('user_credits').select('user_id, balance');
+    const balanceMap = new Map((credits || []).map((c: any) => [c.user_id, c.balance as number]));
+    const { data: txs } = await supabase
+      .from('credit_transactions')
+      .select('user_id, amount')
+      .eq('type', 'consumption');
+    const consumedMap = new Map<string, number>();
+    (txs || []).forEach((t: any) => {
+      consumedMap.set(t.user_id, (consumedMap.get(t.user_id) || 0) + Math.abs(t.amount));
+    });
+    const enriched = ((profiles as any[]) || []).map(p => ({
+      ...p,
+      is_admin: adminIds.has(p.user_id),
+      credits_balance: balanceMap.get(p.user_id) ?? 0,
+      credits_consumed: consumedMap.get(p.user_id) ?? 0,
+    })) as UserProfile[];
     setUsers(enriched);
     setStats({ users: profiles?.length ?? 0, projects: pCount ?? 0, comments: cCount ?? 0 });
 
