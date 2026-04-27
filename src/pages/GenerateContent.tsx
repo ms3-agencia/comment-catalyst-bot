@@ -687,6 +687,17 @@ const GenerateContent = () => {
                         </Button>
                       )}
                     </div>
+                    {/* Botão de vídeo (apenas se houver roteiro) */}
+                    {(c.script || c.caption) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-primary/40 hover:bg-primary/10"
+                        onClick={() => setVideoEditorContent(c)}
+                      >
+                        <Clapperboard className="h-4 w-4 mr-1 text-primary" /> Gerar vídeo (até 60s)
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={() => copyContent(c)} className="w-full">
                       {copiedId === c.id ? <><Check className="h-4 w-4 mr-1" /> Copiado</> : <><Copy className="h-4 w-4 mr-1" /> Copiar</>}
                     </Button>
