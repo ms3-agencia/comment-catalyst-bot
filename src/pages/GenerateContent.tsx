@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { CopyIconButton } from '@/components/CopyIconButton';
+import { VideoEditor } from '@/components/VideoEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,7 @@ import { useCredits } from '@/hooks/useCredits';
 import {
   Sparkles, Loader2, ArrowLeft, FolderOpen, Instagram, Youtube, Facebook, Linkedin,
   Music2, MessageCircle, Image as ImageIcon, Video, Film, Layers, FileText, Pin,
-  Twitter, Hash, Copy, Check, TrendingUp, Wand2, Download, RefreshCw, History, ChevronDown, Pencil, Send, X,
+  Twitter, Hash, Copy, Check, TrendingUp, Wand2, Download, RefreshCw, History, ChevronDown, Pencil, Send, X, Clapperboard,
 } from 'lucide-react';
 
 type Project = {
@@ -140,6 +141,7 @@ const GenerateContent = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPrompt, setEditPrompt] = useState('');
   const [editLoading, setEditLoading] = useState(false);
+  const [videoEditorContent, setVideoEditorContent] = useState<GeneratedContent | null>(null);
 
   const EDIT_SUGGESTIONS = [
     'Arrumar a escrita',
