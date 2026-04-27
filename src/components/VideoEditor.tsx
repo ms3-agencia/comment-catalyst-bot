@@ -974,15 +974,19 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     // Auto-snapshot a version checkpoint before rendering, so users can always roll back.
     createDraftVersion(content.id, currentDraftState(), `Antes do render ${new Date().toLocaleString()}`).catch(() => {});
 
-    // If the content has a script, ensure each scene has its own image before rendering.
-    if (content.script) {
-      const fallback = content.image_url || null;
-      const missing = scenes.some(s => !s.imageUrl || s.imageUrl === fallback);
-      if (missing && !bulkGen.active) {
-        setRenderPhase('Gerando imagens das cenas…');
-        toast({ title: 'Gerando imagens das cenas', description: 'Cada cena receberá sua própria imagem antes do render.' });
-        await generateAllSceneImages(true);
-      }
+    // STEP 1 — Always generate one dedicated image per scene before rendering,
+    // so the timeline shows every scene with its own visual. We only skip scenes
+    // that were already manually customized (have a unique image different from
+    // the content fallback). The user explicitly asked for this two-step flow:
+    // (1) create all scene images and place them on the timeline, then
+    // (2) render the video using those images.
+    if (content.script && scenes.length > 0 && !bulkGen.active) {
+      setRenderPhase('Gerando imagens das cenas…');
+      toast({
+        title: 'Gerando imagens das cenas',
+        description: 'Cada cena receberá sua própria imagem antes do render.',
+      });
+      await generateAllSceneImages(true);
     }
     if (genKind === 'ai') {
       toast({
