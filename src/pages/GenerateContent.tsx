@@ -72,6 +72,26 @@ const GenerateContent = () => {
   const [quantity, setQuantity] = useState(3);
   const [results, setResults] = useState<GeneratedContent[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [history, setHistory] = useState<GeneratedContent[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const loadHistory = async (projectId: string) => {
+    setHistoryLoading(true);
+    const { data } = await supabase
+      .from('generated_contents')
+      .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(30);
+    setHistory((data as GeneratedContent[]) || []);
+    setHistoryLoading(false);
+  };
+
+  const selectProject = (p: Project) => {
+    setProject(p);
+    setStep('network');
+    loadHistory(p.id);
+  };
 
   useEffect(() => {
     (async () => {
@@ -108,6 +128,7 @@ const GenerateContent = () => {
       setResults((data as any).contents || []);
       setStep('results');
       refreshCredits();
+      if (project) loadHistory(project.id);
       toast({ title: 'Conteúdos gerados!', description: `${(data as any).contents?.length || 0} conteúdo(s) criado(s).` });
     } catch (e: any) {
       toast({ title: 'Erro ao gerar', description: e.message || 'Tente novamente', variant: 'destructive' });
@@ -164,6 +185,64 @@ const GenerateContent = () => {
           </div>
         )}
 
+        {/* History bar for selected project */}
+        {project && step !== 'project' && step !== 'results' && (
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                Conteúdos já gerados para "{project.name}"
+              </h3>
+              <span className="text-xs text-muted-foreground">{history.length} item(ns)</span>
+            </div>
+            {historyLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Carregando histórico...
+              </div>
+            ) : history.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum conteúdo gerado ainda para este projeto.</p>
+            ) : (
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+                {history.map(h => {
+                  const netMeta = NETWORKS.find(n => n.key === h.social_network);
+                  const NetIcon = netMeta?.icon || Sparkles;
+                  return (
+                    <div
+                      key={h.id}
+                      className="shrink-0 w-64 rounded-lg border border-border bg-card/50 p-3 hover:border-primary transition-colors cursor-pointer"
+                      onClick={() => copyContent(h)}
+                      title="Clique para copiar"
+                    >
+                      <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+                        <NetIcon className="h-3.5 w-3.5 text-primary" />
+                        <span className="capitalize">{netMeta?.label || h.social_network}</span>
+                        <span>•</span>
+                        <span>{TYPE_META[h.content_type]?.label || h.content_type}</span>
+                        {h.engagement_score != null && (
+                          <span className="ml-auto flex items-center gap-1 text-primary">
+                            <TrendingUp className="h-3 w-3" />{h.engagement_score}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium line-clamp-2">{h.title || h.caption || 'Sem título'}</p>
+                      {h.caption && h.title && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{h.caption}</p>
+                      )}
+                      <div className="flex items-center justify-end mt-2 text-xs text-muted-foreground">
+                        {copiedId === h.id ? (
+                          <span className="flex items-center gap-1 text-primary"><Check className="h-3 w-3" /> Copiado</span>
+                        ) : (
+                          <span className="flex items-center gap-1"><Copy className="h-3 w-3" /> Copiar</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        )}
+
         {/* STEP: Project */}
         {step === 'project' && (
           <div className="space-y-4">
@@ -184,7 +263,7 @@ const GenerateContent = () => {
                 {projects.map(p => (
                   <button
                     key={p.id}
-                    onClick={() => { setProject(p); setStep('network'); }}
+                    onClick={() => selectProject(p)}
                     className="text-left"
                   >
                     <Card className="p-5 hover:border-primary transition-colors h-full">
