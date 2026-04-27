@@ -388,6 +388,7 @@ type Props = {
 export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => {
   const { toast } = useToast();
   const { refresh: refreshCredits } = useCredits();
+  const isMobile = useIsMobile();
 
   const [format, setFormat] = useState<VideoFormat>(VIDEO_FORMATS[0]);
   const [scenes, setScenes] = useState<Scene[]>([]);
@@ -398,6 +399,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const [renderProgress, setRenderProgress] = useState(0);
   const [costPerSecond, setCostPerSecond] = useState<number>(1);
   const [regenIdx, setRegenIdx] = useState<number | null>(null);
+  const [mobileTab, setMobileTab] = useState<'preview' | 'edit'>('preview');
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
