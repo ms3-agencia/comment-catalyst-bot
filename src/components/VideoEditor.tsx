@@ -636,325 +636,354 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
 
   const activeScene = scenes[activeIdx];
 
+  // ============= Reusable Blocks =============
+  const PreviewBlock = (
+    <Card className="p-2 sm:p-3 bg-card">
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+          {VIDEO_FORMATS.map(f => (
+            <Button
+              key={f.ratio}
+              variant={format.ratio === f.ratio ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFormat(f)}
+              disabled={rendering}
+              className="h-8 px-2 sm:px-3 text-xs"
+            >
+              {f.ratio}
+            </Button>
+          ))}
+        </div>
+        <Badge variant="outline" className="gap-1 text-xs">
+          <Coins className="h-3 w-3" /> {totalCost} créd · {totalDuration}s
+        </Badge>
+      </div>
+
+      <div
+        className="relative bg-black rounded-lg overflow-hidden mx-auto"
+        style={{
+          aspectRatio: `${format.w}/${format.h}`,
+          maxHeight: isMobile ? '50vh' : '58vh',
+          width: format.w >= format.h ? '100%' : 'auto',
+          maxWidth: '100%',
+        }}
+      >
+        <canvas
+          ref={canvasRef}
+          width={format.w}
+          height={format.h}
+          className="w-full h-full block"
+        />
+      </div>
+
+      {/* Timeline / controls */}
+      <div className="mt-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-10 w-10 shrink-0"
+            onClick={() => {
+              if (previewProgress >= totalDuration - 0.05) setPreviewProgress(0);
+              setPlaying(p => !p);
+            }}
+            disabled={rendering || scenes.length === 0}
+          >
+            {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+          </Button>
+          <Slider
+            value={[Math.min(previewProgress, totalDuration)]}
+            max={Math.max(0.1, totalDuration)}
+            step={0.05}
+            onValueChange={(v) => {
+              setPlaying(false);
+              setPreviewProgress(v[0]);
+              drawAt(v[0]);
+            }}
+            disabled={rendering || scenes.length === 0}
+          />
+          <span className="text-[11px] sm:text-xs text-muted-foreground tabular-nums w-14 sm:w-20 text-right shrink-0">
+            {previewProgress.toFixed(1)}/{totalDuration}s
+          </span>
+        </div>
+
+        {/* Scene strip */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+          {scenes.map((s, i) => (
+            <button
+              key={s.id}
+              onClick={() => {
+                setPlaying(false);
+                setActiveIdx(i);
+                if (isMobile) setMobileTab('edit');
+              }}
+              disabled={rendering}
+              className={`shrink-0 px-2 py-1.5 rounded border text-[11px] min-w-[90px] max-w-[120px] text-left transition-colors ${
+                i === activeIdx
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-card hover:border-primary/40'
+              }`}
+            >
+              <div className="font-semibold">Cena {i + 1}</div>
+              <div className="truncate opacity-70">{s.text || '—'}</div>
+              <div className="opacity-60">{s.duration}s</div>
+            </button>
+          ))}
+          <button
+            onClick={addScene}
+            disabled={rendering}
+            className="shrink-0 px-3 py-1.5 rounded border border-dashed border-border text-[11px] hover:border-primary hover:text-primary"
+          >
+            <Plus className="h-3 w-3 inline mr-1" /> Cena
+          </button>
+        </div>
+
+        <Button
+          className="w-full h-11"
+          onClick={exportVideo}
+          disabled={rendering || scenes.length === 0 || totalDuration > 60}
+        >
+          {rendering ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Renderizando... {renderProgress}%</>
+          ) : (
+            <><Download className="h-4 w-4 mr-2" /> <span className="truncate">Gerar e baixar ({totalCost} créd.)</span></>
+          )}
+        </Button>
+        {totalDuration > 60 && (
+          <p className="text-xs text-destructive text-center">
+            Duração máxima: 60s. Atual: {totalDuration}s. Reduza a duração das cenas.
+          </p>
+        )}
+      </div>
+    </Card>
+  );
+
+  const EditorBlock = activeScene ? (
+    <Card className="p-3 sm:p-4 space-y-3 bg-card">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold flex items-center gap-2 text-sm sm:text-base">
+          <Type className="h-4 w-4 text-primary" /> Cena {activeIdx + 1}
+        </h3>
+        {scenes.length > 1 && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => removeScene(activeIdx)}
+            disabled={rendering}
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        )}
+      </div>
+
+      <div>
+        <Label className="text-xs">Texto</Label>
+        <Textarea
+          value={activeScene.text}
+          onChange={(e) => updateScene(activeIdx, { text: e.target.value })}
+          rows={3}
+          disabled={rendering}
+          className="text-sm"
+        />
+      </div>
+
+      <div>
+        <Label className="text-xs">Duração: {activeScene.duration}s</Label>
+        <Slider
+          value={[activeScene.duration]}
+          min={2} max={10} step={1}
+          onValueChange={(v) => updateScene(activeIdx, { duration: v[0] })}
+          disabled={rendering}
+          className="mt-2"
+        />
+      </div>
+
+      <div>
+        <Label className="text-xs">Efeito de imagem</Label>
+        <div className="flex flex-wrap gap-1 mt-1">
+          {IMAGE_EFFECTS.map(e => (
+            <button
+              key={e.key}
+              onClick={() => updateScene(activeIdx, { imageEffect: e.key })}
+              disabled={rendering}
+              className={`text-[11px] px-2 py-1.5 rounded border ${
+                activeScene.imageEffect === e.key
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border hover:border-primary/40'
+              }`}
+            >{e.label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <Label className="text-xs">Efeito de texto</Label>
+        <div className="flex flex-wrap gap-1 mt-1">
+          {TEXT_EFFECTS.map(e => (
+            <button
+              key={e.key}
+              onClick={() => updateScene(activeIdx, { textEffect: e.key })}
+              disabled={rendering}
+              className={`text-[11px] px-2 py-1.5 rounded border ${
+                activeScene.textEffect === e.key
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border hover:border-primary/40'
+              }`}
+            >{e.label}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs">Posição</Label>
+          <div className="flex gap-1 mt-1">
+            {(['top', 'center', 'bottom'] as TextPosition[]).map(p => (
+              <button
+                key={p}
+                onClick={() => updateScene(activeIdx, { textPosition: p })}
+                disabled={rendering}
+                className={`text-[11px] px-2 py-1.5 rounded border flex-1 ${
+                  activeScene.textPosition === p
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border'
+                }`}
+              >{p === 'top' ? 'Topo' : p === 'center' ? 'Meio' : 'Base'}</button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <Label className="text-xs">Tipografia</Label>
+          <select
+            value={activeScene.fontFamily}
+            onChange={(e) => updateScene(activeIdx, { fontFamily: e.target.value as FontFamily })}
+            disabled={rendering}
+            className="w-full mt-1 h-9 text-xs rounded border border-border bg-background px-2"
+          >
+            <option value="sans">Sans (Inter)</option>
+            <option value="display">Display (Space Grotesk)</option>
+            <option value="serif">Serif (Georgia)</option>
+            <option value="mono">Mono (Courier)</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <Label className="text-xs">Cor do texto</Label>
+          <Input
+            type="color"
+            value={activeScene.textColor}
+            onChange={(e) => updateScene(activeIdx, { textColor: e.target.value })}
+            disabled={rendering}
+            className="h-9 p-1"
+          />
+        </div>
+        <div>
+          <Label className="text-xs">Fundo do texto</Label>
+          <select
+            value={activeScene.textBg}
+            onChange={(e) => updateScene(activeIdx, { textBg: e.target.value })}
+            disabled={rendering}
+            className="w-full mt-1 h-9 text-xs rounded border border-border bg-background px-2"
+          >
+            <option value="none">Sem fundo</option>
+            <option value="rgba(0,0,0,0.45)">Preto translúcido</option>
+            <option value="rgba(0,0,0,0.75)">Preto sólido</option>
+            <option value="rgba(255,255,255,0.85)">Branco</option>
+            <option value="rgba(8,145,178,0.75)">Cyan (marca)</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <Label className="text-xs">Tamanho do texto: {activeScene.fontSize.toFixed(2)}x</Label>
+        <Slider
+          value={[activeScene.fontSize]}
+          min={0.5} max={1.6} step={0.05}
+          onValueChange={(v) => updateScene(activeIdx, { fontSize: v[0] })}
+          disabled={rendering}
+          className="mt-2"
+        />
+      </div>
+
+      <div className="border-t border-border pt-3 space-y-2">
+        <Label className="text-xs flex items-center gap-1">
+          <ImagePlus className="h-3.5 w-3.5" /> Imagem da cena
+        </Label>
+        {activeScene.imageUrl ? (
+          <img
+            src={activeScene.imageUrl}
+            alt="cena"
+            className="w-full h-28 object-cover rounded border border-border"
+          />
+        ) : (
+          <div className="w-full h-28 rounded border border-dashed border-border flex items-center justify-center text-xs text-muted-foreground">
+            Sem imagem
+          </div>
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={() => handleRegen(activeIdx)}
+          disabled={rendering || regenIdx === activeIdx}
+        >
+          {regenIdx === activeIdx ? (
+            <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Gerando...</>
+          ) : (
+            <><Wand2 className="h-3.5 w-3.5 mr-1" /> Gerar imagem desta cena (3 créd.)</>
+          )}
+        </Button>
+      </div>
+    </Card>
+  ) : (
+    <Card className="p-4 text-sm text-muted-foreground">
+      Adicione uma cena para começar.
+    </Card>
+  );
+
   return (
     <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm overflow-y-auto animate-fade-in">
-      <div className="container mx-auto py-6 px-4 max-w-7xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-2xl font-bold flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-primary" /> Editor de Vídeo
+      <div className="container mx-auto py-3 sm:py-6 px-3 sm:px-4 max-w-7xl">
+        {/* Header (sticky) */}
+        <div className="sticky top-0 z-10 -mx-3 sm:-mx-4 px-3 sm:px-4 py-2 sm:py-3 mb-3 sm:mb-4 bg-background/85 backdrop-blur-md border-b border-border flex items-center justify-between">
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-2xl font-bold flex items-center gap-2">
+              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-primary shrink-0" />
+              <span className="truncate">Editor de Vídeo</span>
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="hidden sm:block text-sm text-muted-foreground">
               Edite cenas, efeitos e textos. Renderização local no navegador.
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} disabled={rendering}>
+          <Button variant="ghost" size="icon" onClick={onClose} disabled={rendering} className="shrink-0">
             <X className="h-5 w-5" />
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
-          {/* Preview */}
-          <div className="space-y-3">
-            <Card className="p-3 bg-card">
-              <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {VIDEO_FORMATS.map(f => (
-                    <Button
-                      key={f.ratio}
-                      variant={format.ratio === f.ratio ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setFormat(f)}
-                      disabled={rendering}
-                    >
-                      {f.ratio}
-                    </Button>
-                  ))}
-                </div>
-                <Badge variant="outline" className="gap-1">
-                  <Coins className="h-3 w-3" /> {totalCost} créditos · {totalDuration}s
-                </Badge>
-              </div>
-
-              <div
-                className="relative bg-black rounded-lg overflow-hidden mx-auto"
-                style={{
-                  aspectRatio: `${format.w}/${format.h}`,
-                  maxHeight: '60vh',
-                  width: format.w >= format.h ? '100%' : 'auto',
-                }}
-              >
-                <canvas
-                  ref={canvasRef}
-                  width={format.w}
-                  height={format.h}
-                  className="w-full h-full block"
-                />
-              </div>
-
-              {/* Timeline / controls */}
-              <div className="mt-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    onClick={() => {
-                      if (previewProgress >= totalDuration - 0.05) setPreviewProgress(0);
-                      setPlaying(p => !p);
-                    }}
-                    disabled={rendering || scenes.length === 0}
-                  >
-                    {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                  </Button>
-                  <Slider
-                    value={[Math.min(previewProgress, totalDuration)]}
-                    max={Math.max(0.1, totalDuration)}
-                    step={0.05}
-                    onValueChange={(v) => {
-                      setPlaying(false);
-                      setPreviewProgress(v[0]);
-                      drawAt(v[0]);
-                    }}
-                    disabled={rendering || scenes.length === 0}
-                  />
-                  <span className="text-xs text-muted-foreground tabular-nums w-16 text-right">
-                    {previewProgress.toFixed(1)}s / {totalDuration}s
-                  </span>
-                </div>
-
-                {/* Scene strip */}
-                <div className="flex gap-1.5 overflow-x-auto pb-1">
-                  {scenes.map((s, i) => (
-                    <button
-                      key={s.id}
-                      onClick={() => { setPlaying(false); setActiveIdx(i); }}
-                      disabled={rendering}
-                      className={`shrink-0 px-2 py-1.5 rounded border text-[11px] min-w-[80px] text-left transition-colors ${
-                        i === activeIdx
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border bg-card hover:border-primary/40'
-                      }`}
-                    >
-                      <div className="font-semibold">Cena {i + 1}</div>
-                      <div className="truncate opacity-70">{s.text || '—'}</div>
-                      <div className="opacity-60">{s.duration}s</div>
-                    </button>
-                  ))}
-                  <button
-                    onClick={addScene}
-                    disabled={rendering}
-                    className="shrink-0 px-2 py-1.5 rounded border border-dashed border-border text-[11px] hover:border-primary hover:text-primary"
-                  >
-                    <Plus className="h-3 w-3 inline mr-1" /> Cena
-                  </button>
-                </div>
-
-                <Button
-                  className="w-full"
-                  onClick={exportVideo}
-                  disabled={rendering || scenes.length === 0 || totalDuration > 60}
-                >
-                  {rendering ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Renderizando... {renderProgress}%</>
-                  ) : (
-                    <><Download className="h-4 w-4 mr-2" /> Gerar e baixar vídeo ({totalCost} créd.)</>
-                  )}
-                </Button>
-                {totalDuration > 60 && (
-                  <p className="text-xs text-destructive text-center">
-                    Duração máxima: 60s. Atual: {totalDuration}s. Reduza a duração das cenas.
-                  </p>
-                )}
-              </div>
-            </Card>
+        {/* Mobile: tabs. Desktop: side-by-side */}
+        {isMobile ? (
+          <Tabs value={mobileTab} onValueChange={(v) => setMobileTab(v as 'preview' | 'edit')}>
+            <TabsList className="grid grid-cols-2 w-full mb-3">
+              <TabsTrigger value="preview" className="gap-1">
+                <Film className="h-4 w-4" /> Preview
+              </TabsTrigger>
+              <TabsTrigger value="edit" className="gap-1">
+                <Settings2 className="h-4 w-4" /> Editar cena
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="preview" className="mt-0">{PreviewBlock}</TabsContent>
+            <TabsContent value="edit" className="mt-0">{EditorBlock}</TabsContent>
+          </Tabs>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-4 items-start">
+            <div className="space-y-3 min-w-0">{PreviewBlock}</div>
+            <div className="space-y-3 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto lg:pr-1">
+              {EditorBlock}
+            </div>
           </div>
-
-          {/* Right: Scene editor */}
-          <div className="space-y-3">
-            {activeScene ? (
-              <Card className="p-4 space-y-3 bg-card">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold flex items-center gap-2">
-                    <Type className="h-4 w-4 text-primary" /> Cena {activeIdx + 1}
-                  </h3>
-                  {scenes.length > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeScene(activeIdx)}
-                      disabled={rendering}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  )}
-                </div>
-
-                <div>
-                  <Label className="text-xs">Texto</Label>
-                  <Textarea
-                    value={activeScene.text}
-                    onChange={(e) => updateScene(activeIdx, { text: e.target.value })}
-                    rows={3}
-                    disabled={rendering}
-                  />
-                </div>
-
-                <div>
-                  <Label className="text-xs">Duração: {activeScene.duration}s</Label>
-                  <Slider
-                    value={[activeScene.duration]}
-                    min={2} max={10} step={1}
-                    onValueChange={(v) => updateScene(activeIdx, { duration: v[0] })}
-                    disabled={rendering}
-                  />
-                </div>
-
-                <div>
-                  <Label className="text-xs">Efeito de imagem</Label>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {IMAGE_EFFECTS.map(e => (
-                      <button
-                        key={e.key}
-                        onClick={() => updateScene(activeIdx, { imageEffect: e.key })}
-                        disabled={rendering}
-                        className={`text-[11px] px-2 py-1 rounded border ${
-                          activeScene.imageEffect === e.key
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border hover:border-primary/40'
-                        }`}
-                      >{e.label}</button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-xs">Efeito de texto</Label>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {TEXT_EFFECTS.map(e => (
-                      <button
-                        key={e.key}
-                        onClick={() => updateScene(activeIdx, { textEffect: e.key })}
-                        disabled={rendering}
-                        className={`text-[11px] px-2 py-1 rounded border ${
-                          activeScene.textEffect === e.key
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border hover:border-primary/40'
-                        }`}
-                      >{e.label}</button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-xs">Posição</Label>
-                    <div className="flex gap-1 mt-1">
-                      {(['top', 'center', 'bottom'] as TextPosition[]).map(p => (
-                        <button
-                          key={p}
-                          onClick={() => updateScene(activeIdx, { textPosition: p })}
-                          disabled={rendering}
-                          className={`text-[11px] px-2 py-1 rounded border flex-1 ${
-                            activeScene.textPosition === p
-                              ? 'border-primary bg-primary/10 text-primary'
-                              : 'border-border'
-                          }`}
-                        >{p === 'top' ? 'Topo' : p === 'center' ? 'Meio' : 'Base'}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs">Tipografia</Label>
-                    <select
-                      value={activeScene.fontFamily}
-                      onChange={(e) => updateScene(activeIdx, { fontFamily: e.target.value as FontFamily })}
-                      disabled={rendering}
-                      className="w-full mt-1 h-8 text-xs rounded border border-border bg-background px-2"
-                    >
-                      <option value="sans">Sans (Inter)</option>
-                      <option value="display">Display (Space Grotesk)</option>
-                      <option value="serif">Serif (Georgia)</option>
-                      <option value="mono">Mono (Courier)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="text-xs">Cor do texto</Label>
-                    <Input
-                      type="color"
-                      value={activeScene.textColor}
-                      onChange={(e) => updateScene(activeIdx, { textColor: e.target.value })}
-                      disabled={rendering}
-                      className="h-8 p-1"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs">Fundo do texto</Label>
-                    <select
-                      value={activeScene.textBg}
-                      onChange={(e) => updateScene(activeIdx, { textBg: e.target.value })}
-                      disabled={rendering}
-                      className="w-full mt-1 h-8 text-xs rounded border border-border bg-background px-2"
-                    >
-                      <option value="none">Sem fundo</option>
-                      <option value="rgba(0,0,0,0.45)">Preto translúcido</option>
-                      <option value="rgba(0,0,0,0.75)">Preto sólido</option>
-                      <option value="rgba(255,255,255,0.85)">Branco</option>
-                      <option value="rgba(8,145,178,0.75)">Cyan (marca)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-xs">Tamanho do texto: {activeScene.fontSize.toFixed(2)}x</Label>
-                  <Slider
-                    value={[activeScene.fontSize]}
-                    min={0.5} max={1.6} step={0.05}
-                    onValueChange={(v) => updateScene(activeIdx, { fontSize: v[0] })}
-                    disabled={rendering}
-                  />
-                </div>
-
-                <div className="border-t border-border pt-3 space-y-2">
-                  <Label className="text-xs flex items-center gap-1">
-                    <ImagePlus className="h-3.5 w-3.5" /> Imagem da cena
-                  </Label>
-                  {activeScene.imageUrl ? (
-                    <img
-                      src={activeScene.imageUrl}
-                      alt="cena"
-                      className="w-full h-24 object-cover rounded border border-border"
-                    />
-                  ) : (
-                    <div className="w-full h-24 rounded border border-dashed border-border flex items-center justify-center text-xs text-muted-foreground">
-                      Sem imagem
-                    </div>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => handleRegen(activeIdx)}
-                    disabled={rendering || regenIdx === activeIdx}
-                  >
-                    {regenIdx === activeIdx ? (
-                      <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Gerando...</>
-                    ) : (
-                      <><Wand2 className="h-3.5 w-3.5 mr-1" /> Gerar imagem desta cena (3 créd.)</>
-                    )}
-                  </Button>
-                </div>
-              </Card>
-            ) : (
-              <Card className="p-4 text-sm text-muted-foreground">
-                Adicione uma cena para começar.
-              </Card>
-            )}
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
