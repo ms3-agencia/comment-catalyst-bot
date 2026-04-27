@@ -875,29 +875,57 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       const blob = new Blob(chunks, { type: mime });
       const ext = finalContainer;
       const url = URL.createObjectURL(blob);
+      const fileName = `video-${content.id.slice(0, 6)}-${format.ratio.replace(':', 'x')}-${W}x${H}.${ext}`;
       const a = document.createElement('a');
       a.href = url;
-      a.download = `video-${content.id.slice(0, 6)}-${format.ratio.replace(':', 'x')}-${W}x${H}.${ext}`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      // Keep URL alive longer so the toast action can re-trigger the download
+      setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
 
       setRenderProgress(100);
       setRenderPhase('Concluído');
+      const sizeMb = (blob.size / (1024 * 1024)).toFixed(2);
       await updateHistory({
         status: 'done',
         progress: 100,
         phase: 'Concluído',
         file_size_bytes: blob.size,
-        message: `Arquivo .${ext} (${(blob.size / (1024 * 1024)).toFixed(2)} MB)`,
+        message: `Arquivo .${ext} (${sizeMb} MB)`,
       });
 
       refreshCredits();
-      toast({ title: 'Vídeo gerado!', description: `${ext.toUpperCase()} • ${(blob.size / (1024 * 1024)).toFixed(1)} MB` });
+
+      // Rich success notification with link to re-download the file
+      const { toast: sonnerToast } = await import('sonner');
+      sonnerToast.success('Render concluído com sucesso', {
+        description: `${fileName} • ${ext.toUpperCase()} • ${sizeMb} MB`,
+        duration: 15000,
+        action: {
+          label: 'Baixar novamente',
+          onClick: () => {
+            const a2 = document.createElement('a');
+            a2.href = url;
+            a2.download = fileName;
+            document.body.appendChild(a2);
+            a2.click();
+            a2.remove();
+          },
+        },
+      });
     } catch (e: any) {
       await updateHistory({ status: 'error', message: e?.message || 'Erro desconhecido', phase: 'Erro' });
-      toast({ title: 'Erro ao gerar vídeo', description: e.message || 'Tente novamente', variant: 'destructive' });
+      const { toast: sonnerToast } = await import('sonner');
+      sonnerToast.error('Falha ao renderizar vídeo', {
+        description: e?.message || 'Erro desconhecido. Tente novamente.',
+        duration: 15000,
+        action: {
+          label: 'Tentar novamente',
+          onClick: () => exportVideo(),
+        },
+      });
     } finally {
       setRendering(false);
       setRenderEta('');
