@@ -8,7 +8,19 @@ const corsHeaders = {
 interface Body {
   content_id: string;
   custom_prompt?: string;
+  image_format?: string; // e.g. "9:16", "1:1", "4:5", "16:9", "2:3", "1.91:1"
+  width?: number;
+  height?: number;
 }
+
+const FORMAT_HINTS: Record<string, string> = {
+  "9:16": "vertical 9:16 portrait composition (1080x1920)",
+  "1:1": "square 1:1 composition (1080x1080)",
+  "4:5": "vertical 4:5 portrait composition (1080x1350)",
+  "16:9": "horizontal 16:9 landscape composition (1920x1080)",
+  "2:3": "vertical 2:3 portrait composition (1000x1500)",
+  "1.91:1": "horizontal 1.91:1 landscape composition (1200x630)",
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
