@@ -1296,7 +1296,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           stage={
             renderProgress >= 100
               ? 'done'
-              : bulkGen.active
+              : bulkGen.active || renderPhase.toLowerCase().includes('imagens das cenas')
               ? 'images'
               : 'render'
           }
