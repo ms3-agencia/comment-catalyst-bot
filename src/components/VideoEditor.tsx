@@ -476,6 +476,13 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const [presets, setPresets] = useState<Array<{ id: string; name: string; is_default: boolean; config: StylePreset }>>([]);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
 
+  // Providers + costs (weighted selection)
+  const [allProviders, setAllProviders] = useState<PSRow[]>([]);
+  const [costsMap, setCostsMap] = useState<CostMap>({});
+  const [resolvedVideo, setResolvedVideo] = useState<ResolvedProvider | null>(null);
+  const [resolvedTts, setResolvedTts] = useState<ResolvedProvider | null>(null);
+  const [resolvedMusic, setResolvedMusic] = useState<ResolvedProvider | null>(null);
+
   // ===== Export options =====
   const [container, setContainer] = useState<Container>('webm');
   const [codec, setCodec] = useState<CodecKey>('vp9');
