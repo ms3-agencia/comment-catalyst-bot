@@ -205,7 +205,7 @@ const GenerateContent = () => {
                 {projects.map(p => (
                   <button
                     key={p.id}
-                    onClick={() => { setProject(p); setStep('network'); }}
+                    onClick={() => selectProject(p)}
                     className="text-left"
                   >
                     <Card className="p-5 hover:border-primary transition-colors h-full">
