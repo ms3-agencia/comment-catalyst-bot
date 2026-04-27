@@ -14,6 +14,7 @@ import Projects from "./pages/Projects";
 import UserSettings from "./pages/UserSettings";
 import Admin from "./pages/Admin";
 import Credits from "./pages/Credits";
+import GenerateContent from "./pages/GenerateContent";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/dashboard/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
             <Route path="/dashboard/settings" element={<ProtectedRoute><UserSettings /></ProtectedRoute>} />
             <Route path="/dashboard/credits" element={<ProtectedRoute><Credits /></ProtectedRoute>} />
+            <Route path="/dashboard/generate" element={<ProtectedRoute><GenerateContent /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

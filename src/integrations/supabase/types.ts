@@ -247,6 +247,65 @@ export type Database = {
         }
         Relationships: []
       }
+      generated_contents: {
+        Row: {
+          caption: string | null
+          content_type: string
+          created_at: string
+          cta: string | null
+          engagement_score: number | null
+          hashtags: string[] | null
+          id: string
+          project_id: string
+          script: string | null
+          social_network: string
+          title: string | null
+          updated_at: string
+          user_id: string
+          visual_idea: string | null
+        }
+        Insert: {
+          caption?: string | null
+          content_type: string
+          created_at?: string
+          cta?: string | null
+          engagement_score?: number | null
+          hashtags?: string[] | null
+          id?: string
+          project_id: string
+          script?: string | null
+          social_network: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+          visual_idea?: string | null
+        }
+        Update: {
+          caption?: string | null
+          content_type?: string
+          created_at?: string
+          cta?: string | null
+          engagement_score?: number | null
+          hashtags?: string[] | null
+          id?: string
+          project_id?: string
+          script?: string | null
+          social_network?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+          visual_idea?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generated_contents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       idempotency_keys: {
         Row: {
           action_key: string
