@@ -2,6 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type PdfCustomization = {
   logo_url: string | null;
+  brand_name: string | null;
   primary_color: string;
   secondary_color: string;
   accent_color: string;
