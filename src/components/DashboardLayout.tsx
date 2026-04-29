@@ -194,12 +194,15 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0">
-        <header className="flex h-16 items-center gap-4 border-b border-border px-6 lg:px-8">
-          <button className="lg:hidden text-muted-foreground" onClick={() => setSidebarOpen(true)}><Menu size={20} /></button>
+      <main className="flex-1 min-w-0 w-full">
+        <header className="sticky top-0 z-30 flex h-14 lg:h-16 items-center gap-3 border-b border-border bg-background/80 backdrop-blur-md px-4 lg:px-8">
+          <button className="lg:hidden text-muted-foreground -ml-1 p-2" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
+            <Menu size={22} />
+          </button>
+          <Link to="/dashboard" className="lg:hidden font-heading text-base font-bold gradient-text">YCaptura</Link>
           <div className="flex-1" />
         </header>
-        <div className="p-6 lg:p-8">{children}</div>
+        <div className="p-4 sm:p-6 lg:p-8 max-w-full overflow-x-hidden">{children}</div>
       </main>
 
     </div>
