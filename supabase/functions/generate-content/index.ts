@@ -210,14 +210,15 @@ Adapte tom, formato e duração às melhores práticas de ${body.social_network}
         _amount: totalCost,
         _description: "Estorno: falha na geração de conteúdo",
       }).catch(() => {});
-      const status = aiResp.status === 429 ? 429 : aiResp.status === 402 ? 402 : 500;
+      const isCredit = aiResp.status === 402;
+      const status = aiResp.status === 429 ? 429 : 200;
       const msg =
         aiResp.status === 429
           ? "Limite de requisições atingido. Tente novamente em instantes."
-          : aiResp.status === 402
+          : isCredit
           ? "Créditos da IA esgotados. Adicione fundos na sua workspace."
           : "Erro na geração de conteúdo.";
-      return new Response(JSON.stringify({ error: msg }), {
+      return new Response(JSON.stringify({ error: msg, insufficient_credits: isCredit }), {
         status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
