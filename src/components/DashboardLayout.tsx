@@ -266,6 +266,20 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                     <span>Histórico</span>
                   </button>
                 )}
+                {/* Credits history submenu under "Créditos & Planos" */}
+                {item.to === '/dashboard/credits' && (
+                  <Link
+                    to="/dashboard/credits/history"
+                    className={`mt-1 ml-6 flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                      location.pathname === '/dashboard/credits/history'
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                    }`}
+                  >
+                    <History size={16} />
+                    <span>Histórico de Créditos</span>
+                  </Link>
+                )}
               </div>
             ))}
           </nav>
