@@ -363,7 +363,7 @@ function drawTextWithEffect(
   ctx.shadowColor = 'rgba(0,0,0,0.6)';
   ctx.shadowBlur = baseFs * 0.18;
 
-  const cx = W / 2 + dx;
+  const cx = xCenter + dx;
   const startY = yCenter - totalH / 2 + lineHeight / 2 + dy;
 
   if (scene.textEffect === 'pop') {
