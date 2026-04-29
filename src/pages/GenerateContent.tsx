@@ -23,6 +23,14 @@ type Project = {
   total_comments: number | null;
 };
 
+type Slide = {
+  index: number;
+  text: string;
+  visual?: string | null;
+  image_url?: string | null;
+  image_prompt?: string | null;
+};
+
 type GeneratedContent = {
   id: string;
   title: string | null;
@@ -36,6 +44,7 @@ type GeneratedContent = {
   content_type: string;
   image_url?: string | null;
   image_prompt?: string | null;
+  slides?: Slide[] | null;
 };
 
 const NETWORKS = [
