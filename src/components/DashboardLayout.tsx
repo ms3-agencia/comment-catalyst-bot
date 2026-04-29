@@ -23,25 +23,10 @@ const adminItems = [
 
 export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const { profile, isAdmin, signOut } = useAuth();
-  const { toast } = useToast();
   const location = useLocation();
   const { hasAddon } = useUserAddons();
   const pdfAddonActive = hasAddon('pdf-customization');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const [allHistory, setAllHistory] = useState<HistoryItem[]>([]);
-  const [activeNetwork, setActiveNetwork] = useState<string | null>(null);
-  const [activePost, setActivePost] = useState<HistoryItem | null>(null);
-  const [videoEditorPost, setVideoEditorPost] = useState<HistoryItem | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  // Inline image generation in history detail
-  const [genPanelOpen, setGenPanelOpen] = useState(false);
-  const [genFormat, setGenFormat] = useState<ImgFormat | null>(null);
-  const [genQuantity, setGenQuantity] = useState(1);
-  const [genLoading, setGenLoading] = useState(false);
-  const [genResults, setGenResults] = useState<string[]>([]);
 
   const allItems = [...navItems, ...(isAdmin ? adminItems : [])];
 
@@ -49,109 +34,6 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
     free: 'bg-muted text-muted-foreground',
     pro: 'bg-primary/20 text-primary',
     enterprise: 'bg-warning/20 text-warning',
-  };
-
-  const openHistory = async () => {
-    setHistoryDialogOpen(true);
-    setActiveNetwork(null);
-    setActivePost(null);
-    setHistoryLoading(true);
-    try {
-      const { data } = await supabase
-        .from('generated_contents')
-        .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type, image_url, image_prompt, created_at')
-        .order('created_at', { ascending: false })
-        .limit(500);
-      setAllHistory((data as HistoryItem[]) || []);
-    } catch (e) {
-      console.error('Error loading history:', e);
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
-
-  const counts = NETWORKS.map(n => ({
-    ...n,
-    count: allHistory.filter(h => h.social_network === n.key).length,
-  }));
-
-  const filtered = activeNetwork ? allHistory.filter(h => h.social_network === activeNetwork) : [];
-  const activeNetMeta = NETWORKS.find(n => n.key === activeNetwork);
-
-  const buildText = (c: HistoryItem) => [
-    c.title && `🎯 ${c.title}`,
-    c.caption,
-    c.hashtags?.length ? c.hashtags.map(h => `#${h}`).join(' ') : '',
-    c.cta && `👉 ${c.cta}`,
-    c.script && `\n📜 Roteiro:\n${c.script}`,
-    c.visual_idea && `\n🎨 Ideia visual:\n${c.visual_idea}`,
-  ].filter(Boolean).join('\n\n');
-
-  const copyContent = (c: HistoryItem) => {
-    navigator.clipboard.writeText(buildText(c));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-    toast({ title: 'Conteúdo copiado!' });
-  };
-
-  const downloadImage = async (url: string, filename: string) => {
-    setDownloading(true);
-    try {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-    } catch (e: any) {
-      toast({ title: 'Erro ao baixar', description: e.message, variant: 'destructive' });
-    } finally {
-      setDownloading(false);
-    }
-  };
-
-  const openGenPanel = (c: HistoryItem) => {
-    const fmts = getFormats(c.social_network, c.content_type);
-    setGenFormat(fmts[0]);
-    setGenQuantity(1);
-    setGenResults([]);
-    setGenPanelOpen(true);
-  };
-
-  const generateImagesForPost = async () => {
-    if (!activePost || !genFormat) return;
-    setGenLoading(true);
-    const generated: string[] = [];
-    try {
-      for (let i = 0; i < genQuantity; i++) {
-        const { data, error } = await supabase.functions.invoke('generate-content-image', {
-          body: {
-            content_id: activePost.id,
-            image_format: genFormat.ratio,
-            width: genFormat.w,
-            height: genFormat.h,
-          },
-        });
-        if (error) throw error;
-        if ((data as any)?.error) throw new Error((data as any).error);
-        const url = (data as any).image_url as string;
-        generated.push(url);
-        setGenResults([...generated]);
-      }
-      // Update local state with the latest image (which is what's saved on the row)
-      const latest = generated[generated.length - 1];
-      setActivePost({ ...activePost, image_url: latest });
-      setAllHistory(prev => prev.map(h => h.id === activePost.id ? { ...h, image_url: latest } : h));
-      toast({ title: `${generated.length} imagem(ns) gerada(s)!` });
-    } catch (e: any) {
-      toast({ title: 'Erro ao gerar imagem', description: e.message || 'Tente novamente', variant: 'destructive' });
-    } finally {
-      setGenLoading(false);
-    }
   };
 
 
