@@ -308,7 +308,11 @@ const GenerateContent = () => {
         },
       });
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
+      if ((data as any)?.error) {
+        const isCredit = !!(data as any).insufficient_credits;
+        toast({ title: isCredit ? 'Créditos insuficientes' : 'Erro ao gerar', description: (data as any).error, variant: 'destructive' });
+        return;
+      }
       setResults((data as any).contents || []);
       setStep('results');
       refreshCredits();
