@@ -225,7 +225,7 @@ const PdfCustomization = () => {
             style={{ background: config.primary_color }}
           >
             <span>{config.footer_text || 'Rodapé personalizado aparecerá em todas as páginas'}</span>
-            <span>Página 1/1</span>
+            <span>{config.brand_name || 'Sua Marca'} · Página 1/1</span>
           </div>
         </Card>
 
