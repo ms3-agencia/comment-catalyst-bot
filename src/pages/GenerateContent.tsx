@@ -688,7 +688,7 @@ const GenerateContent = () => {
                       )}
                     </div>
                     {/* Botão de vídeo (apenas se houver roteiro) */}
-                    {(c.script || c.caption) && (
+                    {c.script && c.script.trim() && (
                       <Button
                         variant="outline"
                         size="sm"
