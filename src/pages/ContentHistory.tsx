@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   History, Loader2, ArrowLeft, Instagram, Youtube, Facebook, Linkedin,
   Music2, Twitter, Pin, MessageCircle, Sparkles, FileText, TrendingUp,
-  Copy, Check, Download, Wand2, ImageIcon, X, Clapperboard,
+  Copy, Check, Download, Wand2, ImageIcon, X, Clapperboard, Trash2,
 } from 'lucide-react';
 
 const NETWORKS = [
