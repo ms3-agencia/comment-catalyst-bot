@@ -1454,18 +1454,23 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     <Card className="p-2 sm:p-3 bg-card">
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-          {VIDEO_FORMATS.map(f => (
-            <Button
-              key={f.ratio}
-              variant={format.ratio === f.ratio ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFormat(f)}
-              disabled={rendering}
-              className="h-8 px-2 sm:px-3 text-xs"
-            >
-              {f.ratio}
-            </Button>
-          ))}
+          {VIDEO_FORMATS.map(f => {
+            const active = format.id === f.id;
+            return (
+              <Button
+                key={f.id}
+                variant={active ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFormat(f)}
+                disabled={rendering}
+                className="h-8 px-2 sm:px-3 text-xs gap-1"
+                title={`${f.label} · ${f.w}×${f.h}`}
+              >
+                <span>{f.label}</span>
+                <span className="opacity-60">{f.ratio}</span>
+              </Button>
+            );
+          })}
         </div>
         <Badge variant={insufficient ? 'destructive' : 'outline'} className="gap-1 text-xs">
           <Coins className="h-3 w-3" /> {totalCost} créd · saldo {balance} · {totalDuration}s
