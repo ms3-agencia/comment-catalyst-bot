@@ -687,6 +687,9 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   // When false, the current edit only affects the active scene.
   const [voiceApplyAll, setVoiceApplyAll] = useState(true);
   const [fontApplyAll, setFontApplyAll] = useState(true);
+  const [posApplyAll, setPosApplyAll] = useState(true);
+  const previewWrapRef = useRef<HTMLDivElement>(null);
+  const dragStateRef = useRef<{ active: boolean; offsetX: number; offsetY: number } | null>(null);
 
   const [genKind, setGenKind] = useState<GenKind>('basic');
   const [providersBasic, setProvidersBasic] = useState<ProviderRow[]>([]);
