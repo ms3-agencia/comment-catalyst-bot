@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useUserAddons } from '@/hooks/useUserAddons';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const ICONS: Record<string, any> = { Sparkles, FileText, Palette, Zap, Crown };
 
+
 const AddonsPage = () => {
   const { addons, userAddons, loading, refresh, hasAddon } = useUserAddons();
   const { profile } = useAuth();
@@ -20,16 +22,52 @@ const AddonsPage = () => {
   const { toast } = useToast();
   const [busy, setBusy] = useState<string | null>(null);
   const [planAddons, setPlanAddons] = useState<Record<string, { discount_percent: number; included_free: boolean }>>({});
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Load plan-addon discounts
-  useState(() => {
+  // Load plan-addon discounts (corrigido: useEffect ao invés de useState mal usado)
+  useEffect(() => {
     if (!profile?.plan) return;
     supabase.from('plan_addons').select('addon_id, discount_percent, included_free').eq('plan', profile.plan).then(({ data }) => {
       const m: any = {};
       (data || []).forEach((r: any) => { m[r.addon_id] = r; });
       setPlanAddons(m);
     });
-  });
+  }, [profile?.plan]);
+
+  // Detecta retorno do Mercado Pago e faz polling até o webhook ativar o addon
+  useEffect(() => {
+    const mpStatus = searchParams.get('status') || searchParams.get('collection_status');
+    if (!mpStatus) return;
+
+    if (mpStatus === 'approved') {
+      toast({ title: 'Pagamento aprovado!', description: 'Ativando seu add-on…' });
+      let attempts = 0;
+      const baselineActive = userAddons.filter(u => u.status === 'active').length;
+      const interval = setInterval(async () => {
+        attempts++;
+        await refresh();
+        const { data: ua } = await supabase.from('user_addons').select('id').eq('status', 'active');
+        const newCount = ua?.length || 0;
+        if (newCount > baselineActive || attempts >= 10) {
+          clearInterval(interval);
+          if (newCount > baselineActive) {
+            toast({ title: 'Add-on ativado!' });
+          } else {
+            toast({ title: 'Processamento em andamento', description: 'Pode levar alguns minutos para refletir.' });
+          }
+          const sp = new URLSearchParams(searchParams);
+          ['status','collection_status','payment_id','preference_id','payment_type','merchant_order_id','collection_id'].forEach(k => sp.delete(k));
+          setSearchParams(sp, { replace: true });
+        }
+      }, 2000);
+      return () => clearInterval(interval);
+    } else if (mpStatus === 'pending' || mpStatus === 'in_process') {
+      toast({ title: 'Pagamento em processamento', description: 'Add-on será liberado quando aprovado.' });
+    } else if (mpStatus === 'rejected' || mpStatus === 'failure' || mpStatus === 'cancelled') {
+      toast({ title: 'Pagamento não concluído', variant: 'destructive' });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const buyWithMP = async (addonId: string) => {
     setBusy(addonId);
