@@ -437,6 +437,108 @@ function drawScene(
   if (scene.text) drawTextWithEffect(ctx, scene, W, H, progress);
 }
 
+/**
+ * Draws a transition between previous scene (at its end) and current scene (at its start).
+ * `t` ranges 0..1 — at 0 prev is fully visible, at 1 current is fully visible.
+ * Uses two offscreen buffers so the original drawScene logic is reused.
+ */
+function drawTransition(
+  ctx: CanvasRenderingContext2D,
+  prev: Scene,
+  curr: Scene,
+  cache: Map<string, HTMLImageElement>,
+  W: number, H: number,
+  t: number,
+  transition: Transition,
+) {
+  const tt = Math.max(0, Math.min(1, t));
+  // Render both into offscreen canvases
+  const a = document.createElement('canvas'); a.width = W; a.height = H;
+  const b = document.createElement('canvas'); b.width = W; b.height = H;
+  const actx = a.getContext('2d')!;
+  const bctx = b.getContext('2d')!;
+  drawScene(actx, prev, cache, W, H, 1); // prev at end
+  drawScene(bctx, curr, cache, W, H, 0); // curr at start
+
+  // Always start by drawing prev as base
+  ctx.drawImage(a, 0, 0);
+
+  switch (transition) {
+    case 'none':
+      ctx.drawImage(b, 0, 0);
+      break;
+    case 'fade':
+    case 'dissolve':
+      ctx.save();
+      ctx.globalAlpha = tt;
+      ctx.drawImage(b, 0, 0);
+      ctx.restore();
+      break;
+    case 'slide_left':
+      ctx.drawImage(a, -W * tt, 0);
+      ctx.drawImage(b, W * (1 - tt), 0);
+      break;
+    case 'slide_right':
+      ctx.drawImage(a, W * tt, 0);
+      ctx.drawImage(b, -W * (1 - tt), 0);
+      break;
+    case 'slide_up':
+      ctx.drawImage(a, 0, -H * tt);
+      ctx.drawImage(b, 0, H * (1 - tt));
+      break;
+    case 'slide_down':
+      ctx.drawImage(a, 0, H * tt);
+      ctx.drawImage(b, 0, -H * (1 - tt));
+      break;
+    case 'zoom_in': {
+      const s = 1 + 0.4 * tt;
+      ctx.save();
+      ctx.translate(W / 2, H / 2);
+      ctx.scale(s, s);
+      ctx.globalAlpha = 1 - tt;
+      ctx.drawImage(a, -W / 2, -H / 2);
+      ctx.restore();
+      ctx.save();
+      ctx.globalAlpha = tt;
+      ctx.drawImage(b, 0, 0);
+      ctx.restore();
+      break;
+    }
+    case 'zoom_out': {
+      const s = 1 - 0.4 * tt;
+      ctx.save();
+      ctx.translate(W / 2, H / 2);
+      ctx.scale(s, s);
+      ctx.globalAlpha = 1 - tt;
+      ctx.drawImage(a, -W / 2, -H / 2);
+      ctx.restore();
+      ctx.save();
+      ctx.globalAlpha = tt;
+      ctx.drawImage(b, 0, 0);
+      ctx.restore();
+      break;
+    }
+    case 'wipe_left':
+      ctx.drawImage(a, 0, 0);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(W * (1 - tt), 0, W * tt, H);
+      ctx.clip();
+      ctx.drawImage(b, 0, 0);
+      ctx.restore();
+      break;
+    case 'wipe_right':
+      ctx.drawImage(a, 0, 0);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, W * tt, H);
+      ctx.clip();
+      ctx.drawImage(b, 0, 0);
+      ctx.restore();
+      break;
+  }
+}
+
 // =================== Component ===================
 type Props = {
   open: boolean;
