@@ -833,26 +833,48 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scenes]);
 
+  const drawFrameAt = (
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    timeSec: number,
+  ) => {
+    let acc = 0;
+    let idx = 0;
+    let inSceneT = 0;
+    for (let i = 0; i < scenes.length; i++) {
+      const s = scenes[i];
+      if (timeSec < acc + s.duration) {
+        idx = i;
+        inSceneT = (timeSec - acc) / s.duration;
+        break;
+      }
+      acc += s.duration;
+      idx = i;
+      inSceneT = 1;
+    }
+    const scene = scenes[idx];
+    if (!scene) return idx;
+    const sceneStart = acc;
+    const tInScene = timeSec - sceneStart;
+    const trans = scene.transitionIn || 'none';
+    if (idx > 0 && trans !== 'none' && tInScene < TRANSITION_DURATION) {
+      const prev = scenes[idx - 1];
+      const tt = tInScene / TRANSITION_DURATION;
+      drawTransition(ctx, prev, scene, cacheRef.current, W, H, tt, trans);
+    } else {
+      drawScene(ctx, scene, cacheRef.current, W, H, Math.max(0, Math.min(1, inSceneT)));
+    }
+    return idx;
+  };
+
   const drawAt = (timeSec: number) => {
     const c = canvasRef.current;
     if (!c) return;
     const ctx = c.getContext('2d');
     if (!ctx) return;
-    let acc = 0;
-    let scene = scenes[0];
-    let inSceneT = 0;
-    for (const s of scenes) {
-      if (timeSec < acc + s.duration) {
-        scene = s;
-        inSceneT = (timeSec - acc) / s.duration;
-        break;
-      }
-      acc += s.duration;
-    }
-    if (!scene) return;
-    const idx = scenes.indexOf(scene);
+    const idx = drawFrameAt(ctx, c.width, c.height, timeSec);
     if (idx !== activeIdx && playing) setActiveIdx(idx);
-    drawScene(ctx, scene, cacheRef.current, c.width, c.height, Math.max(0, Math.min(1, inSceneT)));
   };
 
   // when activeIdx changes (manual selection), render that scene's start
