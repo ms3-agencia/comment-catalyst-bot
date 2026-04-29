@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   History, Loader2, ArrowLeft, Instagram, Youtube, Facebook, Linkedin,
   Music2, Twitter, Pin, MessageCircle, Sparkles, FileText, TrendingUp,
-  Copy, Check, Download, Wand2, ImageIcon, X, Clapperboard,
+  Copy, Check, Download, Wand2, ImageIcon, X, Clapperboard, Trash2,
 } from 'lucide-react';
 
 const NETWORKS = [
@@ -103,6 +103,23 @@ export default function ContentHistory() {
   const [genQuantity, setGenQuantity] = useState(1);
   const [genLoading, setGenLoading] = useState(false);
   const [genResults, setGenResults] = useState<string[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const deleteContent = async (h: HistoryItem) => {
+    if (!confirm(`Excluir "${h.title || h.caption || 'este conteúdo'}"? Esta ação não pode ser desfeita.`)) return;
+    setDeletingId(h.id);
+    try {
+      const { error } = await supabase.from('generated_contents').delete().eq('id', h.id);
+      if (error) throw error;
+      setAllHistory(prev => prev.filter(x => x.id !== h.id));
+      if (activePost?.id === h.id) setActivePost(null);
+      toast({ title: 'Conteúdo excluído' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -445,34 +462,51 @@ export default function ContentHistory() {
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filtered.map(h => (
-                  <button
+                  <div
                     key={h.id}
-                    onClick={() => setActivePost(h)}
-                    className="text-left group rounded-xl border border-border bg-card p-3 hover:border-primary hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all"
+                    className="relative text-left group rounded-xl border border-border bg-card p-3 hover:border-primary hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all"
                   >
-                    {h.image_url ? (
-                      <div className="mb-2 rounded-lg overflow-hidden border border-border aspect-video bg-muted">
-                        <img src={h.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
-                      </div>
-                    ) : (
-                      <div className="mb-2 rounded-lg border border-dashed border-border aspect-video bg-muted/30 flex items-center justify-center">
-                        <FileText className="h-6 w-6 text-muted-foreground/50" />
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
-                        {h.content_type}
-                      </span>
-                      {h.engagement_score != null && (
-                        <span className="flex items-center gap-1 text-xs font-semibold text-primary">
-                          <TrendingUp className="h-3 w-3" />{h.engagement_score}%
-                        </span>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); deleteContent(h); }}
+                      disabled={deletingId === h.id}
+                      title="Excluir conteúdo"
+                      aria-label="Excluir conteúdo"
+                      className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-background/90 hover:bg-destructive hover:text-destructive-foreground text-muted-foreground border border-border opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
+                    >
+                      {deletingId === h.id
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        : <Trash2 className="h-3.5 w-3.5" />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActivePost(h)}
+                      className="text-left w-full"
+                    >
+                      {h.image_url ? (
+                        <div className="mb-2 rounded-lg overflow-hidden border border-border aspect-video bg-muted">
+                          <img src={h.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        </div>
+                      ) : (
+                        <div className="mb-2 rounded-lg border border-dashed border-border aspect-video bg-muted/30 flex items-center justify-center">
+                          <FileText className="h-6 w-6 text-muted-foreground/50" />
+                        </div>
                       )}
-                    </div>
-                    <p className="text-sm font-semibold line-clamp-2 leading-snug">
-                      {h.title || h.caption || 'Sem título'}
-                    </p>
-                  </button>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">
+                          {h.content_type}
+                        </span>
+                        {h.engagement_score != null && (
+                          <span className="flex items-center gap-1 text-xs font-semibold text-primary">
+                            <TrendingUp className="h-3 w-3" />{h.engagement_score}%
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-semibold line-clamp-2 leading-snug">
+                        {h.title || h.caption || 'Sem título'}
+                      </p>
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
