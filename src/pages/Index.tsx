@@ -5,7 +5,9 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   Youtube, MessageSquare, Sparkles, ArrowRight, Check, Zap, Crown, ShieldCheck,
-  Coins, Loader2, ShoppingCart, Flame, TrendingUp, Clock, Star, Users, Brain, HelpCircle
+  Coins, Loader2, ShoppingCart, Flame, TrendingUp, Clock, Star, Users, Brain, HelpCircle,
+  Wand2, Image as ImageIcon, Film, Mic, Music2, Type, Layers, FolderOpen, BarChart3,
+  Palette, Settings, Lock,
 } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,11 +19,34 @@ import { useBranding } from '@/hooks/useBranding';
 type Pkg = { id: string; name: string; credits: number; price_brl: number; sort_order: number; features: string[] | null };
 type Plan = { plan: 'free' | 'pro' | 'enterprise'; display_name: string; monthly_credits: number; price_brl: number; description: string | null; features: string[] | null };
 
+// === Top 3 highlight features (hero section) ===
 const features = [
   { icon: Youtube, title: 'Extração em segundos', desc: 'Cole os links e nós trazemos centenas de comentários para você analisar.' },
   { icon: Brain, title: 'Perfil de avatar com IA', desc: 'Descubra dores, desejos e linguagem da sua audiência sem fazer pesquisa.' },
-  { icon: MessageSquare, title: 'Relatórios prontos para vender', desc: 'Análise de sentimento, padrões e insights para suas próximas campanhas.' },
+  { icon: Film, title: 'Editor de vídeo com IA', desc: 'Transforme o conteúdo gerado em vídeos prontos para Reels, Shorts e TikTok.' },
 ];
+
+// === Full feature catalog (everything the platform does today) ===
+const allFeatures: { icon: any; title: string; desc: string; tag: string }[] = [
+  { tag: 'Análise', icon: Youtube, title: 'Extração de comentários do YouTube', desc: 'Cole até dezenas de links e importamos comentários, autores, curtidas e datas em segundos.' },
+  { tag: 'Análise', icon: Brain, title: 'Perfil de avatar com IA', desc: 'A IA lê os comentários e gera o perfil completo: dores, desejos, objeções e linguagem real da audiência.' },
+  { tag: 'Análise', icon: BarChart3, title: 'Análise de sentimento', desc: 'Veja a proporção de comentários positivos, neutros e negativos para guiar o tom do conteúdo.' },
+  { tag: 'Conteúdo', icon: Wand2, title: 'Geração de conteúdo por IA', desc: 'Roteiros, legendas, hashtags e CTAs sob medida para Instagram, TikTok, YouTube e LinkedIn.' },
+  { tag: 'Conteúdo', icon: ImageIcon, title: 'Geração de imagens', desc: 'Crie capas e visuais únicos com IA — uma imagem por cena, prontas para a timeline do vídeo.' },
+  { tag: 'Vídeo', icon: Film, title: 'Editor de vídeo no navegador', desc: 'Monte cenas com texto, imagens, efeitos de zoom/pan e exporte em WebM ou MP4 sem instalar nada.' },
+  { tag: 'Vídeo', icon: Layers, title: 'Transições drag & drop', desc: 'Fade, slide, zoom, wipe e mais — arraste para o quadro entre cenas e veja o efeito no preview.' },
+  { tag: 'Vídeo', icon: Mic, title: 'Narração automática (TTS)', desc: 'Escolha a voz uma vez e ela vale para o vídeo todo. Ducking automático com a trilha sonora.' },
+  { tag: 'Vídeo', icon: Music2, title: 'Trilha sonora e biblioteca', desc: 'Música de fundo por cena ou global, com fade in/out e volume independente da narração.' },
+  { tag: 'Vídeo', icon: Type, title: 'Legendas e tipografia', desc: 'Posição, cor, fundo, fonte e tamanho. Defina uma vez e propague para todas as cenas.' },
+  { tag: 'Vídeo', icon: Sparkles, title: 'Estilos visuais prontos', desc: 'Presets criados pela equipe que aplicam efeitos, fontes e cores coerentes em um clique.' },
+  { tag: 'Workspace', icon: FolderOpen, title: 'Meus projetos e rascunhos', desc: 'Tudo fica salvo: vídeos extraídos, conteúdos gerados e edições em andamento com versões.' },
+  { tag: 'Workspace', icon: Coins, title: 'Créditos & histórico', desc: 'Saldo em tempo real, próximo reset mensal e histórico completo de consumo e compras.' },
+  { tag: 'Workspace', icon: Palette, title: 'Marca personalizada', desc: 'Logo, nome e textos do site editáveis pelo painel admin — ideal para uso white-label.' },
+  { tag: 'Workspace', icon: Settings, title: 'Painel administrativo', desc: 'Gerencie usuários, planos, pacotes, provedores de IA e custos das ações em um só lugar.' },
+  { tag: 'Workspace', icon: Lock, title: 'Segurança e privacidade', desc: 'Autenticação por e-mail/senha, papéis de acesso e dados protegidos por políticas server-side.' },
+];
+
+const featureTags = ['Todos', 'Análise', 'Conteúdo', 'Vídeo', 'Workspace'] as const;
 
 const socialProof = [
   { icon: Users, label: '+2.500', desc: 'criadores ativos' },
@@ -40,6 +65,8 @@ const Index = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [buying, setBuying] = useState<string | null>(null);
+  const [activeTag, setActiveTag] = useState<typeof featureTags[number]>('Todos');
+  const visibleFeatures = activeTag === 'Todos' ? allFeatures : allFeatures.filter(f => f.tag === activeTag);
 
   useEffect(() => {
     (async () => {
@@ -81,7 +108,10 @@ const Index = () => {
           )}
           <span className="font-heading text-xl font-bold gradient-text truncate">{branding.site_name}</span>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          <a href="#recursos" className="hidden md:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Recursos</a>
+          <a href="#planos" className="hidden md:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Planos</a>
+          <a href="#pacotes" className="hidden md:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Pacotes</a>
           {user ? (
             <Link to="/dashboard"><Button size="sm" className="glow-primary">Ir para o painel</Button></Link>
           ) : (
@@ -149,6 +179,58 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Recursos completos */}
+      <section id="recursos" className="px-6 lg:px-12 py-16 max-w-6xl mx-auto scroll-mt-20">
+        <div className="text-center mb-10">
+          <Badge variant="outline" className="mb-3 border-primary/40 text-primary">
+            <Sparkles size={12} className="mr-1" /> Recursos completos
+          </Badge>
+          <h2 className="font-heading text-3xl lg:text-4xl font-bold">
+            Tudo o que você ganha ao <span className="gradient-text">entrar agora</span>
+          </h2>
+          <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
+            Da extração ao vídeo final pronto para postar — todas as ferramentas em uma só plataforma.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-2 mb-8">
+          {featureTags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => setActiveTag(tag)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                activeTag === tag
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {visibleFeatures.map((f, i) => (
+            <Card key={i} className="glass p-5 hover:border-primary/40 transition-all">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <f.icon className="text-primary" size={20} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-heading font-semibold text-sm">{f.title}</h3>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-border/60 text-muted-foreground">
+                      {f.tag}
+                    </Badge>
+                  </div>
+                  <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </section>
+
       {/* Depoimentos */}
       <section className="px-6 lg:px-12 py-16 max-w-6xl mx-auto">
         <div className="text-center mb-10">
@@ -164,7 +246,7 @@ const Index = () => {
       </section>
 
       {/* Planos */}
-      <section className="px-6 lg:px-12 py-16 max-w-6xl mx-auto">
+      <section id="planos" className="px-6 lg:px-12 py-16 max-w-6xl mx-auto scroll-mt-20">
         <div className="text-center mb-12">
           <Badge variant="outline" className="mb-3 border-primary/40 text-primary"><ShieldCheck size={12} className="mr-1" /> Planos mensais</Badge>
           <h2 className="font-heading text-3xl lg:text-4xl font-bold">Escolha o plano e <span className="gradient-text">comece a vender mais</span></h2>
