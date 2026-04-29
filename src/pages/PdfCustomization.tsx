@@ -18,6 +18,9 @@ import { Link } from 'react-router-dom';
 type Customization = {
   logo_url: string | null;
   brand_name: string | null;
+  brand_position: 'header' | 'footer' | 'both';
+  logo_alignment: 'left' | 'center' | 'right';
+  logo_size: number;
   primary_color: string;
   secondary_color: string;
   accent_color: string;
@@ -37,6 +40,9 @@ type Customization = {
 const DEFAULT: Customization = {
   logo_url: null,
   brand_name: null,
+  brand_position: 'footer',
+  logo_alignment: 'left',
+  logo_size: 48,
   primary_color: '#06b6d4',
   secondary_color: '#0f172a',
   accent_color: '#22d3ee',
@@ -69,7 +75,7 @@ const PdfCustomization = () => {
   useEffect(() => {
     if (!user) return;
     supabase.from('pdf_customizations').select('*').eq('user_id', user.id).maybeSingle().then(({ data }) => {
-      if (data) setConfig({ ...DEFAULT, ...data, templates: (data.templates as any) || [], custom_fields: (data.custom_fields as any) || {} });
+      if (data) setConfig({ ...DEFAULT, ...(data as any), templates: (data.templates as any) || [], custom_fields: (data.custom_fields as any) || {} });
       setLoading(false);
     });
   }, [user]);
@@ -203,13 +209,31 @@ const PdfCustomization = () => {
                 <span style={{ fontSize: 64, fontWeight: 800, color: '#fff' }}>{config.watermark_text}</span>
               </div>
             )}
-            <div className="flex items-center gap-3 relative">
+            <div
+              className="flex items-center gap-3 relative"
+              style={{
+                justifyContent:
+                  config.logo_alignment === 'center' ? 'center'
+                  : config.logo_alignment === 'right' ? 'flex-end'
+                  : 'flex-start',
+              }}
+            >
               {config.logo_url ? (
-                <img src={config.logo_url} alt="" className="h-12 w-12 rounded-lg bg-white/15 p-1 object-contain" />
+                <img
+                  src={config.logo_url}
+                  alt=""
+                  className="rounded-lg bg-white/15 p-1 object-contain"
+                  style={{ height: Math.min(80, config.logo_size), width: Math.min(80, config.logo_size) }}
+                />
               ) : (
-                <div className="h-12 w-12 rounded-lg bg-white/15 flex items-center justify-center text-2xl">🧠</div>
+                <div
+                  className="rounded-lg bg-white/15 flex items-center justify-center text-2xl"
+                  style={{ height: Math.min(80, config.logo_size), width: Math.min(80, config.logo_size) }}
+                >🧠</div>
               )}
-              <span className="text-xs uppercase tracking-widest opacity-80">{config.brand_name || 'Sua Marca'}</span>
+              {(config.brand_position === 'header' || config.brand_position === 'both') && (
+                <span className="text-xs uppercase tracking-widest opacity-80">{config.brand_name || 'Sua Marca'}</span>
+              )}
             </div>
             <div className="relative">
               <h2 className="text-3xl font-bold leading-tight">{config.cover_title || 'Título da capa'}</h2>
@@ -225,7 +249,12 @@ const PdfCustomization = () => {
             style={{ background: config.primary_color }}
           >
             <span>{config.footer_text || 'Rodapé personalizado aparecerá em todas as páginas'}</span>
-            <span>{config.brand_name || 'Sua Marca'} · Página 1/1</span>
+            <span>
+              {(config.brand_position === 'footer' || config.brand_position === 'both')
+                ? `${config.brand_name || 'Sua Marca'} · `
+                : ''}
+              Página 1/1
+            </span>
           </div>
         </Card>
 
@@ -260,9 +289,48 @@ const PdfCustomization = () => {
                   onChange={(e) => setConfig({ ...config, brand_name: e.target.value })}
                   placeholder="Ex: Minha Empresa"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Aparece no rodapé do PDF ao lado do número da página.
-                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label>Posição do nome</Label>
+                  <Select
+                    value={config.brand_position}
+                    onValueChange={(v: 'header' | 'footer' | 'both') => setConfig({ ...config, brand_position: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="header">Apenas no topo</SelectItem>
+                      <SelectItem value="footer">Apenas no rodapé</SelectItem>
+                      <SelectItem value="both">Topo e rodapé</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Alinhamento do logo</Label>
+                  <Select
+                    value={config.logo_alignment}
+                    onValueChange={(v: 'left' | 'center' | 'right') => setConfig({ ...config, logo_alignment: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="left">Esquerda</SelectItem>
+                      <SelectItem value="center">Centro</SelectItem>
+                      <SelectItem value="right">Direita</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Tamanho do logo: {config.logo_size}px</Label>
+                  <Slider
+                    value={[config.logo_size]}
+                    onValueChange={(v) => setConfig({ ...config, logo_size: v[0] })}
+                    min={24}
+                    max={120}
+                    step={2}
+                    className="mt-3"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

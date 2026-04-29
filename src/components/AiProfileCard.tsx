@@ -348,20 +348,28 @@ const buildCoverHtml = (
     ? `background: linear-gradient(135deg, ${custom.primary_color}dd, ${custom.secondary_color}dd), url('${escapeHtml(custom.cover_image_url)}') center/cover no-repeat;`
     : `background: linear-gradient(135deg, ${custom.primary_color}, ${custom.secondary_color});`;
   const logo = custom.logo_url || branding.logo_url;
+  const coverLogoSize = Math.max(40, Math.min(160, custom.logo_size || 90));
   const logoMark = logo
-    ? `<img src="${escapeHtml(logo)}" alt="" crossorigin="anonymous" style="max-width:90px;max-height:90px;object-fit:contain;" />`
-    : `<span style="font-size:56px;">🧠</span>`;
+    ? `<img src="${escapeHtml(logo)}" alt="" crossorigin="anonymous" style="max-width:${coverLogoSize}px;max-height:${coverLogoSize}px;object-fit:contain;" />`
+    : `<span style="font-size:${Math.round(coverLogoSize * 0.6)}px;">🧠</span>`;
+  const align = custom.logo_alignment || 'left';
+  const flexJustify = align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start';
+  const textAlign = align === 'center' ? 'center' : align === 'right' ? 'right' : 'left';
+  const brandPos = custom.brand_position || 'footer';
+  const showBrandTop = brandPos === 'header' || brandPos === 'both';
+  const boxSize = coverLogoSize + 12;
   return `
 <div data-pdf-section data-pdf-cover style="${bg} color:#fff; padding:120px 40px; height:1110px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between; font-family:'${custom.font_family}','Inter',sans-serif;">
-  <div style="display:flex;align-items:center;gap:18px;">
-    <div style="width:90px;height:90px;border-radius:18px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.25);overflow:hidden;">
+  <div style="display:flex;align-items:center;gap:18px;justify-content:${flexJustify};">
+    <div style="width:${boxSize}px;height:${boxSize}px;border-radius:18px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.25);overflow:hidden;flex-shrink:0;">
       ${logoMark}
     </div>
+    ${showBrandTop ? `
     <div>
       <p style="margin:0;font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:0.85;">${escapeHtml(brandLabel)}</p>
-    </div>
+    </div>` : ''}
   </div>
-  <div style="text-align:left;">
+  <div style="text-align:${textAlign};">
     <h1 style="margin:0;font-size:46px;font-weight:800;letter-spacing:-1px;line-height:1.1;">${title}</h1>
     <p style="margin:18px 0 0;font-size:18px;opacity:0.9;font-weight:300;">${subtitle}</p>
     ${projectName ? `<p style="margin:36px 0 0;font-size:14px;opacity:0.8;">Projeto: <strong>${escapeHtml(projectName)}</strong></p>` : ''}
@@ -390,9 +398,15 @@ const buildPdfHtml = (
   const siteName = escapeHtml(effectiveSiteName);
   const tagline = escapeHtml(custom.cover_subtitle || branding.tagline || 'Análise de Audiência com IA');
   const logo = custom.logo_url || branding.logo_url;
+  const logoSize = hasCustomization ? Math.max(24, Math.min(120, custom.logo_size || 48)) : 48;
+  const headerLogoSize = Math.min(64, logoSize); // header band caps for layout safety
   const logoMark = logo
-    ? `<img src="${escapeHtml(logo)}" alt="" crossorigin="anonymous" style="max-width:48px;max-height:48px;object-fit:contain;display:block;" />`
-    : `<span style="font-size:24px;">🧠</span>`;
+    ? `<img src="${escapeHtml(logo)}" alt="" crossorigin="anonymous" style="max-width:${headerLogoSize}px;max-height:${headerLogoSize}px;object-fit:contain;display:block;" />`
+    : `<span style="font-size:${Math.round(headerLogoSize * 0.5)}px;">🧠</span>`;
+  const logoAlign = hasCustomization ? (custom.logo_alignment || 'left') : 'left';
+  const brandPos = hasCustomization ? (custom.brand_position || 'footer') : 'footer';
+  const showBrandInHeader = brandPos === 'header' || brandPos === 'both';
+  const showBrandInFooter = brandPos === 'footer' || brandPos === 'both';
 
   // Cover only when user opted in (has customization addon AND set a cover title or image)
   const coverHtml =
@@ -421,21 +435,29 @@ const buildPdfHtml = (
 <div style="font-family:'${custom.font_family}','Inter','Segoe UI',Arial,sans-serif;background:#ffffff;color:#0f172a;width:794px;">
   ${coverHtml}
   <div data-pdf-section style="${headerStyles}">
-    <div style="display:flex;align-items:center;justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:14px;">
-        <div style="width:48px;height:48px;border-radius:12px;background:${layout === 'modern' ? 'rgba(255,255,255,0.15)' : custom.primary_color + '15'};display:flex;align-items:center;justify-content:center;border:1px solid ${layout === 'modern' ? 'rgba(255,255,255,0.2)' : custom.primary_color + '30'};overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:${
+      logoAlign === 'center' ? 'center' : logoAlign === 'right' ? 'flex-end' : 'space-between'
+    };gap:14px;">
+      <div style="display:flex;align-items:center;gap:14px;${logoAlign === 'right' ? 'order:2;' : ''}">
+        <div style="width:${headerLogoSize + 8}px;height:${headerLogoSize + 8}px;border-radius:12px;background:${layout === 'modern' ? 'rgba(255,255,255,0.15)' : custom.primary_color + '15'};display:flex;align-items:center;justify-content:center;border:1px solid ${layout === 'modern' ? 'rgba(255,255,255,0.2)' : custom.primary_color + '30'};overflow:hidden;flex-shrink:0;">
           ${logoMark}
         </div>
+        ${showBrandInHeader ? `
         <div>
           <h1 style="margin:0;font-family:'${custom.font_family}','Space Grotesk','Inter',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.5px;color:${headerTitleColor};">${siteName}</h1>
           <p style="margin:3px 0 0;font-size:11px;color:${headerSubColor};letter-spacing:0.6px;text-transform:uppercase;font-weight:500;">${tagline}</p>
-        </div>
+        </div>` : ''}
       </div>
+      ${logoAlign === 'left' ? `
       <div style="text-align:right;">
         <p style="margin:0;font-size:10px;color:${headerSubColor};text-transform:uppercase;letter-spacing:0.5px;">Gerado em</p>
         <p style="margin:3px 0 0;font-size:13px;color:${headerTitleColor};font-weight:600;">${date}</p>
-      </div>
+      </div>` : ''}
     </div>
+    ${logoAlign !== 'left' ? `
+    <div style="margin-top:10px;text-align:${logoAlign === 'center' ? 'center' : 'left'};">
+      <p style="margin:0;font-size:10px;color:${headerSubColor};text-transform:uppercase;letter-spacing:0.5px;">Gerado em ${date}</p>
+    </div>` : ''}
   </div>
 
   <div data-pdf-section style="background:${layout === 'minimal' ? '#ffffff' : '#f8fafc'};padding:14px 40px;border-bottom:1px solid #e2e8f0;">
@@ -650,7 +672,11 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
         pdf.setFontSize(8);
         pdf.setTextColor(255, 255, 255);
         pdf.text(footerText, MARGIN_X, PAGE_H - 5.5);
-        const right = `${brandLabel}  ·  Página ${p}/${total}`;
+        const footerBrandPos = hasCustomization ? (custom.brand_position || 'footer') : 'footer';
+        const showBrandRight = footerBrandPos === 'footer' || footerBrandPos === 'both';
+        const right = showBrandRight
+          ? `${brandLabel}  ·  Página ${p}/${total}`
+          : `Página ${p}/${total}`;
         const rightW = pdf.getTextWidth(right);
         pdf.text(right, PAGE_W - MARGIN_X - rightW, PAGE_H - 5.5);
       }
