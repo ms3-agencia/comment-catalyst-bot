@@ -918,6 +918,80 @@ const Admin = () => {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+
+            {/* Logs viewer */}
+            <Dialog open={!!logsUser} onOpenChange={(open) => !open && setLogsUser(null)}>
+              <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-primary" /> Logs de acesso
+                  </DialogTitle>
+                  <DialogDescription>
+                    Histórico de sessões de <strong>{logsUser?.email}</strong> — data, hora, tempo logado e créditos consumidos no período.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex-1 overflow-auto -mx-6 px-6">
+                  {logsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                  ) : logsRows.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground text-sm">
+                      Este usuário ainda não possui registros de sessão.
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Login</TableHead>
+                          <TableHead>Logout</TableHead>
+                          <TableHead><Clock className="inline h-3.5 w-3.5 mr-1" />Tempo</TableHead>
+                          <TableHead className="text-right"><Coins className="inline h-3.5 w-3.5 mr-1" />Créditos</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {logsRows.map(r => {
+                          const login = new Date(r.login_at);
+                          const logout = r.logout_at ? new Date(r.logout_at) : null;
+                          return (
+                            <TableRow key={r.id}>
+                              <TableCell className="text-sm">
+                                {login.toLocaleDateString('pt-BR')}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {login.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {logout
+                                  ? logout.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                                  : <Badge variant="outline" className="text-[10px]">Em aberto</Badge>}
+                              </TableCell>
+                              <TableCell className="text-sm font-mono">
+                                {formatDuration(r.duration_seconds, r.login_at, r.logout_at)}
+                              </TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {r.credits_used && r.credits_used > 0 ? (
+                                  <span className="text-primary">{r.credits_used}c</span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+                <DialogFooter className="border-t border-border pt-3 mt-2">
+                  <div className="flex items-center justify-between w-full text-xs text-muted-foreground">
+                    <span>{logsRows.length > 0 && `${logsRows.length} sessão(ões) — total ${logsRows.reduce((a, r) => a + (r.credits_used || 0), 0)}c consumidos`}</span>
+                    <Button variant="outline" size="sm" onClick={() => setLogsUser(null)}>Fechar</Button>
+                  </div>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* PLANOS */}
