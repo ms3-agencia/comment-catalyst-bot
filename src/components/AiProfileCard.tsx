@@ -5,6 +5,8 @@ import { Sparkles, Download, Loader2, Target, Users, Heart, MessageCircle, Light
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { fetchBranding } from '@/hooks/useBranding';
+import { fetchPdfCustomization, DEFAULT_PDF_CUSTOMIZATION, type PdfCustomization } from '@/hooks/usePdfCustomization';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AiProfileCardProps {
   profile: string;
