@@ -758,6 +758,9 @@ const Admin = () => {
                                 <DropdownMenuItem onClick={() => { setCreditsUser(u); setCreditsAmount(100); setCreditsDescription('Ajuste manual'); }}>
                                   <Coins className="mr-2 h-4 w-4" /> Adicionar créditos
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openLogs(u)}>
+                                  <FileText className="mr-2 h-4 w-4" /> Logs
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => toggleAdmin(u)} disabled={isSelf}>
                                   {u.is_admin ? (
