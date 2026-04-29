@@ -214,7 +214,71 @@ const Extract = () => {
     setLoading(false);
   };
 
-  const handleGenerateAI = async () => {
+  const handleExtract = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const validUrls = urls.filter(u => u.trim());
+    if (!validUrls.length || !projectName.trim()) {
+      toast({
+        title: 'Preencha todos os campos',
+        description: 'Informe um nome de projeto e ao menos uma URL do YouTube.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate URL format quickly to give better UX before hitting the API.
+    const invalid = validUrls.filter(u => !extractYoutubeId(u));
+    if (invalid.length) {
+      toast({
+        title: 'URL inválida',
+        description: `Verifique: ${invalid[0]}. Use links completos do YouTube.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check for previous extractions of the same video IDs across the user's projects.
+    try {
+      const ids = validUrls.map(extractYoutubeId).filter(Boolean) as string[];
+      const orFilter = ids.map(id => `video_urls.cs.{${id}}`).join(',');
+      // Fallback: also try matching the raw URL in case the project saved the full URL.
+      const rawOr = validUrls.map(u => `video_urls.cs.{${u}}`).join(',');
+      const { data: existingProjects } = await supabase
+        .from('projects')
+        .select('id, name, video_urls')
+        .eq('user_id', user!.id)
+        .or([orFilter, rawOr].filter(Boolean).join(','));
+
+      const matched = (existingProjects || []).filter(p =>
+        (p.video_urls || []).some((vu: string) => {
+          const pid = extractYoutubeId(vu);
+          return ids.some(id => id === pid) || validUrls.includes(vu);
+        }),
+      );
+
+      if (matched.length > 0) {
+        const dupUrls = validUrls.filter(u => {
+          const id = extractYoutubeId(u);
+          return matched.some(p =>
+            (p.video_urls || []).some((vu: string) =>
+              extractYoutubeId(vu) === id || vu === u,
+            ),
+          );
+        });
+        setDuplicateInfo({
+          urls: dupUrls,
+          projects: matched.map(p => ({ id: p.id, name: p.name })),
+        });
+        return;
+      }
+    } catch (err) {
+      // Non-blocking: if the duplicate check fails we still proceed with extraction.
+      console.warn('duplicate check failed', err);
+    }
+
+    await runExtraction(validUrls);
+  };
+
     setAiLoading(true);
 
     // Idempotency: stable per project so a retry doesn't burn credits twice.
