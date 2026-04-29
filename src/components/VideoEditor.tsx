@@ -631,7 +631,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   content: SourceContent;
-  onImageRegen: (sceneIdx: number, prompt: string) => Promise<string | null>;
+  onImageRegen: (sceneIdx: number, prompt: string, format?: { ratio: string; w: number; h: number }) => Promise<string | null>;
 };
 
 type GenKind = 'basic' | 'ai';
