@@ -382,7 +382,11 @@ const buildPdfHtml = (
   const date = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
   const contentHtml = markdownToPdfHtml(profile);
   const chartHtml = renderAvatarChartHtml(buildAvatarChartData(profile));
-  const siteName = escapeHtml(branding.site_name || 'YCaptura');
+  // When the user owns the customization addon and set a brand_name, it FULLY
+  // replaces the platform site_name everywhere in the PDF (cover, header, footer, filename).
+  const effectiveSiteName =
+    hasCustomization && custom.brand_name ? custom.brand_name : (branding.site_name || 'YCaptura');
+  const siteName = escapeHtml(effectiveSiteName);
   const tagline = escapeHtml(custom.cover_subtitle || branding.tagline || 'Análise de Audiência com IA');
   const logo = custom.logo_url || branding.logo_url;
   const logoMark = logo
