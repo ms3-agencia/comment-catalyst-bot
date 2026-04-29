@@ -308,6 +308,32 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                 </div>
               );
             })}
+
+            {/* Separador + Add-ons (afastado dos demais menus) */}
+            <div className="pt-6 mt-4 border-t border-border space-y-1">
+              <Link
+                to="/dashboard/addons"
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  location.pathname === '/dashboard/addons'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                }`}
+              >
+                <Sparkles size={18} />
+                <span className="flex-1">Recursos Adicionais</span>
+              </Link>
+              <Link
+                to="/dashboard/pdf-customization"
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  location.pathname === '/dashboard/pdf-customization'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                }`}
+              >
+                <FileText size={18} />
+                <span className="flex-1">Add-on: PDF</span>
+              </Link>
+            </div>
           </nav>
           <div className="border-t border-border p-4">
             <DropdownMenu>

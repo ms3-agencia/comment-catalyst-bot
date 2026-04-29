@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2, CreditCard, Package, Coins, Wallet, Plus, Pencil, Palette, Clapperboard, FileText, Clock } from 'lucide-react';
+import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2, CreditCard, Package, Coins, Wallet, Plus, Pencil, Palette, Clapperboard, FileText, Clock, Sparkles } from 'lucide-react';
 import { BrandingTab } from '@/components/admin/BrandingTab';
+import { AddonsTab } from '@/components/admin/AddonsTab';
 import { VideoProvidersTab } from '@/components/admin/VideoProvidersTab';
 import { VideoStylePresetsTab } from '@/components/admin/VideoStylePresetsTab';
 import { IntegrationsTab } from '@/components/admin/IntegrationsTab';
@@ -643,10 +644,11 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 h-auto">
+          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-10 h-auto">
             <TabsTrigger value="users"><Users size={14} className="mr-1.5" />Usuários</TabsTrigger>
             <TabsTrigger value="plans"><ShieldCheck size={14} className="mr-1.5" />Planos</TabsTrigger>
             <TabsTrigger value="packages"><Package size={14} className="mr-1.5" />Pacotes</TabsTrigger>
+            <TabsTrigger value="addons"><Sparkles size={14} className="mr-1.5" />Add-ons</TabsTrigger>
             <TabsTrigger value="costs"><Coins size={14} className="mr-1.5" />Custos</TabsTrigger>
             <TabsTrigger value="video"><Clapperboard size={14} className="mr-1.5" />Vídeo</TabsTrigger>
             <TabsTrigger value="payments"><Wallet size={14} className="mr-1.5" />Mercado Pago</TabsTrigger>
