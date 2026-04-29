@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useLogoCustomization, FORMATS, LogoFormatKey, LogoPosition, defaultPositionFor } from '@/hooks/useLogoCustomization';
 import { useAuth } from '@/hooks/useAuth';
@@ -209,6 +209,8 @@ const MockupEditor: React.FC<{
   onReset: () => void;
 }> = ({ format, logoUrl, position, onChange, onCommit, onReset }) => {
   const stageRef = useRef<HTMLDivElement>(null);
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+  const logoImgRef = useRef<HTMLImageElement | null>(null);
   const [drag, setDrag] = useState<{ ox: number; oy: number; lastX: number; lastY: number } | null>(null);
 
   const aspect = format.w / format.h;
@@ -218,6 +220,49 @@ const MockupEditor: React.FC<{
   if (h > maxH) { h = maxH; w = h * aspect; }
 
   const logoW = (position.size / 100) * w;
+
+  // Pré-carrega o logo (uma vez por URL)
+  useEffect(() => {
+    if (!logoUrl) { logoImgRef.current = null; return; }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => { logoImgRef.current = img; drawPreview(); };
+    img.src = logoUrl;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logoUrl]);
+
+  // Redesenha o canvas de preview ao vivo a cada mudança
+  const drawPreview = useCallback(() => {
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    // Background gradient simulando conteúdo
+    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    grad.addColorStop(0, '#a21caf');
+    grad.addColorStop(0.5, '#6d28d9');
+    grad.addColorStop(1, '#06b6d4');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font = `${Math.round(canvas.width * 0.035)}px Inter, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('saída final do conteúdo', canvas.width / 2, canvas.height / 2);
+
+    const logo = logoImgRef.current;
+    if (logo) {
+      const targetW = (position.size / 100) * canvas.width;
+      const ratio = logo.naturalHeight / logo.naturalWidth;
+      const targetH = targetW * ratio;
+      const x = position.x * canvas.width;
+      const y = position.y * canvas.height;
+      ctx.globalAlpha = position.opacity;
+      ctx.drawImage(logo, x, y, targetW, targetH);
+      ctx.globalAlpha = 1;
+    }
+  }, [position.x, position.y, position.size, position.opacity, format.key]);
+
+  useEffect(() => { drawPreview(); }, [drawPreview]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (!stageRef.current) return;
@@ -259,10 +304,14 @@ const MockupEditor: React.FC<{
     { label: '↘', x: 0.96 - position.size / 100, y: 0.96 - position.size / 100 },
   ];
 
+  // Canvas de preview "ao vivo" — usa mesmas dimensões do stage para fidelidade visual
+  const previewW = Math.round(w);
+  const previewH = Math.round(h);
+
   return (
-    <div className="grid md:grid-cols-[1fr_240px] gap-6 items-start">
+    <div className="grid md:grid-cols-[1fr_1fr_220px] gap-4 items-start">
       <div className="flex flex-col items-center">
-        <p className="text-xs text-muted-foreground mb-2">{format.label} — {format.w}×{format.h} ({format.ratio}) · arraste o logo</p>
+        <p className="text-xs text-muted-foreground mb-2">{format.label} · {format.ratio} · arraste</p>
         <div
           ref={stageRef}
           className="relative rounded-xl overflow-hidden shadow-2xl border border-border bg-gradient-to-br from-fuchsia-500/40 via-purple-600/40 to-cyan-500/40 select-none"
@@ -291,6 +340,21 @@ const MockupEditor: React.FC<{
             <div className="absolute inset-0 flex items-center justify-center text-white/80 text-xs">Envie um logo para começar</div>
           )}
         </div>
+      </div>
+
+      <div className="flex flex-col items-center">
+        <p className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          Saída final · {format.w}×{format.h}
+        </p>
+        <canvas
+          ref={previewCanvasRef}
+          width={previewW}
+          height={previewH}
+          className="rounded-xl border border-border shadow-2xl bg-black/40"
+          style={{ width: previewW, height: previewH }}
+        />
+        <p className="text-[10px] text-muted-foreground mt-2">atualiza ao vivo conforme você ajusta</p>
       </div>
 
       <div className="space-y-4">
