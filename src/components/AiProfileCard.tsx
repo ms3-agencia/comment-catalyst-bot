@@ -398,8 +398,8 @@ const buildPdfHtml = (
   const siteName = escapeHtml(effectiveSiteName);
   const tagline = escapeHtml(custom.cover_subtitle || branding.tagline || 'Análise de Audiência com IA');
   const logo = custom.logo_url || branding.logo_url;
-  const logoSize = hasCustomization ? Math.max(24, Math.min(120, custom.logo_size || 48)) : 48;
-  const headerLogoSize = Math.min(64, logoSize); // header band caps for layout safety
+  const logoSize = hasCustomization ? Math.max(24, Math.min(300, custom.logo_size || 48)) : 48;
+  const headerLogoSize = Math.min(96, logoSize); // header band caps for layout safety
   const logoMark = logo
     ? `<img src="${escapeHtml(logo)}" alt="" crossorigin="anonymous" style="max-width:${headerLogoSize}px;max-height:${headerLogoSize}px;object-fit:contain;display:block;" />`
     : `<span style="font-size:${Math.round(headerLogoSize * 0.5)}px;">🧠</span>`;
