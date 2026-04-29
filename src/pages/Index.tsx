@@ -65,6 +65,8 @@ const Index = () => {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [buying, setBuying] = useState<string | null>(null);
+  const [activeTag, setActiveTag] = useState<typeof featureTags[number]>('Todos');
+  const visibleFeatures = activeTag === 'Todos' ? allFeatures : allFeatures.filter(f => f.tag === activeTag);
 
   useEffect(() => {
     (async () => {
