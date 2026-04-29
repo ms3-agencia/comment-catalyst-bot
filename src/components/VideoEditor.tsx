@@ -1563,6 +1563,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       )}
 
       <div
+        ref={previewWrapRef}
         className="relative bg-black rounded-lg overflow-hidden mx-auto"
         style={{
           aspectRatio: `${format.w}/${format.h}`,
@@ -1577,6 +1578,66 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           height={format.h}
           className="w-full h-full block"
         />
+        {/* Draggable text-position handle (preview only — not rendered into the exported video) */}
+        {!rendering && !bulkGen.active && !playing && activeScene?.text && (() => {
+          const xPct = typeof activeScene.textXPct === 'number'
+            ? activeScene.textXPct
+            : 0.5;
+          const yPct = typeof activeScene.textYPct === 'number'
+            ? activeScene.textYPct
+            : (activeScene.textPosition === 'top' ? 0.18 : activeScene.textPosition === 'bottom' ? 0.82 : 0.5);
+
+          const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+            e.preventDefault();
+            (e.target as HTMLElement).setPointerCapture(e.pointerId);
+            dragStateRef.current = { active: true, offsetX: 0, offsetY: 0 };
+          };
+          const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+            if (!dragStateRef.current?.active) return;
+            const wrap = previewWrapRef.current;
+            if (!wrap) return;
+            const rect = wrap.getBoundingClientRect();
+            const nx = Math.max(0.08, Math.min(0.92, (e.clientX - rect.left) / rect.width));
+            const ny = Math.max(0.08, Math.min(0.92, (e.clientY - rect.top) / rect.height));
+            const patch = { textXPct: nx, textYPct: ny } as Partial<Scene>;
+            if (posApplyAll) updateAllScenes(patch);
+            else updateScene(activeIdx, patch);
+          };
+          const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+            try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+            dragStateRef.current = null;
+          };
+
+          return (
+            <div
+              role="button"
+              aria-label="Arraste para reposicionar o texto"
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={onPointerUp}
+              onDoubleClick={() => {
+                const patch = { textXPct: undefined, textYPct: undefined } as Partial<Scene>;
+                if (posApplyAll) updateAllScenes(patch);
+                else updateScene(activeIdx, patch);
+                toast({ title: 'Posição do texto restaurada', description: posApplyAll ? 'Aplicado em todas as cenas.' : 'Aplicado apenas nesta cena.' });
+              }}
+              title="Arraste para mover o texto · Duplo clique para resetar"
+              className="absolute -translate-x-1/2 -translate-y-1/2 cursor-move select-none touch-none rounded-md border-2 border-dashed border-primary/70 bg-primary/5 hover:bg-primary/10 transition-colors"
+              style={{
+                left: `${xPct * 100}%`,
+                top: `${yPct * 100}%`,
+                width: '70%',
+                height: '18%',
+                minHeight: 36,
+              }}
+            >
+              <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary text-primary-foreground whitespace-nowrap">
+                Texto · arraste {posApplyAll ? '· todas as cenas' : '· só esta cena'}
+              </span>
+            </div>
+          );
+        })()}
         <RenderOverlay
           visible={rendering || bulkGen.active}
           stage={
