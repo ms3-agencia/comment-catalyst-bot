@@ -112,6 +112,42 @@ export default function ContentHistory() {
   const [genLoading, setGenLoading] = useState(false);
   const [genResults, setGenResults] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const toggleSelected = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const bulkDelete = async (ids: string[], label: string) => {
+    if (ids.length === 0) return;
+    if (!confirm(`Excluir ${ids.length} conteúdo(s) ${label}? Esta ação não pode ser desfeita.`)) return;
+    setBulkDeleting(true);
+    try {
+      const { error } = await supabase.from('generated_contents').delete().in('id', ids);
+      if (error) throw error;
+      const idSet = new Set(ids);
+      setAllHistory(prev => prev.filter(x => !idSet.has(x.id)));
+      setSelected(prev => {
+        const next = new Set(prev);
+        ids.forEach(id => next.delete(id));
+        return next;
+      });
+      if (activePost && idSet.has(activePost.id)) setActivePost(null);
+      toast({ title: `${ids.length} conteúdo(s) excluído(s)` });
+    } catch (e: any) {
+      toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const deleteContent = async (h: HistoryItem) => {
     if (!confirm(`Excluir "${h.title || h.caption || 'este conteúdo'}"? Esta ação não pode ser desfeita.`)) return;
