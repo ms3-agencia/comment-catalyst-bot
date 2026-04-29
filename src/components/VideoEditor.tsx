@@ -916,6 +916,19 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     setScenes(prev => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
   };
 
+  /**
+   * Apply a patch to ALL scenes. Used by "global" controls (voice, font size).
+   * The user requested: when changing voice/font in one scene, the change becomes
+   * the default for every scene; if they want a single scene to differ, they edit
+   * just that scene afterwards.
+   */
+  const updateAllScenes = (patch: Partial<Scene>) => {
+    setScenes(prev => prev.map(s => ({ ...s, ...patch })));
+  };
+  const updateAllSceneAudio = (patch: Partial<SceneAudio>) => {
+    setScenes(prev => prev.map(s => ({ ...s, audio: { ...s.audio, ...patch } })));
+  };
+
   const removeScene = (idx: number) => {
     setScenes(prev => prev.filter((_, i) => i !== idx));
     setActiveIdx(0);
@@ -923,11 +936,17 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
 
   const addScene = () => {
     const fallbackImg = scenes[0]?.imageUrl || content.image_url || null;
+    // Inherit voice & font size from the first existing scene so new scenes follow
+    // the project-wide defaults the user already configured.
+    const ref = scenes[0];
     setScenes(prev => [...prev, {
       id: uid(), text: 'Nova cena', imageUrl: fallbackImg, duration: 4,
       imageEffect: 'zoom_in', textEffect: 'fade', textPosition: 'center',
-      textColor: '#ffffff', textBg: 'rgba(0,0,0,0.45)', fontFamily: 'sans', fontSize: 1.0,
-      audio: defaultSceneAudio(),
+      textColor: '#ffffff', textBg: 'rgba(0,0,0,0.45)',
+      fontFamily: ref?.fontFamily || 'sans',
+      fontSize: ref?.fontSize ?? 1.0,
+      audio: ref ? { ...defaultSceneAudio(), narrationVoice: ref.audio.narrationVoice, narrationProvider: ref.audio.narrationProvider, narrationVolume: ref.audio.narrationVolume } : defaultSceneAudio(),
+      transitionIn: 'fade',
     }]);
     setActiveIdx(scenes.length);
   };
