@@ -18,6 +18,19 @@ import {
   Copy, Check, Download, Wand2, ImageIcon, X, Clapperboard, Trash2,
   Calendar as CalendarIcon, Search, CheckSquare, Square,
 } from 'lucide-react';
+import { useLogoCustomization, applyLogoOverlay, LogoFormatKey } from '@/hooks/useLogoCustomization';
+
+// Mapeia network + ratio para a chave de formato do logo (best-effort)
+const pickLogoFormatKey = (network: string, ratio?: string): LogoFormatKey => {
+  const n = network.toLowerCase();
+  if (n === 'tiktok') return 'tiktok';
+  if (n === 'youtube') return ratio === '16:9' ? 'youtube-thumb' : 'youtube-short';
+  if (n === 'instagram') {
+    if (ratio === '9:16') return 'instagram-reels';
+    return 'instagram-feed';
+  }
+  return 'instagram-feed';
+};
 
 const NETWORKS = [
   { key: 'instagram', label: 'Instagram', icon: Instagram },
