@@ -742,12 +742,14 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           setScenes(buildInitialScenes(content, def?.config || DEFAULT_PRESET));
           setSelectedPresetId(def?.id || '');
           const t = content.content_type;
+          const findById = (id: string) => VIDEO_FORMATS.find(f => f.id === id) || VIDEO_FORMATS[0];
           if (['reels', 'shorts', 'story', 'video'].includes(t) && content.social_network !== 'youtube') {
-            setFormat(VIDEO_FORMATS[0]);
+            // padrão vertical: usa Reels/Stories do Instagram (mesmas dimensões de TikTok/Kwai/Shorts)
+            setFormat(findById('ig-reels'));
           } else if (t === 'video' && content.social_network === 'youtube') {
-            setFormat(VIDEO_FORMATS[2]);
+            setFormat(findById('yt-16-9'));
           } else {
-            setFormat(VIDEO_FORMATS[1]);
+            setFormat(findById('square'));
           }
         }
         setActiveIdx(0);
