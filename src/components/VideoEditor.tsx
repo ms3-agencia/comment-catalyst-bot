@@ -539,6 +539,75 @@ function drawTransition(
   }
 }
 
+// =================== Transition Slot (drop target between scenes) ===================
+const TransitionSlot = ({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: Transition;
+  onChange: (t: Transition) => void;
+  disabled?: boolean;
+}) => {
+  const [hover, setHover] = useState(false);
+  const [open, setOpen] = useState(false);
+  const meta = TRANSITIONS.find(t => t.key === value) || TRANSITIONS[0];
+  return (
+    <div className="relative shrink-0 self-stretch flex items-center">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen(o => !o)}
+        onDragOver={(e) => {
+          if (disabled) return;
+          if (e.dataTransfer.types.includes('text/transition')) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            setHover(true);
+          }
+        }}
+        onDragLeave={() => setHover(false)}
+        onDrop={(e) => {
+          setHover(false);
+          if (disabled) return;
+          const k = e.dataTransfer.getData('text/transition') as Transition;
+          if (k) onChange(k);
+        }}
+        title={`Transição: ${meta.label} (clique ou arraste)`}
+        className={`h-[58px] w-9 rounded border-2 border-dashed flex flex-col items-center justify-center text-[10px] leading-tight transition-colors ${
+          hover
+            ? 'border-primary bg-primary/20 text-primary'
+            : value === 'none'
+              ? 'border-border/60 text-muted-foreground hover:border-primary/50'
+              : 'border-primary/60 bg-primary/5 text-primary'
+        }`}
+      >
+        <span className="text-base">{meta.icon}</span>
+        <span className="truncate w-full px-0.5 text-center">
+          {value === 'none' ? '—' : meta.label.replace('Slide ', '').replace('Zoom ', 'Z').replace('Wipe ', 'W').slice(0, 6)}
+        </span>
+      </button>
+      {open && !disabled && (
+        <div className="absolute z-20 top-full mt-1 left-1/2 -translate-x-1/2 min-w-[140px] rounded-md border border-border bg-popover shadow-lg p-1">
+          {TRANSITIONS.map(t => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => { onChange(t.key); setOpen(false); }}
+              className={`w-full text-left text-[11px] px-2 py-1 rounded flex items-center gap-2 hover:bg-accent ${
+                value === t.key ? 'bg-accent text-accent-foreground' : ''
+              }`}
+            >
+              <span className="w-4 text-center">{t.icon}</span>
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // =================== Component ===================
 type Props = {
   open: boolean;
