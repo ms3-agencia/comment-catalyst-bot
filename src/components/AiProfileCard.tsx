@@ -672,7 +672,11 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
         pdf.setFontSize(8);
         pdf.setTextColor(255, 255, 255);
         pdf.text(footerText, MARGIN_X, PAGE_H - 5.5);
-        const right = `${brandLabel}  ·  Página ${p}/${total}`;
+        const footerBrandPos = hasCustomization ? (custom.brand_position || 'footer') : 'footer';
+        const showBrandRight = footerBrandPos === 'footer' || footerBrandPos === 'both';
+        const right = showBrandRight
+          ? `${brandLabel}  ·  Página ${p}/${total}`
+          : `Página ${p}/${total}`;
         const rightW = pdf.getTextWidth(right);
         pdf.text(right, PAGE_W - MARGIN_X - rightW, PAGE_H - 5.5);
       }
