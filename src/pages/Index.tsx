@@ -108,7 +108,10 @@ const Index = () => {
           )}
           <span className="font-heading text-xl font-bold gradient-text truncate">{branding.site_name}</span>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          <a href="#recursos" className="hidden md:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Recursos</a>
+          <a href="#planos" className="hidden md:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Planos</a>
+          <a href="#pacotes" className="hidden md:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Pacotes</a>
           {user ? (
             <Link to="/dashboard"><Button size="sm" className="glow-primary">Ir para o painel</Button></Link>
           ) : (
