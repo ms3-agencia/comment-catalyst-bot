@@ -655,7 +655,8 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
         pdf.text(right, PAGE_W - MARGIN_X - rightW, PAGE_H - 5.5);
       }
 
-      const fileName = `${(projectName || 'perfil-avatar').replace(/[^\w\-]+/g, '_')}-ycaptura.pdf`;
+      const brandSlug = effectiveBrand.toLowerCase().replace(/[^\w\-]+/g, '_').replace(/^_+|_+$/g, '') || 'relatorio';
+      const fileName = `${(projectName || 'perfil-avatar').replace(/[^\w\-]+/g, '_')}-${brandSlug}.pdf`;
       try {
         pdf.save(fileName);
       } catch (saveErr) {
