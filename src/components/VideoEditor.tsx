@@ -809,7 +809,14 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const applyDraftState = (draft: EditorDraftState) => {
     draftHydratingRef.current = true;
     if (Array.isArray(draft.scenes)) setScenes(draft.scenes as Scene[]);
-    if (draft.format) setFormat(draft.format);
+    if (draft.format) {
+      const df: any = draft.format;
+      const matched = (df.id && VIDEO_FORMATS.find(f => f.id === df.id))
+        || VIDEO_FORMATS.find(f => f.w === df.w && f.h === df.h)
+        || VIDEO_FORMATS.find(f => f.ratio === df.ratio)
+        || VIDEO_FORMATS[0];
+      setFormat(matched);
+    }
     if (draft.globalAudio) setGlobalAudio(draft.globalAudio);
     if (draft.selectedPresetId) setSelectedPresetId(draft.selectedPresetId);
     if (draft.container) setContainer(draft.container as Container);
