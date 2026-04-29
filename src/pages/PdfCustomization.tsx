@@ -167,11 +167,65 @@ const PdfCustomization = () => {
             </h1>
             <p className="text-muted-foreground mt-1">Configure a aparência dos PDFs gerados pelo sistema.</p>
           </div>
-          <Button onClick={save} disabled={saving}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Salvar
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={generateTestPdf} disabled={saving}>
+              <Eye className="h-4 w-4" /> Salvar e testar
+            </Button>
+            <Button onClick={save} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Salvar
+            </Button>
+          </div>
         </div>
+
+        {/* Live preview */}
+        <Card className="overflow-hidden">
+          <div className="px-4 py-2 bg-muted/40 border-b flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+            <Eye className="h-3.5 w-3.5" /> Prévia da capa
+          </div>
+          <div
+            className="relative w-full aspect-[210/297] max-h-[420px] flex flex-col justify-between p-8 overflow-hidden"
+            style={{
+              fontFamily: `'${config.font_family}', sans-serif`,
+              background: config.cover_image_url
+                ? `linear-gradient(135deg, ${config.primary_color}dd, ${config.secondary_color}dd), url(${config.cover_image_url}) center/cover no-repeat`
+                : `linear-gradient(135deg, ${config.primary_color}, ${config.secondary_color})`,
+              color: '#fff',
+            }}
+          >
+            {config.watermark_text && (
+              <div
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                style={{ opacity: config.watermark_opacity, transform: 'rotate(-30deg)' }}
+              >
+                <span style={{ fontSize: 64, fontWeight: 800, color: '#fff' }}>{config.watermark_text}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-3 relative">
+              {config.logo_url ? (
+                <img src={config.logo_url} alt="" className="h-12 w-12 rounded-lg bg-white/15 p-1 object-contain" />
+              ) : (
+                <div className="h-12 w-12 rounded-lg bg-white/15 flex items-center justify-center text-2xl">🧠</div>
+              )}
+              <span className="text-xs uppercase tracking-widest opacity-80">Sua Marca</span>
+            </div>
+            <div className="relative">
+              <h2 className="text-3xl font-bold leading-tight">{config.cover_title || 'Título da capa'}</h2>
+              <p className="mt-2 text-sm opacity-90">{config.cover_subtitle || 'Subtítulo aparece aqui'}</p>
+            </div>
+            <div className="flex justify-between text-xs opacity-80 relative">
+              <span>{config.header_text || 'Cabeçalho personalizado'}</span>
+              <span>{new Date().toLocaleDateString('pt-BR')}</span>
+            </div>
+          </div>
+          <div
+            className="px-6 py-3 text-xs text-white flex justify-between"
+            style={{ background: config.primary_color }}
+          >
+            <span>{config.footer_text || 'Rodapé personalizado aparecerá em todas as páginas'}</span>
+            <span>Página 1/1</span>
+          </div>
+        </Card>
 
         <Tabs defaultValue="brand">
           <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full h-auto">
