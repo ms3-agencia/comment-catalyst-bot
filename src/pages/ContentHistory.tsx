@@ -708,7 +708,7 @@ export default function ContentHistory() {
                       <button
                         key={n.key}
                         disabled={disabled}
-                        onClick={() => setActiveNetwork(n.key)}
+                        onClick={() => { setActiveNetwork(n.key); setSelected(new Set()); setSearch(''); setDateFrom(undefined); setDateTo(undefined); }}
                         className={`group relative flex flex-col items-center justify-center gap-2 p-5 rounded-xl border transition-all ${
                           disabled
                             ? 'border-border/50 bg-muted/20 opacity-40 cursor-not-allowed'
