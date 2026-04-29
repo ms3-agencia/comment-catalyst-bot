@@ -249,39 +249,65 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
             <CreditsWidget />
           </div>
           <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
-            {allItems.map(item => (
-              <div key={item.to}>
-                <Link to={item.to}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${location.pathname === item.to ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary hover:text-foreground'}`}>
-                  <item.icon size={18} />
-                  {item.label}
-                </Link>
-                {/* History button right below "Gerar Conteúdo" */}
-                {item.to === '/dashboard/generate' && (
-                  <button
-                    onClick={openHistory}
-                    className="mt-1 ml-6 flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-                  >
-                    <History size={16} />
-                    <span>Histórico</span>
-                  </button>
-                )}
-                {/* Credits history submenu under "Créditos & Planos" */}
-                {item.to === '/dashboard/credits' && (
+            {allItems.map(item => {
+              const hasSubmenu =
+                item.to === '/dashboard/generate' || item.to === '/dashboard/credits';
+              const isActive = location.pathname === item.to;
+              return (
+                <div key={item.to} className="group/menu relative">
                   <Link
-                    to="/dashboard/credits/history"
-                    className={`mt-1 ml-6 flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                      location.pathname === '/dashboard/credits/history'
+                    to={item.to}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                      isActive
                         ? 'bg-primary/10 text-primary'
                         : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                     }`}
                   >
-                    <History size={16} />
-                    <span>Histórico de Créditos</span>
+                    <item.icon size={18} />
+                    <span className="flex-1">{item.label}</span>
+                    {hasSubmenu && (
+                      <ChevronDown
+                        size={14}
+                        className="text-muted-foreground/70 transition-transform duration-200 group-hover/menu:rotate-180 group-hover/menu:text-foreground"
+                        aria-hidden="true"
+                      />
+                    )}
                   </Link>
-                )}
-              </div>
-            ))}
+                  {hasSubmenu && (
+                    <div
+                      className="grid grid-rows-[0fr] opacity-0 transition-all duration-200 ease-out group-hover/menu:grid-rows-[1fr] group-hover/menu:opacity-100"
+                    >
+                      <div className="overflow-hidden">
+                        <div className="pt-1 space-y-1">
+                          {item.to === '/dashboard/generate' && (
+                            <button
+                              onClick={openHistory}
+                              className="ml-6 flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                            >
+                              <History size={16} />
+                              <span>Histórico</span>
+                            </button>
+                          )}
+                          {item.to === '/dashboard/credits' && (
+                            <Link
+                              to="/dashboard/credits/history"
+                              className={`ml-6 flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                                location.pathname === '/dashboard/credits/history'
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                              }`}
+                            >
+                              <History size={16} />
+                              <span>Histórico de Créditos</span>
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </nav>
           <div className="border-t border-border p-4">
             <DropdownMenu>
