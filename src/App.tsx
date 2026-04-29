@@ -19,6 +19,7 @@ import Drafts from "./pages/Drafts";
 import CreditHistory from "./pages/CreditHistory";
 import Addons from "./pages/Addons";
 import PdfCustomization from "./pages/PdfCustomization";
+import ContentHistory from "./pages/ContentHistory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/dashboard/drafts" element={<ProtectedRoute><Drafts /></ProtectedRoute>} />
             <Route path="/dashboard/addons" element={<ProtectedRoute><Addons /></ProtectedRoute>} />
             <Route path="/dashboard/pdf-customization" element={<ProtectedRoute><PdfCustomization /></ProtectedRoute>} />
+            <Route path="/dashboard/generate/history" element={<ProtectedRoute><ContentHistory /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
