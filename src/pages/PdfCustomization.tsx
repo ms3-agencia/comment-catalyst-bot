@@ -263,10 +263,11 @@ const PdfCustomization = () => {
         </Card>
 
         <Tabs defaultValue="brand">
-          <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full h-auto">
+          <TabsList className="grid grid-cols-2 sm:grid-cols-6 w-full h-auto">
             <TabsTrigger value="brand">Marca</TabsTrigger>
             <TabsTrigger value="cover">Capa</TabsTrigger>
-            <TabsTrigger value="layout">Layout</TabsTrigger>
+            <TabsTrigger value="header">Cabeçalho</TabsTrigger>
+            <TabsTrigger value="layout">Rodapé</TabsTrigger>
             <TabsTrigger value="watermark">Marca d'água</TabsTrigger>
             <TabsTrigger value="templates">Templates</TabsTrigger>
           </TabsList>
