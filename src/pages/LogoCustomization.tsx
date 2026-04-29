@@ -260,9 +260,9 @@ const MockupEditor: React.FC<{
       ctx.drawImage(logo, x, y, targetW, targetH);
       ctx.globalAlpha = 1;
     }
-  });
+  }, [position.x, position.y, position.size, position.opacity, format.key]);
 
-  useEffect(() => { drawPreview(); }, [position.x, position.y, position.size, position.opacity, format.key]);
+  useEffect(() => { drawPreview(); }, [drawPreview]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (!stageRef.current) return;
