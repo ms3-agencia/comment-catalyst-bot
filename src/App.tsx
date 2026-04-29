@@ -46,6 +46,7 @@ const App = () => (
             <Route path="/dashboard/drafts" element={<ProtectedRoute><Drafts /></ProtectedRoute>} />
             <Route path="/dashboard/addons" element={<ProtectedRoute><Addons /></ProtectedRoute>} />
             <Route path="/dashboard/pdf-customization" element={<ProtectedRoute><PdfCustomization /></ProtectedRoute>} />
+            <Route path="/dashboard/logo-customization" element={<ProtectedRoute><LogoCustomization /></ProtectedRoute>} />
             <Route path="/dashboard/generate/history" element={<ProtectedRoute><ContentHistory /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
