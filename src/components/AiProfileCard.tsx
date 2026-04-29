@@ -341,7 +341,8 @@ const buildCoverHtml = (
   projectName: string | undefined,
   date: string,
 ): string => {
-  const title = escapeHtml(custom.cover_title || branding.site_name || 'Relatório de Avatar');
+  const brandLabel = custom.brand_name || branding.site_name || 'Relatório';
+  const title = escapeHtml(custom.cover_title || brandLabel || 'Relatório de Avatar');
   const subtitle = escapeHtml(custom.cover_subtitle || branding.tagline || 'Análise de Audiência com IA');
   const bg = custom.cover_image_url
     ? `background: linear-gradient(135deg, ${custom.primary_color}dd, ${custom.secondary_color}dd), url('${escapeHtml(custom.cover_image_url)}') center/cover no-repeat;`
@@ -351,13 +352,13 @@ const buildCoverHtml = (
     ? `<img src="${escapeHtml(logo)}" alt="" crossorigin="anonymous" style="max-width:90px;max-height:90px;object-fit:contain;" />`
     : `<span style="font-size:56px;">🧠</span>`;
   return `
-<div data-pdf-section data-pdf-cover style="${bg} color:#fff; padding:120px 40px; min-height:1000px; display:flex; flex-direction:column; justify-content:space-between; font-family:'${custom.font_family}','Inter',sans-serif;">
+<div data-pdf-section data-pdf-cover style="${bg} color:#fff; padding:120px 40px; height:1110px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between; font-family:'${custom.font_family}','Inter',sans-serif;">
   <div style="display:flex;align-items:center;gap:18px;">
     <div style="width:90px;height:90px;border-radius:18px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.25);overflow:hidden;">
       ${logoMark}
     </div>
     <div>
-      <p style="margin:0;font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:0.85;">${escapeHtml(branding.site_name || 'YCaptura')}</p>
+      <p style="margin:0;font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:0.85;">${escapeHtml(brandLabel)}</p>
     </div>
   </div>
   <div style="text-align:left;">
