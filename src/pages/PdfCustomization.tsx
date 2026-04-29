@@ -18,7 +18,7 @@ import { Link } from 'react-router-dom';
 type Customization = {
   logo_url: string | null;
   brand_name: string | null;
-  brand_position: 'header' | 'footer' | 'both';
+  brand_position: 'header' | 'footer' | 'both' | 'none';
   logo_alignment: 'left' | 'center' | 'right';
   logo_size: number;
   primary_color: string;
@@ -223,12 +223,12 @@ const PdfCustomization = () => {
                   src={config.logo_url}
                   alt=""
                   className="rounded-lg bg-white/15 p-1 object-contain"
-                  style={{ height: Math.min(80, config.logo_size), width: Math.min(80, config.logo_size) }}
+                  style={{ height: Math.min(160, config.logo_size), width: Math.min(160, config.logo_size) }}
                 />
               ) : (
                 <div
                   className="rounded-lg bg-white/15 flex items-center justify-center text-2xl"
-                  style={{ height: Math.min(80, config.logo_size), width: Math.min(80, config.logo_size) }}
+                  style={{ height: Math.min(160, config.logo_size), width: Math.min(160, config.logo_size) }}
                 >🧠</div>
               )}
               {(config.brand_position === 'header' || config.brand_position === 'both') && (
@@ -296,10 +296,11 @@ const PdfCustomization = () => {
                   <Label>Posição do nome</Label>
                   <Select
                     value={config.brand_position}
-                    onValueChange={(v: 'header' | 'footer' | 'both') => setConfig({ ...config, brand_position: v })}
+                    onValueChange={(v: 'header' | 'footer' | 'both' | 'none') => setConfig({ ...config, brand_position: v })}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">Sem texto (apenas logo)</SelectItem>
                       <SelectItem value="header">Apenas no topo</SelectItem>
                       <SelectItem value="footer">Apenas no rodapé</SelectItem>
                       <SelectItem value="both">Topo e rodapé</SelectItem>
@@ -326,7 +327,7 @@ const PdfCustomization = () => {
                     value={[config.logo_size]}
                     onValueChange={(v) => setConfig({ ...config, logo_size: v[0] })}
                     min={24}
-                    max={120}
+                    max={300}
                     step={2}
                     className="mt-3"
                   />
