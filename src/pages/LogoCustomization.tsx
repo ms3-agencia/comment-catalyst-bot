@@ -161,6 +161,7 @@ const LogoCustomizationPage = () => {
                     logoUrl={data.logo_url}
                     position={getPosition(f.key)}
                     onChange={(p) => updatePos(f.key, p)}
+                    onCommit={(p) => updatePosCommit(f.key, p)}
                     onReset={() => resetPos(f.key)}
                   />
                 </TabsContent>
