@@ -544,6 +544,13 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
         })
         .sort((a, b) => a.top - b.top);
 
+      // If a cover exists, force a page break right after it (so the header
+      // never bleeds into the same page as the cover).
+      const coverEl = container.querySelector('[data-pdf-cover]') as HTMLElement | null;
+      const coverBottomPx = coverEl
+        ? Math.ceil((coverEl.getBoundingClientRect().bottom - containerRect.top) * SCALE)
+        : 0;
+
       // Find the best cut Y ≤ desiredCut that doesn't fall inside an atomic block.
       const findSafeCut = (startPx: number, desiredCut: number): number => {
         let safe = desiredCut;
@@ -562,10 +569,17 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
 
       let renderedPx = 0;
       let firstPage = true;
+      let coverDone = coverBottomPx === 0;
       while (renderedPx < fullCanvas.height) {
-        const desiredEnd = Math.min(renderedPx + pageHeightPx, fullCanvas.height);
-        const endPx =
-          desiredEnd >= fullCanvas.height ? desiredEnd : findSafeCut(renderedPx, desiredEnd);
+        let endPx: number;
+        if (!coverDone) {
+          // The cover is rendered as a single full page (it's sized to ~A4).
+          endPx = Math.min(coverBottomPx, fullCanvas.height);
+          coverDone = true;
+        } else {
+          const desiredEnd = Math.min(renderedPx + pageHeightPx, fullCanvas.height);
+          endPx = desiredEnd >= fullCanvas.height ? desiredEnd : findSafeCut(renderedPx, desiredEnd);
+        }
         const sliceH = endPx - renderedPx;
 
         const slice = document.createElement('canvas');
@@ -580,7 +594,13 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
         const sliceData = slice.toDataURL('image/jpeg', 0.82);
         const sliceMm = sliceH / pxPerMm;
         if (!firstPage) pdf.addPage();
-        pdf.addImage(sliceData, 'JPEG', MARGIN_X, MARGIN_TOP, CONTENT_W, sliceMm);
+        // The cover slice gets edge-to-edge placement (no margin) so the gradient fills the page.
+        const isCoverSlice = firstPage && coverBottomPx > 0;
+        if (isCoverSlice) {
+          pdf.addImage(sliceData, 'JPEG', 0, 0, PAGE_W, PAGE_H);
+        } else {
+          pdf.addImage(sliceData, 'JPEG', MARGIN_X, MARGIN_TOP, CONTENT_W, sliceMm);
+        }
         firstPage = false;
         renderedPx = endPx;
       }
