@@ -22,6 +22,7 @@ export type PdfCustomization = {
 
 export const DEFAULT_PDF_CUSTOMIZATION: PdfCustomization = {
   logo_url: null,
+  brand_name: null,
   primary_color: '#0c4a6e',
   secondary_color: '#1e3a8a',
   accent_color: '#0ea5e9',
