@@ -304,7 +304,7 @@ const PdfCustomization = () => {
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Sem texto (apenas logo)</SelectItem>
+                      <SelectItem value="none">Sem texto na capa (logo apenas)</SelectItem>
                       <SelectItem value="header">Apenas no topo</SelectItem>
                       <SelectItem value="footer">Apenas no rodapé</SelectItem>
                       <SelectItem value="both">Topo e rodapé</SelectItem>
