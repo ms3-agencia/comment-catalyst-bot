@@ -18,7 +18,7 @@ const NETWORK_ICONS: Record<string, any> = { Instagram, TikTok: Music2, YouTube:
 
 const LogoCustomizationPage = () => {
   const { user } = useAuth();
-  const { enabled, data, loading, save, getPosition } = useLogoCustomization();
+  const { enabled, data, loading, save, getPosition, saveStatus, lastSavedAt, flush } = useLogoCustomization();
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
   const [activeFormat, setActiveFormat] = useState<LogoFormatKey>('instagram-feed');
