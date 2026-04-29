@@ -21,6 +21,7 @@ import Addons from "./pages/Addons";
 import PdfCustomization from "./pages/PdfCustomization";
 import LogoCustomization from "./pages/LogoCustomization";
 import ContentHistory from "./pages/ContentHistory";
+import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/install" element={<Install />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
