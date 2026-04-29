@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useUserAddons } from '@/hooks/useUserAddons';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const ICONS: Record<string, any> = { Sparkles, FileText, Palette, Zap, Crown };
+
 
 const AddonsPage = () => {
   const { addons, userAddons, loading, refresh, hasAddon } = useUserAddons();
