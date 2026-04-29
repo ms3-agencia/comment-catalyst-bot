@@ -14,6 +14,8 @@ export type PdfCustomization = {
   cover_subtitle: string | null;
   cover_image_url: string | null;
   header_text: string | null;
+  header_alignment: 'left' | 'center' | 'right';
+  header_show_date: boolean;
   footer_text: string | null;
   watermark_text: string | null;
   watermark_opacity: number;
@@ -37,6 +39,8 @@ export const DEFAULT_PDF_CUSTOMIZATION: PdfCustomization = {
   cover_subtitle: null,
   cover_image_url: null,
   header_text: null,
+  header_alignment: 'left',
+  header_show_date: true,
   footer_text: null,
   watermark_text: null,
   watermark_opacity: 0.1,

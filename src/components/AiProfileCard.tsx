@@ -356,6 +356,7 @@ const buildCoverHtml = (
   const flexJustify = align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start';
   const textAlign = align === 'center' ? 'center' : align === 'right' ? 'right' : 'left';
   const brandPos = custom.brand_position || 'footer';
+  // 'none' = sem texto APENAS na capa (mantém em cabeçalho e segue rodapé conforme abaixo)
   const showBrandTop = brandPos === 'header' || brandPos === 'both';
   const boxSize = coverLogoSize + 12;
   return `
@@ -404,8 +405,11 @@ const buildPdfHtml = (
     ? `<img src="${escapeHtml(logo)}" alt="" crossorigin="anonymous" style="max-width:${headerLogoSize}px;max-height:${headerLogoSize}px;object-fit:contain;display:block;" />`
     : `<span style="font-size:${Math.round(headerLogoSize * 0.5)}px;">🧠</span>`;
   const logoAlign = hasCustomization ? (custom.logo_alignment || 'left') : 'left';
+  const headerAlign = hasCustomization ? ((custom as any).header_alignment || 'left') : 'left';
+  const showHeaderDate = hasCustomization ? ((custom as any).header_show_date !== false) : true;
   const brandPos = hasCustomization ? (custom.brand_position || 'footer') : 'footer';
-  const showBrandInHeader = brandPos === 'header' || brandPos === 'both';
+  // 'none' apenas oculta o texto da CAPA — no cabeçalho a marca continua aparecendo.
+  const showBrandInHeader = brandPos === 'header' || brandPos === 'both' || brandPos === 'none';
   const showBrandInFooter = brandPos === 'footer' || brandPos === 'both';
 
   // Cover only when user opted in (has customization addon AND set a cover title or image)
@@ -435,27 +439,27 @@ const buildPdfHtml = (
 <div style="font-family:'${custom.font_family}','Inter','Segoe UI',Arial,sans-serif;background:#ffffff;color:#0f172a;width:794px;">
   ${coverHtml}
   <div data-pdf-section style="${headerStyles}">
-    <div style="display:flex;align-items:center;justify-content:${
-      logoAlign === 'center' ? 'center' : logoAlign === 'right' ? 'flex-end' : 'space-between'
-    };gap:14px;">
-      <div style="display:flex;align-items:center;gap:14px;${logoAlign === 'right' ? 'order:2;' : ''}">
+    <div style="display:flex;align-items:center;gap:14px;justify-content:${
+      headerAlign === 'center' ? 'center' : headerAlign === 'right' ? 'flex-end' : showHeaderDate ? 'space-between' : 'flex-start'
+    };">
+      <div style="display:flex;align-items:center;gap:14px;">
         <div style="width:${headerLogoSize + 8}px;height:${headerLogoSize + 8}px;border-radius:12px;background:${layout === 'modern' ? 'rgba(255,255,255,0.15)' : custom.primary_color + '15'};display:flex;align-items:center;justify-content:center;border:1px solid ${layout === 'modern' ? 'rgba(255,255,255,0.2)' : custom.primary_color + '30'};overflow:hidden;flex-shrink:0;">
           ${logoMark}
         </div>
         ${showBrandInHeader ? `
-        <div>
+        <div style="text-align:${headerAlign === 'right' ? 'right' : 'left'};">
           <h1 style="margin:0;font-family:'${custom.font_family}','Space Grotesk','Inter',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.5px;color:${headerTitleColor};">${siteName}</h1>
           <p style="margin:3px 0 0;font-size:11px;color:${headerSubColor};letter-spacing:0.6px;text-transform:uppercase;font-weight:500;">${tagline}</p>
         </div>` : ''}
       </div>
-      ${logoAlign === 'left' ? `
+      ${showHeaderDate && headerAlign === 'left' ? `
       <div style="text-align:right;">
         <p style="margin:0;font-size:10px;color:${headerSubColor};text-transform:uppercase;letter-spacing:0.5px;">Gerado em</p>
         <p style="margin:3px 0 0;font-size:13px;color:${headerTitleColor};font-weight:600;">${date}</p>
       </div>` : ''}
     </div>
-    ${logoAlign !== 'left' ? `
-    <div style="margin-top:10px;text-align:${logoAlign === 'center' ? 'center' : 'left'};">
+    ${showHeaderDate && headerAlign !== 'left' ? `
+    <div style="margin-top:10px;text-align:${headerAlign === 'center' ? 'center' : 'right'};">
       <p style="margin:0;font-size:10px;color:${headerSubColor};text-transform:uppercase;letter-spacing:0.5px;">Gerado em ${date}</p>
     </div>` : ''}
   </div>

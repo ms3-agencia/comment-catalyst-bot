@@ -517,6 +517,8 @@ export type Database = {
           custom_fields: Json
           font_family: string | null
           footer_text: string | null
+          header_alignment: string
+          header_show_date: boolean
           header_text: string | null
           id: string
           logo_alignment: string
@@ -542,6 +544,8 @@ export type Database = {
           custom_fields?: Json
           font_family?: string | null
           footer_text?: string | null
+          header_alignment?: string
+          header_show_date?: boolean
           header_text?: string | null
           id?: string
           logo_alignment?: string
@@ -567,6 +571,8 @@ export type Database = {
           custom_fields?: Json
           font_family?: string | null
           footer_text?: string | null
+          header_alignment?: string
+          header_show_date?: boolean
           header_text?: string | null
           id?: string
           logo_alignment?: string
