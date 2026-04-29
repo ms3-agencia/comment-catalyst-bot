@@ -123,18 +123,16 @@ const Extract = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [aiProfile, setAiProfile] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState<
+    { urls: string[]; projects: { id: string; name: string }[] } | null
+  >(null);
 
   const addUrl = () => setUrls([...urls, '']);
   const removeUrl = (i: number) => setUrls(urls.filter((_, idx) => idx !== i));
   const updateUrl = (i: number, val: string) => { const u = [...urls]; u[i] = val; setUrls(u); };
 
-  const handleExtract = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const validUrls = urls.filter(u => u.trim());
-    if (!validUrls.length || !projectName.trim()) {
-      toast({ title: 'Preencha todos os campos', variant: 'destructive' });
-      return;
-    }
+  // Performs the actual extraction (separated so the duplicate dialog can call it).
+  const runExtraction = async (validUrls: string[]) => {
     setLoading(true);
 
     // Stable idempotency key per (project name + urls). Persists across retries
