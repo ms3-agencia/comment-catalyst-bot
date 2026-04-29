@@ -118,11 +118,11 @@ const LogoCustomizationPage = () => {
               <h3 className="text-sm font-semibold">Aplicação automática</h3>
               <div className="flex items-center justify-between">
                 <Label className="text-sm">Em imagens</Label>
-                <Switch checked={data.apply_on_images} onCheckedChange={(v) => save({ apply_on_images: v })} />
+                <Switch checked={data.apply_on_images} onCheckedChange={(v) => save({ apply_on_images: v }, { immediate: true })} />
               </div>
               <div className="flex items-center justify-between">
                 <Label className="text-sm">Em vídeos</Label>
-                <Switch checked={data.apply_on_videos} onCheckedChange={(v) => save({ apply_on_videos: v })} />
+                <Switch checked={data.apply_on_videos} onCheckedChange={(v) => save({ apply_on_videos: v }, { immediate: true })} />
               </div>
             </Card>
 
