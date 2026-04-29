@@ -70,10 +70,16 @@ const Index = () => {
 
   useEffect(() => {
     (async () => {
-      const [pkgRes, planRes] = await Promise.all([
+      const fetchData = () => Promise.all([
         supabase.from('credit_packages').select('*').eq('is_active', true).order('sort_order'),
         supabase.from('plan_configs').select('*').order('price_brl'),
       ]);
+      let [pkgRes, planRes] = await fetchData();
+      // If JWT expired, clear session and retry as anon (both tables allow anon SELECT)
+      if ((pkgRes.error as any)?.code === 'PGRST303' || (planRes.error as any)?.code === 'PGRST303') {
+        await supabase.auth.signOut();
+        [pkgRes, planRes] = await fetchData();
+      }
       setPackages((pkgRes.data as Pkg[]) || []);
       setPlans((planRes.data as Plan[]) || []);
       setLoading(false);
