@@ -1,14 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CopyIconButton } from '@/components/CopyIconButton';
 import { VideoEditor } from '@/components/VideoEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import {
   History, Loader2, ArrowLeft, Instagram, Youtube, Facebook, Linkedin,
   Music2, Twitter, Pin, MessageCircle, Sparkles, FileText, TrendingUp,
   Copy, Check, Download, Wand2, ImageIcon, X, Clapperboard, Trash2,
+  Calendar as CalendarIcon, Search, CheckSquare, Square,
 } from 'lucide-react';
 
 const NETWORKS = [
