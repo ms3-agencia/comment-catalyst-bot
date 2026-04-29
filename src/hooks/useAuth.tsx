@@ -36,6 +36,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // ---- Session-log tracking ----
+  // Persisted across reloads so we can close the row on logout.
+  const SESSION_LOG_KEY = 'ycaptura_session_log_id';
+  const SESSION_LOG_START_KEY = 'ycaptura_session_log_start';
+
+  const startSessionLog = async (userId: string) => {
+    try {
+      if (typeof window === 'undefined') return;
+      // Avoid duplicating: if we already have an open log for this user in this tab, skip
+      if (sessionStorage.getItem(SESSION_LOG_KEY)) return;
+      const { data, error } = await supabase
+        .from('user_session_logs')
+        .insert({
+          user_id: userId,
+          login_at: new Date().toISOString(),
+          user_agent: navigator.userAgent.slice(0, 500),
+        })
+        .select('id')
+        .single();
+      if (error) return;
+      sessionStorage.setItem(SESSION_LOG_KEY, data.id);
+      sessionStorage.setItem(SESSION_LOG_START_KEY, Date.now().toString());
+    } catch { /* noop */ }
+  };
+
+  const closeSessionLog = async () => {
+    try {
+      if (typeof window === 'undefined') return;
+      const id = sessionStorage.getItem(SESSION_LOG_KEY);
+      const startStr = sessionStorage.getItem(SESSION_LOG_START_KEY);
+      if (!id) return;
+      const start = startStr ? parseInt(startStr, 10) : Date.now();
+      const duration = Math.max(1, Math.floor((Date.now() - start) / 1000));
+      await supabase
+        .from('user_session_logs')
+        .update({ logout_at: new Date().toISOString(), duration_seconds: duration })
+        .eq('id', id);
+      sessionStorage.removeItem(SESSION_LOG_KEY);
+      sessionStorage.removeItem(SESSION_LOG_START_KEY);
+    } catch { /* noop */ }
+  };
+
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase.from('profiles').select('*').eq('user_id', userId).single();
     if (data) setProfile(data as Profile);
@@ -58,7 +100,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         setTimeout(() => fetchProfile(session.user.id), 0);
+        if (event === 'SIGNED_IN') {
+          setTimeout(() => startSessionLog(session.user.id), 0);
+        }
       } else {
+        if (event === 'SIGNED_OUT') {
+          await closeSessionLog();
+        }
         setProfile(null);
         setIsAdmin(false);
       }
@@ -79,20 +127,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         setSession(refreshData.session);
         setUser(refreshData.session.user);
-        if (refreshData.session.user) fetchProfile(refreshData.session.user.id);
+        if (refreshData.session.user) {
+          fetchProfile(refreshData.session.user.id);
+          startSessionLog(refreshData.session.user.id);
+        }
         setLoading(false);
         return;
       }
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
+      if (session?.user) {
+        fetchProfile(session.user.id);
+        startSessionLog(session.user.id);
+      }
       setLoading(false);
     })();
 
-    return () => subscription.unsubscribe();
+    // Close session log when the tab is closed / navigated away
+    const handleUnload = () => {
+      try {
+        const id = sessionStorage.getItem(SESSION_LOG_KEY);
+        const startStr = sessionStorage.getItem(SESSION_LOG_START_KEY);
+        if (!id) return;
+        const start = startStr ? parseInt(startStr, 10) : Date.now();
+        const duration = Math.max(1, Math.floor((Date.now() - start) / 1000));
+        // Fire-and-forget; we don't await on unload
+        supabase
+          .from('user_session_logs')
+          .update({ logout_at: new Date().toISOString(), duration_seconds: duration })
+          .eq('id', id);
+        sessionStorage.removeItem(SESSION_LOG_KEY);
+        sessionStorage.removeItem(SESSION_LOG_START_KEY);
+      } catch { /* noop */ }
+    };
+    window.addEventListener('beforeunload', handleUnload);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('beforeunload', handleUnload);
+    };
   }, []);
 
   const signOut = async () => {
+    await closeSessionLog();
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
