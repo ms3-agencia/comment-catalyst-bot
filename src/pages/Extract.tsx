@@ -21,31 +21,61 @@ import { useCredits } from '@/hooks/useCredits';
 // to surface "insufficient credits" (402) and other structured errors.
 const parseFnError = async (
   error: unknown,
+// Translates HTTP status / known error codes into user-friendly Portuguese messages.
+const friendlyMessage = (raw: string | undefined, status?: number): string => {
+  const msg = (raw || '').toLowerCase();
+  if (status === 401 || msg.includes('unauthorized') || msg.includes('jwt'))
+    return 'Sua sessão expirou. Faça login novamente para continuar.';
+  if (status === 402 || msg.includes('insufficient_credits') || msg.includes('sem créditos'))
+    return 'Você está sem créditos suficientes para esta operação.';
+  if (status === 403 || msg.includes('forbidden') || msg.includes('quota'))
+    return 'Acesso negado pela API do YouTube. Pode ser limite de cota diária — tente novamente mais tarde.';
+  if (status === 404 || msg.includes('not found') || msg.includes('video not found'))
+    return 'Vídeo não encontrado. Verifique se o link está correto e o vídeo é público.';
+  if (status === 429 || msg.includes('rate limit') || msg.includes('too many'))
+    return 'Muitas requisições em pouco tempo. Aguarde alguns instantes e tente novamente.';
+  if (msg.includes('comments_disabled') || msg.includes('comentários desabilitados'))
+    return 'Os comentários deste vídeo estão desabilitados pelo autor.';
+  if (msg.includes('invalid url') || msg.includes('url inválida') || msg.includes('parse'))
+    return 'Uma das URLs enviadas é inválida. Use links completos do YouTube (ex: https://youtube.com/watch?v=...).';
+  if (msg.includes('network') || msg.includes('failed to fetch') || msg.includes('timeout'))
+    return 'Falha de conexão com o servidor. Verifique sua internet e tente novamente.';
+  if (msg.includes('youtube_api_key') || msg.includes('api key'))
+    return 'A chave da YouTube API não está configurada. Avise o administrador.';
+  if (status && status >= 500)
+    return 'O serviço está temporariamente indisponível. Tente novamente em alguns instantes.';
+  return raw || 'Ocorreu um erro inesperado. Tente novamente.';
+};
+
+const parseFnError = async (
+  error: unknown,
   data: { error?: string; insufficient_credits?: boolean } | null
 ): Promise<{ message: string; insufficient: boolean }> => {
   if (data?.error) {
-    return { message: data.error, insufficient: !!data.insufficient_credits };
+    return {
+      message: friendlyMessage(data.error),
+      insufficient: !!data.insufficient_credits,
+    };
   }
   const ctx = (error as { context?: Response } | null)?.context;
   if (ctx && typeof ctx.json === 'function') {
     try {
       const body = await ctx.clone().json();
-      if (body?.insufficient_credits || ctx.status === 402) {
-        return {
-          message: body?.error || 'Você está sem créditos. Compre mais para continuar.',
-          insufficient: true,
-        };
-      }
-      if (body?.error) return { message: body.error, insufficient: false };
+      const insufficient = !!body?.insufficient_credits || ctx.status === 402;
+      return {
+        message: friendlyMessage(body?.error, ctx.status),
+        insufficient,
+      };
     } catch {
       // body wasn't JSON
     }
-    if (ctx.status === 402) {
-      return { message: 'Você está sem créditos. Compre mais para continuar.', insufficient: true };
-    }
+    return {
+      message: friendlyMessage(undefined, ctx.status),
+      insufficient: ctx.status === 402,
+    };
   }
   return {
-    message: (error as { message?: string } | null)?.message || 'Erro desconhecido',
+    message: friendlyMessage((error as { message?: string } | null)?.message),
     insufficient: false,
   };
 };
