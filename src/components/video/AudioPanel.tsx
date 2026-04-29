@@ -68,27 +68,54 @@ export const AudioPanel = ({
 
   const update = (patch: Partial<SceneAudio>) => onSceneAudioChange({ ...sceneAudio, ...patch });
 
-  const playPreview = (url: string) => {
-    if (!url) return;
+  const stopPreview = () => {
     if (audioRef.current) {
-      audioRef.current.pause();
+      try { audioRef.current.pause(); } catch { /* ignore */ }
+      audioRef.current.src = '';
+      audioRef.current = null;
     }
-    if (previewUrl === url) {
-      setPreviewUrl(null);
-      return;
-    }
-    const a = new Audio(url);
-    a.volume = 0.7;
-    a.play().catch(() => {/* ignore */});
-    audioRef.current = a;
-    setPreviewUrl(url);
-    a.onended = () => setPreviewUrl(null);
+    setPreviewUrl(null);
   };
 
-  const stopPreview = () => {
-    audioRef.current?.pause();
-    audioRef.current = null;
-    setPreviewUrl(null);
+  const playPreview = (url: string) => {
+    if (!url) return;
+    // Toggle: clicar na mesma faixa pausa
+    if (previewUrl === url && audioRef.current) {
+      stopPreview();
+      return;
+    }
+    // Trocando de faixa: para a anterior
+    if (audioRef.current) {
+      try { audioRef.current.pause(); } catch { /* ignore */ }
+      audioRef.current = null;
+    }
+    const a = new Audio();
+    a.crossOrigin = 'anonymous';
+    a.preload = 'auto';
+    a.volume = 0.7;
+    a.src = url;
+    a.onended = () => { setPreviewUrl(null); audioRef.current = null; };
+    a.onerror = () => {
+      audioRef.current = null;
+      setPreviewUrl(null);
+      toast({
+        title: 'Não foi possível tocar a faixa',
+        description: 'A URL pode estar indisponível ou bloqueada.',
+        variant: 'destructive',
+      });
+    };
+    audioRef.current = a;
+    setPreviewUrl(url);
+    a.play().catch((err) => {
+      console.warn('audio play failed', err);
+      audioRef.current = null;
+      setPreviewUrl(null);
+      toast({
+        title: 'Falha ao reproduzir',
+        description: err?.message || 'Verifique a URL ou tente novamente.',
+        variant: 'destructive',
+      });
+    });
   };
 
   useEffect(() => () => stopPreview(), []);
