@@ -155,7 +155,6 @@ export const useLogoCustomization = () => {
 
   return { enabled, data, loading, save, refresh, getPosition, saveStatus, lastSavedAt, flush };
 };
-};
 
 /**
  * Aplica overlay do logo numa imagem (URL ou data URL) e retorna data URL PNG.
