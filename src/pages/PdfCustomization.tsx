@@ -29,6 +29,8 @@ type Customization = {
   cover_subtitle: string | null;
   cover_image_url: string | null;
   header_text: string | null;
+  header_alignment: 'left' | 'center' | 'right';
+  header_show_date: boolean;
   footer_text: string | null;
   watermark_text: string | null;
   watermark_opacity: number;
