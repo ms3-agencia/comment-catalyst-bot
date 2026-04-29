@@ -579,17 +579,42 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
 
       // Footer drawn natively on EVERY page at a fixed bottom Y
       // (so it always sits at the end of the sheet, even with white space above on the last page).
-      const footerText = branding.footer_text || 'Gerado por YCaptura — Análise inteligente de audiência';
+      const footerText = custom.footer_text || branding.footer_text || 'Gerado por YCaptura — Análise inteligente de audiência';
       const siteName = branding.site_name || 'YCaptura';
       const total = pdf.getNumberOfPages();
+      // Parse primary color hex into RGB for native PDF drawing
+      const hexToRgb = (hex: string): [number, number, number] => {
+        const h = hex.replace('#', '');
+        const v = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
+        return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+      };
+      const [pr, pg, pb] = hexToRgb(hasCustomization ? custom.primary_color : '#0c4a6e');
+      const wmText = hasCustomization ? custom.watermark_text : null;
+      const wmAlpha = Math.max(0.05, Math.min(0.5, custom.watermark_opacity || 0.1));
+
       for (let p = 1; p <= total; p++) {
         pdf.setPage(p);
+
+        // Watermark (diagonal, behind content) — skip first page if it's the cover
+        const isCoverPage = hasCustomization && (custom.cover_title || custom.cover_image_url) && p === 1;
+        if (wmText && !isCoverPage) {
+          pdf.saveGraphicsState();
+          // jsPDF: GState for opacity
+          // @ts-ignore
+          pdf.setGState(new (pdf as any).GState({ opacity: wmAlpha }));
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(70);
+          pdf.setTextColor(pr, pg, pb);
+          pdf.text(wmText, PAGE_W / 2, PAGE_H / 2, { align: 'center', angle: 45 });
+          pdf.restoreGraphicsState();
+        }
+
         // Footer band
-        pdf.setFillColor(12, 74, 110); // #0c4a6e
+        pdf.setFillColor(pr, pg, pb);
         pdf.rect(0, PAGE_H - 14, PAGE_W, 14, 'F');
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(8);
-        pdf.setTextColor(186, 230, 253); // #bae6fd
+        pdf.setTextColor(255, 255, 255);
         pdf.text(footerText, MARGIN_X, PAGE_H - 5.5);
         const right = `${siteName}  ·  Página ${p}/${total}`;
         const rightW = pdf.getTextWidth(right);
