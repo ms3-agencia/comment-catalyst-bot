@@ -605,7 +605,38 @@ const GenerateContent = () => {
                         <p className="mt-2 text-foreground/90">{c.visual_idea}</p>
                       </details>
                     )}
-                    {/* AI Image */}
+                    {/* Sequência narrativa do carrossel */}
+                    {c.content_type === 'carrossel' && Array.isArray(c.slides) && c.slides.length > 0 && (
+                      <div className="border-t border-border pt-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Layers className="h-4 w-4 text-primary" />
+                          <h4 className="text-sm font-semibold">Roteiro do carrossel ({c.slides.length} slides)</h4>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Cada slide é uma cena conectada — juntos contam uma história sequencial.
+                        </p>
+                        <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
+                          {c.slides.map((s, i) => (
+                            <div key={i} className="shrink-0 w-40 rounded-lg border border-border bg-muted/30 overflow-hidden snap-start">
+                              <div className="relative aspect-[4/5] bg-muted flex items-center justify-center">
+                                {s.image_url ? (
+                                  <img src={s.image_url} alt={`Slide ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                                ) : imagingId === c.id ? (
+                                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                ) : (
+                                  <span className="text-[10px] text-muted-foreground px-2 text-center">Aguardando geração</span>
+                                )}
+                                <span className="absolute top-1 left-1 text-[10px] font-bold bg-background/80 text-foreground rounded px-1.5 py-0.5">
+                                  {i + 1}/{c.slides!.length}
+                                </span>
+                              </div>
+                              <p className="text-[11px] p-2 line-clamp-3 text-foreground/90 leading-snug">{s.text}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* AI Image (capa) */}
                     <div className="border-t border-border pt-3 space-y-2">
                       {c.image_url ? (
                         <div className="space-y-2">
