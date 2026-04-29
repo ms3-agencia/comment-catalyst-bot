@@ -1,0 +1,1 @@
+UPDATE public.addons SET slug = 'pdf-customization' WHERE slug = 'pdf-custom';
