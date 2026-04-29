@@ -198,8 +198,8 @@ Deno.serve(async (req) => {
         });
       }
       if (aiResp.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos do workspace de IA esgotados." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        return new Response(JSON.stringify({ error: "Créditos do workspace de IA esgotados.", insufficient_credits: true }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       return new Response(JSON.stringify({ error: "Falha ao gerar imagem" }), {
