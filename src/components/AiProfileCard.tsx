@@ -341,7 +341,8 @@ const buildCoverHtml = (
   projectName: string | undefined,
   date: string,
 ): string => {
-  const title = escapeHtml(custom.cover_title || branding.site_name || 'Relatório de Avatar');
+  const brandLabel = custom.brand_name || branding.site_name || 'Relatório';
+  const title = escapeHtml(custom.cover_title || brandLabel || 'Relatório de Avatar');
   const subtitle = escapeHtml(custom.cover_subtitle || branding.tagline || 'Análise de Audiência com IA');
   const bg = custom.cover_image_url
     ? `background: linear-gradient(135deg, ${custom.primary_color}dd, ${custom.secondary_color}dd), url('${escapeHtml(custom.cover_image_url)}') center/cover no-repeat;`
@@ -351,13 +352,13 @@ const buildCoverHtml = (
     ? `<img src="${escapeHtml(logo)}" alt="" crossorigin="anonymous" style="max-width:90px;max-height:90px;object-fit:contain;" />`
     : `<span style="font-size:56px;">🧠</span>`;
   return `
-<div data-pdf-section data-pdf-cover style="${bg} color:#fff; padding:120px 40px; min-height:1000px; display:flex; flex-direction:column; justify-content:space-between; font-family:'${custom.font_family}','Inter',sans-serif;">
+<div data-pdf-section data-pdf-cover style="${bg} color:#fff; padding:120px 40px; height:1110px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between; font-family:'${custom.font_family}','Inter',sans-serif;">
   <div style="display:flex;align-items:center;gap:18px;">
     <div style="width:90px;height:90px;border-radius:18px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.25);overflow:hidden;">
       ${logoMark}
     </div>
     <div>
-      <p style="margin:0;font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:0.85;">${escapeHtml(branding.site_name || 'YCaptura')}</p>
+      <p style="margin:0;font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:0.85;">${escapeHtml(brandLabel)}</p>
     </div>
   </div>
   <div style="text-align:left;">
@@ -382,7 +383,11 @@ const buildPdfHtml = (
   const date = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
   const contentHtml = markdownToPdfHtml(profile);
   const chartHtml = renderAvatarChartHtml(buildAvatarChartData(profile));
-  const siteName = escapeHtml(branding.site_name || 'YCaptura');
+  // When the user owns the customization addon and set a brand_name, it FULLY
+  // replaces the platform site_name everywhere in the PDF (cover, header, footer, filename).
+  const effectiveSiteName =
+    hasCustomization && custom.brand_name ? custom.brand_name : (branding.site_name || 'YCaptura');
+  const siteName = escapeHtml(effectiveSiteName);
   const tagline = escapeHtml(custom.cover_subtitle || branding.tagline || 'Análise de Audiência com IA');
   const logo = custom.logo_url || branding.logo_url;
   const logoMark = logo
@@ -539,6 +544,13 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
         })
         .sort((a, b) => a.top - b.top);
 
+      // If a cover exists, force a page break right after it (so the header
+      // never bleeds into the same page as the cover).
+      const coverEl = container.querySelector('[data-pdf-cover]') as HTMLElement | null;
+      const coverBottomPx = coverEl
+        ? Math.ceil((coverEl.getBoundingClientRect().bottom - containerRect.top) * SCALE)
+        : 0;
+
       // Find the best cut Y ≤ desiredCut that doesn't fall inside an atomic block.
       const findSafeCut = (startPx: number, desiredCut: number): number => {
         let safe = desiredCut;
@@ -557,10 +569,17 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
 
       let renderedPx = 0;
       let firstPage = true;
+      let coverDone = coverBottomPx === 0;
       while (renderedPx < fullCanvas.height) {
-        const desiredEnd = Math.min(renderedPx + pageHeightPx, fullCanvas.height);
-        const endPx =
-          desiredEnd >= fullCanvas.height ? desiredEnd : findSafeCut(renderedPx, desiredEnd);
+        let endPx: number;
+        if (!coverDone) {
+          // The cover is rendered as a single full page (it's sized to ~A4).
+          endPx = Math.min(coverBottomPx, fullCanvas.height);
+          coverDone = true;
+        } else {
+          const desiredEnd = Math.min(renderedPx + pageHeightPx, fullCanvas.height);
+          endPx = desiredEnd >= fullCanvas.height ? desiredEnd : findSafeCut(renderedPx, desiredEnd);
+        }
         const sliceH = endPx - renderedPx;
 
         const slice = document.createElement('canvas');
@@ -575,15 +594,23 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
         const sliceData = slice.toDataURL('image/jpeg', 0.82);
         const sliceMm = sliceH / pxPerMm;
         if (!firstPage) pdf.addPage();
-        pdf.addImage(sliceData, 'JPEG', MARGIN_X, MARGIN_TOP, CONTENT_W, sliceMm);
+        // The cover slice gets edge-to-edge placement (no margin) so the gradient fills the page.
+        const isCoverSlice = firstPage && coverBottomPx > 0;
+        if (isCoverSlice) {
+          pdf.addImage(sliceData, 'JPEG', 0, 0, PAGE_W, PAGE_H);
+        } else {
+          pdf.addImage(sliceData, 'JPEG', MARGIN_X, MARGIN_TOP, CONTENT_W, sliceMm);
+        }
         firstPage = false;
         renderedPx = endPx;
       }
 
       // Footer drawn natively on EVERY page at a fixed bottom Y
       // (so it always sits at the end of the sheet, even with white space above on the last page).
-      const footerText = custom.footer_text || branding.footer_text || 'Gerado por YCaptura — Análise inteligente de audiência';
-      const brandLabel = (hasCustomization && custom.brand_name) ? custom.brand_name : (branding.site_name || 'YCaptura');
+      const effectiveBrand = (hasCustomization && custom.brand_name) ? custom.brand_name : (branding.site_name || 'YCaptura');
+      const defaultFooter = `Gerado por ${effectiveBrand}`;
+      const footerText = custom.footer_text || branding.footer_text || defaultFooter;
+      const brandLabel = effectiveBrand;
       const total = pdf.getNumberOfPages();
       // Parse primary color hex into RGB for native PDF drawing
       const hexToRgb = (hex: string): [number, number, number] => {
@@ -595,12 +622,16 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
       const wmText = hasCustomization ? custom.watermark_text : null;
       const wmAlpha = Math.max(0.05, Math.min(0.5, custom.watermark_opacity || 0.1));
 
+      const hasCover = coverBottomPx > 0;
       for (let p = 1; p <= total; p++) {
         pdf.setPage(p);
 
-        // Watermark (diagonal, behind content) — skip first page if it's the cover
-        const isCoverPage = hasCustomization && (custom.cover_title || custom.cover_image_url) && p === 1;
-        if (wmText && !isCoverPage) {
+        // Cover page is full-bleed (its own gradient + footer info) — skip overlays.
+        const isCoverPage = hasCover && p === 1;
+        if (isCoverPage) continue;
+
+        // Watermark (diagonal, behind content)
+        if (wmText) {
           pdf.saveGraphicsState();
           // jsPDF: GState for opacity
           // @ts-ignore
@@ -624,7 +655,8 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
         pdf.text(right, PAGE_W - MARGIN_X - rightW, PAGE_H - 5.5);
       }
 
-      const fileName = `${(projectName || 'perfil-avatar').replace(/[^\w\-]+/g, '_')}-ycaptura.pdf`;
+      const brandSlug = effectiveBrand.toLowerCase().replace(/[^\w\-]+/g, '_').replace(/^_+|_+$/g, '') || 'relatorio';
+      const fileName = `${(projectName || 'perfil-avatar').replace(/[^\w\-]+/g, '_')}-${brandSlug}.pdf`;
       try {
         pdf.save(fileName);
       } catch (saveErr) {
