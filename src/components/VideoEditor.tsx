@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   Loader2, Download, Play, Pause, X, Wand2, ImagePlus, Type, Coins,
   ZoomIn, ZoomOut, MoveRight, MoveLeft, Sparkles, RefreshCw, Plus, Trash2,
-  Settings2, Film,
+  Settings2, Film, Mic,
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -37,6 +37,24 @@ type ImageEffect = 'none' | 'zoom_in' | 'zoom_out' | 'pan_left' | 'pan_right' | 
 type TextEffect = 'fade' | 'typewriter' | 'slide_up' | 'slide_left' | 'bounce' | 'pop' | 'wave' | 'none';
 type TextPosition = 'top' | 'center' | 'bottom';
 type FontFamily = 'sans' | 'serif' | 'mono' | 'display';
+export type Transition =
+  | 'none' | 'fade' | 'slide_left' | 'slide_right' | 'slide_up' | 'slide_down'
+  | 'zoom_in' | 'zoom_out' | 'wipe_left' | 'wipe_right' | 'dissolve';
+
+const TRANSITIONS: { key: Transition; label: string; icon: string }[] = [
+  { key: 'none', label: 'Sem transição', icon: '·' },
+  { key: 'fade', label: 'Fade', icon: '◐' },
+  { key: 'dissolve', label: 'Dissolve', icon: '⁂' },
+  { key: 'slide_left', label: 'Slide ←', icon: '←' },
+  { key: 'slide_right', label: 'Slide →', icon: '→' },
+  { key: 'slide_up', label: 'Slide ↑', icon: '↑' },
+  { key: 'slide_down', label: 'Slide ↓', icon: '↓' },
+  { key: 'zoom_in', label: 'Zoom In', icon: '⊕' },
+  { key: 'zoom_out', label: 'Zoom Out', icon: '⊖' },
+  { key: 'wipe_left', label: 'Wipe ←', icon: '◧' },
+  { key: 'wipe_right', label: 'Wipe →', icon: '◨' },
+];
+const TRANSITION_DURATION = 0.6; // seconds, overlap between scenes
 
 const FONT_MAP: Record<FontFamily, string> = {
   sans: 'Inter, system-ui, sans-serif',
@@ -59,6 +77,8 @@ export type Scene = {
   fontFamily: FontFamily;
   fontSize: number; // 0.5..1.5 multiplier
   audio: SceneAudio;
+  /** Transition that plays AT THE START of this scene (i.e. between previous scene and this one). Ignored on scene index 0. */
+  transitionIn?: Transition;
 };
 
 type SourceContent = {
@@ -186,6 +206,7 @@ function buildInitialScenes(content: SourceContent, preset: StylePreset = DEFAUL
     fontFamily: i === 0 ? (fonts.includes('display') ? 'display' : fonts[0]) : fonts[i % fonts.length],
     fontSize: i === 0 ? Math.min(1.5, preset.fontSize * 1.15) : preset.fontSize,
     audio: defaultSceneAudio(),
+    transitionIn: i === 0 ? 'none' : 'fade',
   }));
 }
 
@@ -416,6 +437,177 @@ function drawScene(
   if (scene.text) drawTextWithEffect(ctx, scene, W, H, progress);
 }
 
+/**
+ * Draws a transition between previous scene (at its end) and current scene (at its start).
+ * `t` ranges 0..1 — at 0 prev is fully visible, at 1 current is fully visible.
+ * Uses two offscreen buffers so the original drawScene logic is reused.
+ */
+function drawTransition(
+  ctx: CanvasRenderingContext2D,
+  prev: Scene,
+  curr: Scene,
+  cache: Map<string, HTMLImageElement>,
+  W: number, H: number,
+  t: number,
+  transition: Transition,
+) {
+  const tt = Math.max(0, Math.min(1, t));
+  // Render both into offscreen canvases
+  const a = document.createElement('canvas'); a.width = W; a.height = H;
+  const b = document.createElement('canvas'); b.width = W; b.height = H;
+  const actx = a.getContext('2d')!;
+  const bctx = b.getContext('2d')!;
+  drawScene(actx, prev, cache, W, H, 1); // prev at end
+  drawScene(bctx, curr, cache, W, H, 0); // curr at start
+
+  // Always start by drawing prev as base
+  ctx.drawImage(a, 0, 0);
+
+  switch (transition) {
+    case 'none':
+      ctx.drawImage(b, 0, 0);
+      break;
+    case 'fade':
+    case 'dissolve':
+      ctx.save();
+      ctx.globalAlpha = tt;
+      ctx.drawImage(b, 0, 0);
+      ctx.restore();
+      break;
+    case 'slide_left':
+      ctx.drawImage(a, -W * tt, 0);
+      ctx.drawImage(b, W * (1 - tt), 0);
+      break;
+    case 'slide_right':
+      ctx.drawImage(a, W * tt, 0);
+      ctx.drawImage(b, -W * (1 - tt), 0);
+      break;
+    case 'slide_up':
+      ctx.drawImage(a, 0, -H * tt);
+      ctx.drawImage(b, 0, H * (1 - tt));
+      break;
+    case 'slide_down':
+      ctx.drawImage(a, 0, H * tt);
+      ctx.drawImage(b, 0, -H * (1 - tt));
+      break;
+    case 'zoom_in': {
+      const s = 1 + 0.4 * tt;
+      ctx.save();
+      ctx.translate(W / 2, H / 2);
+      ctx.scale(s, s);
+      ctx.globalAlpha = 1 - tt;
+      ctx.drawImage(a, -W / 2, -H / 2);
+      ctx.restore();
+      ctx.save();
+      ctx.globalAlpha = tt;
+      ctx.drawImage(b, 0, 0);
+      ctx.restore();
+      break;
+    }
+    case 'zoom_out': {
+      const s = 1 - 0.4 * tt;
+      ctx.save();
+      ctx.translate(W / 2, H / 2);
+      ctx.scale(s, s);
+      ctx.globalAlpha = 1 - tt;
+      ctx.drawImage(a, -W / 2, -H / 2);
+      ctx.restore();
+      ctx.save();
+      ctx.globalAlpha = tt;
+      ctx.drawImage(b, 0, 0);
+      ctx.restore();
+      break;
+    }
+    case 'wipe_left':
+      ctx.drawImage(a, 0, 0);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(W * (1 - tt), 0, W * tt, H);
+      ctx.clip();
+      ctx.drawImage(b, 0, 0);
+      ctx.restore();
+      break;
+    case 'wipe_right':
+      ctx.drawImage(a, 0, 0);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, W * tt, H);
+      ctx.clip();
+      ctx.drawImage(b, 0, 0);
+      ctx.restore();
+      break;
+  }
+}
+
+// =================== Transition Slot (drop target between scenes) ===================
+const TransitionSlot = ({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: Transition;
+  onChange: (t: Transition) => void;
+  disabled?: boolean;
+}) => {
+  const [hover, setHover] = useState(false);
+  const [open, setOpen] = useState(false);
+  const meta = TRANSITIONS.find(t => t.key === value) || TRANSITIONS[0];
+  return (
+    <div className="relative shrink-0 self-stretch flex items-center">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen(o => !o)}
+        onDragOver={(e) => {
+          if (disabled) return;
+          if (e.dataTransfer.types.includes('text/transition')) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            setHover(true);
+          }
+        }}
+        onDragLeave={() => setHover(false)}
+        onDrop={(e) => {
+          setHover(false);
+          if (disabled) return;
+          const k = e.dataTransfer.getData('text/transition') as Transition;
+          if (k) onChange(k);
+        }}
+        title={`Transição: ${meta.label} (clique ou arraste)`}
+        className={`h-[58px] w-9 rounded border-2 border-dashed flex flex-col items-center justify-center text-[10px] leading-tight transition-colors ${
+          hover
+            ? 'border-primary bg-primary/20 text-primary'
+            : value === 'none'
+              ? 'border-border/60 text-muted-foreground hover:border-primary/50'
+              : 'border-primary/60 bg-primary/5 text-primary'
+        }`}
+      >
+        <span className="text-base">{meta.icon}</span>
+        <span className="truncate w-full px-0.5 text-center">
+          {value === 'none' ? '—' : meta.label.replace('Slide ', '').replace('Zoom ', 'Z').replace('Wipe ', 'W').slice(0, 6)}
+        </span>
+      </button>
+      {open && !disabled && (
+        <div className="absolute z-20 top-full mt-1 left-1/2 -translate-x-1/2 min-w-[140px] rounded-md border border-border bg-popover shadow-lg p-1">
+          {TRANSITIONS.map(t => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => { onChange(t.key); setOpen(false); }}
+              className={`w-full text-left text-[11px] px-2 py-1 rounded flex items-center gap-2 hover:bg-accent ${
+                value === t.key ? 'bg-accent text-accent-foreground' : ''
+              }`}
+            >
+              <span className="w-4 text-center">{t.icon}</span>
+              <span>{t.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // =================== Component ===================
 type Props = {
   open: boolean;
@@ -473,6 +665,10 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const [regenIdx, setRegenIdx] = useState<number | null>(null);
   const [bulkGen, setBulkGen] = useState<{ active: boolean; current: number; total: number }>({ active: false, current: 0, total: 0 });
   const [mobileTab, setMobileTab] = useState<'preview' | 'edit'>('preview');
+  // When true, voice & font-size changes propagate to ALL scenes (project-wide default).
+  // When false, the current edit only affects the active scene.
+  const [voiceApplyAll, setVoiceApplyAll] = useState(true);
+  const [fontApplyAll, setFontApplyAll] = useState(true);
 
   const [genKind, setGenKind] = useState<GenKind>('basic');
   const [providersBasic, setProvidersBasic] = useState<ProviderRow[]>([]);
@@ -710,26 +906,48 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scenes]);
 
+  const drawFrameAt = (
+    ctx: CanvasRenderingContext2D,
+    W: number,
+    H: number,
+    timeSec: number,
+  ) => {
+    let acc = 0;
+    let idx = 0;
+    let inSceneT = 0;
+    for (let i = 0; i < scenes.length; i++) {
+      const s = scenes[i];
+      if (timeSec < acc + s.duration) {
+        idx = i;
+        inSceneT = (timeSec - acc) / s.duration;
+        break;
+      }
+      acc += s.duration;
+      idx = i;
+      inSceneT = 1;
+    }
+    const scene = scenes[idx];
+    if (!scene) return idx;
+    const sceneStart = acc;
+    const tInScene = timeSec - sceneStart;
+    const trans = scene.transitionIn || 'none';
+    if (idx > 0 && trans !== 'none' && tInScene < TRANSITION_DURATION) {
+      const prev = scenes[idx - 1];
+      const tt = tInScene / TRANSITION_DURATION;
+      drawTransition(ctx, prev, scene, cacheRef.current, W, H, tt, trans);
+    } else {
+      drawScene(ctx, scene, cacheRef.current, W, H, Math.max(0, Math.min(1, inSceneT)));
+    }
+    return idx;
+  };
+
   const drawAt = (timeSec: number) => {
     const c = canvasRef.current;
     if (!c) return;
     const ctx = c.getContext('2d');
     if (!ctx) return;
-    let acc = 0;
-    let scene = scenes[0];
-    let inSceneT = 0;
-    for (const s of scenes) {
-      if (timeSec < acc + s.duration) {
-        scene = s;
-        inSceneT = (timeSec - acc) / s.duration;
-        break;
-      }
-      acc += s.duration;
-    }
-    if (!scene) return;
-    const idx = scenes.indexOf(scene);
+    const idx = drawFrameAt(ctx, c.width, c.height, timeSec);
     if (idx !== activeIdx && playing) setActiveIdx(idx);
-    drawScene(ctx, scene, cacheRef.current, c.width, c.height, Math.max(0, Math.min(1, inSceneT)));
   };
 
   // when activeIdx changes (manual selection), render that scene's start
@@ -771,6 +989,19 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     setScenes(prev => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
   };
 
+  /**
+   * Apply a patch to ALL scenes. Used by "global" controls (voice, font size).
+   * The user requested: when changing voice/font in one scene, the change becomes
+   * the default for every scene; if they want a single scene to differ, they edit
+   * just that scene afterwards.
+   */
+  const updateAllScenes = (patch: Partial<Scene>) => {
+    setScenes(prev => prev.map(s => ({ ...s, ...patch })));
+  };
+  const updateAllSceneAudio = (patch: Partial<SceneAudio>) => {
+    setScenes(prev => prev.map(s => ({ ...s, audio: { ...s.audio, ...patch } })));
+  };
+
   const removeScene = (idx: number) => {
     setScenes(prev => prev.filter((_, i) => i !== idx));
     setActiveIdx(0);
@@ -778,11 +1009,17 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
 
   const addScene = () => {
     const fallbackImg = scenes[0]?.imageUrl || content.image_url || null;
+    // Inherit voice & font size from the first existing scene so new scenes follow
+    // the project-wide defaults the user already configured.
+    const ref = scenes[0];
     setScenes(prev => [...prev, {
       id: uid(), text: 'Nova cena', imageUrl: fallbackImg, duration: 4,
       imageEffect: 'zoom_in', textEffect: 'fade', textPosition: 'center',
-      textColor: '#ffffff', textBg: 'rgba(0,0,0,0.45)', fontFamily: 'sans', fontSize: 1.0,
-      audio: defaultSceneAudio(),
+      textColor: '#ffffff', textBg: 'rgba(0,0,0,0.45)',
+      fontFamily: ref?.fontFamily || 'sans',
+      fontSize: ref?.fontSize ?? 1.0,
+      audio: ref ? { ...defaultSceneAudio(), narrationVoice: ref.audio.narrationVoice, narrationProvider: ref.audio.narrationProvider, narrationVolume: ref.audio.narrationVolume } : defaultSceneAudio(),
+      transitionIn: 'fade',
     }]);
     setActiveIdx(scenes.length);
   };
@@ -1110,7 +1347,14 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         }
         const scene = scenes[Math.min(sIdx, scenes.length - 1)];
         const inSceneT = (tSec - sceneStart) / scene.duration;
-        drawScene(ctx, scene, cacheRef.current, W, H, Math.max(0, Math.min(1, inSceneT)));
+        const tInScene = tSec - sceneStart;
+        const trans = scene.transitionIn || 'none';
+        if (sIdx > 0 && trans !== 'none' && tInScene < TRANSITION_DURATION) {
+          const prev = scenes[sIdx - 1];
+          drawTransition(ctx, prev, scene, cacheRef.current, W, H, tInScene / TRANSITION_DURATION, trans);
+        } else {
+          drawScene(ctx, scene, cacheRef.current, W, H, Math.max(0, Math.min(1, inSceneT)));
+        }
         await new Promise(r => setTimeout(r, frameMs * 0.5));
         if (f % 5 === 0) {
           const pct = Math.round((f / totalFrames) * 95);
@@ -1343,36 +1587,82 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           </span>
         </div>
 
-        {/* Scene strip */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+        {/* Scene strip with transition slots between scenes */}
+        <div className="flex items-stretch gap-1 overflow-x-auto pb-1 -mx-1 px-1">
           {scenes.map((s, i) => (
-            <button
-              key={s.id}
-              onClick={() => {
-                setPlaying(false);
-                setActiveIdx(i);
-                if (isMobile) setMobileTab('edit');
-              }}
-              disabled={rendering}
-              className={`shrink-0 px-2 py-1.5 rounded border text-[11px] min-w-[90px] max-w-[120px] text-left transition-colors ${
-                i === activeIdx
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border bg-card hover:border-primary/40'
-              }`}
-            >
-              <div className="font-semibold">Cena {i + 1}</div>
-              <div className="truncate opacity-70">{s.text || '—'}</div>
-              <div className="opacity-60">{s.duration}s</div>
-            </button>
+            <React.Fragment key={s.id}>
+              {/* Transition slot BEFORE scene i (only when i>0) */}
+              {i > 0 && (
+                <TransitionSlot
+                  value={s.transitionIn || 'none'}
+                  onChange={(t) => updateScene(i, { transitionIn: t })}
+                  disabled={rendering}
+                />
+              )}
+              <button
+                onClick={() => {
+                  setPlaying(false);
+                  setActiveIdx(i);
+                  if (isMobile) setMobileTab('edit');
+                }}
+                disabled={rendering}
+                className={`shrink-0 px-2 py-1.5 rounded border text-[11px] min-w-[90px] max-w-[120px] text-left transition-colors ${
+                  i === activeIdx
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border bg-card hover:border-primary/40'
+                }`}
+              >
+                <div className="font-semibold">Cena {i + 1}</div>
+                <div className="truncate opacity-70">{s.text || '—'}</div>
+                <div className="opacity-60">{s.duration}s</div>
+              </button>
+            </React.Fragment>
           ))}
           <button
             onClick={addScene}
             disabled={rendering}
-            className="shrink-0 px-3 py-1.5 rounded border border-dashed border-border text-[11px] hover:border-primary hover:text-primary"
+            className="shrink-0 self-center px-3 py-1.5 rounded border border-dashed border-border text-[11px] hover:border-primary hover:text-primary"
           >
             <Plus className="h-3 w-3 inline mr-1" /> Cena
           </button>
         </div>
+
+        {/* Transitions palette — drag onto a slot between scenes */}
+        {scenes.length > 1 && (
+          <div className="rounded-lg border border-border bg-background/50 p-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Transições — arraste para o quadro entre cenas
+              </Label>
+              <button
+                type="button"
+                onClick={() => updateAllScenes({ transitionIn: 'fade' } as any)}
+                disabled={rendering}
+                className="text-[10px] text-primary hover:underline"
+                title="Aplicar Fade entre todas as cenas"
+              >
+                Aplicar Fade em todas
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {TRANSITIONS.map(t => (
+                <div
+                  key={t.key}
+                  draggable={!rendering}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/transition', t.key);
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  className="cursor-grab active:cursor-grabbing select-none text-[11px] px-2 py-1 rounded border border-border bg-card hover:border-primary/60 flex items-center gap-1"
+                  title={`Arraste "${t.label}" para o quadro entre duas cenas`}
+                >
+                  <span className="text-base leading-none">{t.icon}</span>
+                  <span>{t.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Tipo de geração + provedor */}
         <div className="rounded-lg border border-border bg-background/50 p-2 space-y-2">
@@ -1738,11 +2028,26 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       </div>
 
       <div>
-        <Label className="text-xs">Tamanho do texto: {activeScene.fontSize.toFixed(2)}x</Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Tamanho do texto: {activeScene.fontSize.toFixed(2)}x</Label>
+          <label className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer select-none" title="Aplicar este tamanho a todas as cenas">
+            <input
+              type="checkbox"
+              checked={fontApplyAll}
+              onChange={(e) => setFontApplyAll(e.target.checked)}
+              className="h-3 w-3"
+              disabled={rendering}
+            />
+            Aplicar em todas
+          </label>
+        </div>
         <Slider
           value={[activeScene.fontSize]}
           min={0.5} max={1.6} step={0.05}
-          onValueChange={(v) => updateScene(activeIdx, { fontSize: v[0] })}
+          onValueChange={(v) => {
+            if (fontApplyAll) updateAllScenes({ fontSize: v[0] });
+            else updateScene(activeIdx, { fontSize: v[0] });
+          }}
           disabled={rendering}
           className="mt-2"
         />
@@ -1779,12 +2084,40 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       </div>
 
       {/* Áudio da cena */}
-      <div className="border-t border-border pt-3">
+      <div className="border-t border-border pt-3 space-y-2">
+        <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer select-none" title="Voz / volume da narração serão aplicados a todas as cenas">
+          <input
+            type="checkbox"
+            checked={voiceApplyAll}
+            onChange={(e) => setVoiceApplyAll(e.target.checked)}
+            className="h-3 w-3"
+            disabled={rendering}
+          />
+          <Mic className="h-3 w-3" /> Aplicar voz/volume a todas as cenas
+        </label>
         <AudioPanel
           globalAudio={globalAudio}
           onGlobalAudioChange={setGlobalAudio}
           sceneAudio={activeScene.audio}
-          onSceneAudioChange={(a) => updateScene(activeIdx, { audio: a })}
+          onSceneAudioChange={(a) => {
+            // If "apply to all" is on, propagate voice/provider/volume changes globally,
+            // but keep per-scene fields (text, enable flag, upload url) local to the scene.
+            if (voiceApplyAll) {
+              const prev = activeScene.audio;
+              const voiceChanged =
+                a.narrationVoice !== prev.narrationVoice ||
+                a.narrationProvider !== prev.narrationProvider ||
+                a.narrationVolume !== prev.narrationVolume;
+              if (voiceChanged) {
+                updateAllSceneAudio({
+                  narrationVoice: a.narrationVoice,
+                  narrationProvider: a.narrationProvider,
+                  narrationVolume: a.narrationVolume,
+                });
+              }
+            }
+            updateScene(activeIdx, { audio: a });
+          }}
           sceneText={activeScene.text}
           sceneDuration={activeScene.duration}
           rendering={rendering}
