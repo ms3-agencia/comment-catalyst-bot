@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 export type PdfCustomization = {
   logo_url: string | null;
   brand_name: string | null;
+  brand_position: 'header' | 'footer' | 'both';
+  logo_alignment: 'left' | 'center' | 'right';
+  logo_size: number;
   primary_color: string;
   secondary_color: string;
   accent_color: string;
@@ -23,6 +26,9 @@ export type PdfCustomization = {
 export const DEFAULT_PDF_CUSTOMIZATION: PdfCustomization = {
   logo_url: null,
   brand_name: null,
+  brand_position: 'footer',
+  logo_alignment: 'left',
+  logo_size: 48,
   primary_color: '#0c4a6e',
   secondary_color: '#1e3a8a',
   accent_color: '#0ea5e9',
