@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useUserAddons } from './useUserAddons';
@@ -50,12 +50,21 @@ export const defaultPositionFor = (key: LogoFormatKey): LogoPosition => ({
   x: 0.04, y: 0.04, size: 15, opacity: 1,
 });
 
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
 export const useLogoCustomization = () => {
   const { user } = useAuth();
   const { hasAddon } = useUserAddons();
   const enabled = hasAddon('custom-logo');
   const [data, setData] = useState<LogoCustomization>(DEFAULT_LOGO);
   const [loading, setLoading] = useState(true);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+
+  // Refs para debounce
+  const pendingRef = useRef<LogoCustomization | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(async () => {
     if (!user) { setLoading(false); return; }
@@ -83,26 +92,68 @@ export const useLogoCustomization = () => {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const save = useCallback(async (patch: Partial<LogoCustomization>) => {
-    if (!user) return;
-    const merged = { ...data, ...patch };
-    setData(merged);
-    await supabase.from('logo_customizations').upsert({
+  // Realiza o flush no banco usando o último estado pendente
+  const flush = useCallback(async () => {
+    if (!user || !pendingRef.current) return;
+    const snapshot = pendingRef.current;
+    pendingRef.current = null;
+    setSaveStatus('saving');
+    const { error } = await supabase.from('logo_customizations').upsert({
       user_id: user.id,
-      logo_url: merged.logo_url,
-      default_size_percent: merged.default_size_percent,
-      default_opacity: merged.default_opacity,
-      positions: merged.positions as any,
-      apply_on_images: merged.apply_on_images,
-      apply_on_videos: merged.apply_on_videos,
+      logo_url: snapshot.logo_url,
+      default_size_percent: snapshot.default_size_percent,
+      default_opacity: snapshot.default_opacity,
+      positions: snapshot.positions as any,
+      apply_on_images: snapshot.apply_on_images,
+      apply_on_videos: snapshot.apply_on_videos,
     }, { onConflict: 'user_id' });
-  }, [user, data]);
+    if (error) {
+      setSaveStatus('error');
+      console.error('Erro ao salvar logo customization:', error);
+      return;
+    }
+    setSaveStatus('saved');
+    setLastSavedAt(new Date());
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 1800);
+  }, [user]);
+
+  /**
+   * save(patch, opts):
+   *  - Atualiza o estado local imediatamente (UI otimista).
+   *  - Agenda gravação debounced no banco (default 600ms).
+   *  - opts.immediate: força gravação imediata (ex.: upload de logo, toggle).
+   */
+  const save = useCallback((patch: Partial<LogoCustomization>, opts?: { immediate?: boolean; debounceMs?: number }) => {
+    setData(prev => {
+      const merged = { ...prev, ...patch };
+      pendingRef.current = merged;
+      return merged;
+    });
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (opts?.immediate) {
+      void flush();
+    } else {
+      debounceRef.current = setTimeout(() => { void flush(); }, opts?.debounceMs ?? 600);
+    }
+  }, [flush]);
+
+  // Garante flush ao desmontar / sair da página
+  useEffect(() => {
+    const handleUnload = () => { void flush(); };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      void flush();
+    };
+  }, [flush]);
 
   const getPosition = useCallback((key: LogoFormatKey): LogoPosition => {
     return data.positions[key] || { ...defaultPositionFor(key), size: data.default_size_percent, opacity: data.default_opacity };
   }, [data]);
 
-  return { enabled, data, loading, save, refresh, getPosition };
+  return { enabled, data, loading, save, refresh, getPosition, saveStatus, lastSavedAt, flush };
 };
 
 /**
