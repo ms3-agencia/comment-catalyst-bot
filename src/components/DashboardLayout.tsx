@@ -188,6 +188,11 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                     <UserCircle className="mr-2 h-4 w-4" /> Perfil
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link to="/install">
+                    <Smartphone className="mr-2 h-4 w-4" /> Instalar app
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={signOut} className="text-destructive cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" /> Sair
                 </DropdownMenuItem>
