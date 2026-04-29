@@ -209,6 +209,8 @@ const MockupEditor: React.FC<{
   onReset: () => void;
 }> = ({ format, logoUrl, position, onChange, onCommit, onReset }) => {
   const stageRef = useRef<HTMLDivElement>(null);
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+  const logoImgRef = useRef<HTMLImageElement | null>(null);
   const [drag, setDrag] = useState<{ ox: number; oy: number; lastX: number; lastY: number } | null>(null);
 
   const aspect = format.w / format.h;
@@ -218,6 +220,49 @@ const MockupEditor: React.FC<{
   if (h > maxH) { h = maxH; w = h * aspect; }
 
   const logoW = (position.size / 100) * w;
+
+  // Pré-carrega o logo (uma vez por URL)
+  useEffect(() => {
+    if (!logoUrl) { logoImgRef.current = null; return; }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => { logoImgRef.current = img; drawPreview(); };
+    img.src = logoUrl;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logoUrl]);
+
+  // Redesenha o canvas de preview ao vivo a cada mudança
+  const drawPreview = useCallbackSafe(() => {
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    // Background gradient simulando conteúdo
+    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    grad.addColorStop(0, '#a21caf');
+    grad.addColorStop(0.5, '#6d28d9');
+    grad.addColorStop(1, '#06b6d4');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font = `${Math.round(canvas.width * 0.035)}px Inter, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('saída final do conteúdo', canvas.width / 2, canvas.height / 2);
+
+    const logo = logoImgRef.current;
+    if (logo) {
+      const targetW = (position.size / 100) * canvas.width;
+      const ratio = logo.naturalHeight / logo.naturalWidth;
+      const targetH = targetW * ratio;
+      const x = position.x * canvas.width;
+      const y = position.y * canvas.height;
+      ctx.globalAlpha = position.opacity;
+      ctx.drawImage(logo, x, y, targetW, targetH);
+      ctx.globalAlpha = 1;
+    }
+  });
+
+  useEffect(() => { drawPreview(); }, [position.x, position.y, position.size, position.opacity, format.key]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (!stageRef.current) return;
