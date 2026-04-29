@@ -18,7 +18,7 @@ import { Link } from 'react-router-dom';
 type Customization = {
   logo_url: string | null;
   brand_name: string | null;
-  brand_position: 'header' | 'footer' | 'both';
+  brand_position: 'header' | 'footer' | 'both' | 'none';
   logo_alignment: 'left' | 'center' | 'right';
   logo_size: number;
   primary_color: string;
