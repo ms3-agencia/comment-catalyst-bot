@@ -405,8 +405,11 @@ const buildPdfHtml = (
     ? `<img src="${escapeHtml(logo)}" alt="" crossorigin="anonymous" style="max-width:${headerLogoSize}px;max-height:${headerLogoSize}px;object-fit:contain;display:block;" />`
     : `<span style="font-size:${Math.round(headerLogoSize * 0.5)}px;">🧠</span>`;
   const logoAlign = hasCustomization ? (custom.logo_alignment || 'left') : 'left';
+  const headerAlign = hasCustomization ? ((custom as any).header_alignment || 'left') : 'left';
+  const showHeaderDate = hasCustomization ? ((custom as any).header_show_date !== false) : true;
   const brandPos = hasCustomization ? (custom.brand_position || 'footer') : 'footer';
-  const showBrandInHeader = brandPos === 'header' || brandPos === 'both';
+  // 'none' apenas oculta o texto da CAPA — no cabeçalho a marca continua aparecendo.
+  const showBrandInHeader = brandPos === 'header' || brandPos === 'both' || brandPos === 'none';
   const showBrandInFooter = brandPos === 'footer' || brandPos === 'both';
 
   // Cover only when user opted in (has customization addon AND set a cover title or image)
