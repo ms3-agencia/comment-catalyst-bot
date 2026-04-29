@@ -79,8 +79,8 @@ Deno.serve(async (req) => {
     );
     if (consumeErr) throw consumeErr;
     if (consumeRes && (consumeRes as any).success === false) {
-      return new Response(JSON.stringify({ error: "insufficient_credits", details: consumeRes }), {
-        status: 402,
+      return new Response(JSON.stringify({ error: "Créditos insuficientes para gerar conteúdo.", insufficient_credits: true, details: consumeRes }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -210,14 +210,15 @@ Adapte tom, formato e duração às melhores práticas de ${body.social_network}
         _amount: totalCost,
         _description: "Estorno: falha na geração de conteúdo",
       }).catch(() => {});
-      const status = aiResp.status === 429 ? 429 : aiResp.status === 402 ? 402 : 500;
+      const isCredit = aiResp.status === 402;
+      const status = aiResp.status === 429 ? 429 : 200;
       const msg =
         aiResp.status === 429
           ? "Limite de requisições atingido. Tente novamente em instantes."
-          : aiResp.status === 402
+          : isCredit
           ? "Créditos da IA esgotados. Adicione fundos na sua workspace."
           : "Erro na geração de conteúdo.";
-      return new Response(JSON.stringify({ error: msg }), {
+      return new Response(JSON.stringify({ error: msg, insufficient_credits: isCredit }), {
         status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

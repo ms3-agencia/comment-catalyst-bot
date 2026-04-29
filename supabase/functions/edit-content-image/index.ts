@@ -82,8 +82,8 @@ Deno.serve(async (req) => {
       _reference_id: content.id,
     });
     if (consumeErr || !(consumeRes as any)?.success) {
-      return new Response(JSON.stringify({ error: (consumeRes as any)?.error || "Credit error" }), {
-        status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return new Response(JSON.stringify({ error: "Créditos insuficientes para editar imagem.", insufficient_credits: true }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -126,8 +126,8 @@ Deno.serve(async (req) => {
         });
       }
       if (aiResp.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos do workspace de IA esgotados." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        return new Response(JSON.stringify({ error: "Créditos do workspace de IA esgotados.", insufficient_credits: true }), {
+          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       return new Response(JSON.stringify({ error: "Falha ao editar imagem" }), {
