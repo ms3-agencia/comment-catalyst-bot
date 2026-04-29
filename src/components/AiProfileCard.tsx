@@ -335,42 +335,110 @@ const renderAvatarChartHtml = (data: ChartItem[]): string => {
     </div>`;
 };
 
-const buildPdfHtml = (profile: string, projectName: string | undefined, branding: PdfBranding): string => {
+const buildCoverHtml = (
+  custom: PdfCustomization,
+  branding: PdfBranding,
+  projectName: string | undefined,
+  date: string,
+): string => {
+  const title = escapeHtml(custom.cover_title || branding.site_name || 'Relatório de Avatar');
+  const subtitle = escapeHtml(custom.cover_subtitle || branding.tagline || 'Análise de Audiência com IA');
+  const bg = custom.cover_image_url
+    ? `background: linear-gradient(135deg, ${custom.primary_color}dd, ${custom.secondary_color}dd), url('${escapeHtml(custom.cover_image_url)}') center/cover no-repeat;`
+    : `background: linear-gradient(135deg, ${custom.primary_color}, ${custom.secondary_color});`;
+  const logo = custom.logo_url || branding.logo_url;
+  const logoMark = logo
+    ? `<img src="${escapeHtml(logo)}" alt="" crossorigin="anonymous" style="max-width:90px;max-height:90px;object-fit:contain;" />`
+    : `<span style="font-size:56px;">🧠</span>`;
+  return `
+<div data-pdf-section data-pdf-cover style="${bg} color:#fff; padding:120px 40px; min-height:1000px; display:flex; flex-direction:column; justify-content:space-between; font-family:'${custom.font_family}','Inter',sans-serif;">
+  <div style="display:flex;align-items:center;gap:18px;">
+    <div style="width:90px;height:90px;border-radius:18px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.25);overflow:hidden;">
+      ${logoMark}
+    </div>
+    <div>
+      <p style="margin:0;font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:0.85;">${escapeHtml(branding.site_name || 'YCaptura')}</p>
+    </div>
+  </div>
+  <div style="text-align:left;">
+    <h1 style="margin:0;font-size:46px;font-weight:800;letter-spacing:-1px;line-height:1.1;">${title}</h1>
+    <p style="margin:18px 0 0;font-size:18px;opacity:0.9;font-weight:300;">${subtitle}</p>
+    ${projectName ? `<p style="margin:36px 0 0;font-size:14px;opacity:0.8;">Projeto: <strong>${escapeHtml(projectName)}</strong></p>` : ''}
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;font-size:11px;opacity:0.85;">
+    <span>${escapeHtml(custom.header_text || '')}</span>
+    <span>${escapeHtml(date)}</span>
+  </div>
+</div>`;
+};
+
+const buildPdfHtml = (
+  profile: string,
+  projectName: string | undefined,
+  branding: PdfBranding,
+  custom: PdfCustomization,
+  hasCustomization: boolean,
+): string => {
   const date = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
   const contentHtml = markdownToPdfHtml(profile);
   const chartHtml = renderAvatarChartHtml(buildAvatarChartData(profile));
   const siteName = escapeHtml(branding.site_name || 'YCaptura');
-  const tagline = escapeHtml(branding.tagline || 'Análise de Audiência com IA');
-  const logoMark = branding.logo_url
-    ? `<img src="${escapeHtml(branding.logo_url)}" alt="" crossorigin="anonymous" style="max-width:48px;max-height:48px;object-fit:contain;display:block;" />`
+  const tagline = escapeHtml(custom.cover_subtitle || branding.tagline || 'Análise de Audiência com IA');
+  const logo = custom.logo_url || branding.logo_url;
+  const logoMark = logo
+    ? `<img src="${escapeHtml(logo)}" alt="" crossorigin="anonymous" style="max-width:48px;max-height:48px;object-fit:contain;display:block;" />`
     : `<span style="font-size:24px;">🧠</span>`;
 
+  // Cover only when user opted in (has customization addon AND set a cover title or image)
+  const coverHtml =
+    hasCustomization && (custom.cover_title || custom.cover_image_url)
+      ? buildCoverHtml(custom, branding, projectName, date)
+      : '';
+
+  // Custom header text (replaces project bar info if provided)
+  const headerLabel = custom.header_text
+    ? escapeHtml(custom.header_text)
+    : escapeHtml(projectName || 'Análise de Avatar');
+
+  // Layout variants (modern is default)
+  const layout = hasCustomization ? custom.layout : 'modern';
+  const headerStyles =
+    layout === 'classic'
+      ? `background:#ffffff;color:${custom.primary_color};padding:24px 40px;border-bottom:3px double ${custom.primary_color};`
+      : layout === 'minimal'
+      ? `background:#ffffff;color:#0f172a;padding:18px 40px;border-bottom:1px solid #e2e8f0;`
+      : `background:linear-gradient(135deg,${custom.primary_color} 0%,${custom.secondary_color} 100%);padding:28px 40px;color:#fff;`;
+
+  const headerTitleColor = layout === 'modern' ? '#fff' : custom.primary_color;
+  const headerSubColor = layout === 'modern' ? '#bae6fd' : '#64748b';
+
   return `
-<div style="font-family:'Inter','Segoe UI',Arial,sans-serif;background:#ffffff;color:#0f172a;width:794px;">
-  <div data-pdf-section style="background:linear-gradient(135deg,#0c4a6e 0%,#1e3a8a 100%);padding:28px 40px;color:#fff;">
+<div style="font-family:'${custom.font_family}','Inter','Segoe UI',Arial,sans-serif;background:#ffffff;color:#0f172a;width:794px;">
+  ${coverHtml}
+  <div data-pdf-section style="${headerStyles}">
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div style="display:flex;align-items:center;gap:14px;">
-        <div style="width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.2);overflow:hidden;">
+        <div style="width:48px;height:48px;border-radius:12px;background:${layout === 'modern' ? 'rgba(255,255,255,0.15)' : custom.primary_color + '15'};display:flex;align-items:center;justify-content:center;border:1px solid ${layout === 'modern' ? 'rgba(255,255,255,0.2)' : custom.primary_color + '30'};overflow:hidden;">
           ${logoMark}
         </div>
         <div>
-          <h1 style="margin:0;font-family:'Space Grotesk','Inter',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.5px;color:#fff;">${siteName}</h1>
-          <p style="margin:3px 0 0;font-size:11px;color:#bae6fd;letter-spacing:0.6px;text-transform:uppercase;font-weight:500;">${tagline}</p>
+          <h1 style="margin:0;font-family:'${custom.font_family}','Space Grotesk','Inter',sans-serif;font-size:24px;font-weight:700;letter-spacing:-0.5px;color:${headerTitleColor};">${siteName}</h1>
+          <p style="margin:3px 0 0;font-size:11px;color:${headerSubColor};letter-spacing:0.6px;text-transform:uppercase;font-weight:500;">${tagline}</p>
         </div>
       </div>
       <div style="text-align:right;">
-        <p style="margin:0;font-size:10px;color:#bae6fd;text-transform:uppercase;letter-spacing:0.5px;">Gerado em</p>
-        <p style="margin:3px 0 0;font-size:13px;color:#fff;font-weight:600;">${date}</p>
+        <p style="margin:0;font-size:10px;color:${headerSubColor};text-transform:uppercase;letter-spacing:0.5px;">Gerado em</p>
+        <p style="margin:3px 0 0;font-size:13px;color:${headerTitleColor};font-weight:600;">${date}</p>
       </div>
     </div>
   </div>
 
-  <div data-pdf-section style="background:#f8fafc;padding:14px 40px;border-bottom:1px solid #e2e8f0;">
+  <div data-pdf-section style="background:${layout === 'minimal' ? '#ffffff' : '#f8fafc'};padding:14px 40px;border-bottom:1px solid #e2e8f0;">
     <div style="display:flex;align-items:center;gap:10px;">
       <span style="font-size:14px;">📁</span>
       <span style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.6px;font-weight:600;">Projeto</span>
       <span style="color:#cbd5e1;">›</span>
-      <span style="font-size:14px;color:#0f172a;font-weight:600;">${escapeHtml(projectName || 'Análise de Avatar')}</span>
+      <span style="font-size:14px;color:#0f172a;font-weight:600;">${headerLabel}</span>
     </div>
   </div>
 
