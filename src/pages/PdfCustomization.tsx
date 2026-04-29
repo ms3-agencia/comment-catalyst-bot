@@ -209,13 +209,31 @@ const PdfCustomization = () => {
                 <span style={{ fontSize: 64, fontWeight: 800, color: '#fff' }}>{config.watermark_text}</span>
               </div>
             )}
-            <div className="flex items-center gap-3 relative">
+            <div
+              className="flex items-center gap-3 relative"
+              style={{
+                justifyContent:
+                  config.logo_alignment === 'center' ? 'center'
+                  : config.logo_alignment === 'right' ? 'flex-end'
+                  : 'flex-start',
+              }}
+            >
               {config.logo_url ? (
-                <img src={config.logo_url} alt="" className="h-12 w-12 rounded-lg bg-white/15 p-1 object-contain" />
+                <img
+                  src={config.logo_url}
+                  alt=""
+                  className="rounded-lg bg-white/15 p-1 object-contain"
+                  style={{ height: Math.min(80, config.logo_size), width: Math.min(80, config.logo_size) }}
+                />
               ) : (
-                <div className="h-12 w-12 rounded-lg bg-white/15 flex items-center justify-center text-2xl">🧠</div>
+                <div
+                  className="rounded-lg bg-white/15 flex items-center justify-center text-2xl"
+                  style={{ height: Math.min(80, config.logo_size), width: Math.min(80, config.logo_size) }}
+                >🧠</div>
               )}
-              <span className="text-xs uppercase tracking-widest opacity-80">{config.brand_name || 'Sua Marca'}</span>
+              {(config.brand_position === 'header' || config.brand_position === 'both') && (
+                <span className="text-xs uppercase tracking-widest opacity-80">{config.brand_name || 'Sua Marca'}</span>
+              )}
             </div>
             <div className="relative">
               <h2 className="text-3xl font-bold leading-tight">{config.cover_title || 'Título da capa'}</h2>
@@ -231,7 +249,12 @@ const PdfCustomization = () => {
             style={{ background: config.primary_color }}
           >
             <span>{config.footer_text || 'Rodapé personalizado aparecerá em todas as páginas'}</span>
-            <span>{config.brand_name || 'Sua Marca'} · Página 1/1</span>
+            <span>
+              {(config.brand_position === 'footer' || config.brand_position === 'both')
+                ? `${config.brand_name || 'Sua Marca'} · `
+                : ''}
+              Página 1/1
+            </span>
           </div>
         </Card>
 
