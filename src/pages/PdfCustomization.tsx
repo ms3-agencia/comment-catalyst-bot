@@ -389,15 +389,55 @@ const PdfCustomization = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="layout" className="mt-4 space-y-4">
+          <TabsContent value="header" className="mt-4 space-y-4">
             <Card className="p-6 space-y-4">
               <div>
                 <Label>Texto do cabeçalho</Label>
-                <Input value={config.header_text || ''} onChange={(e) => setConfig({ ...config, header_text: e.target.value })} placeholder="Aparece no topo de cada página" />
+                <Input
+                  value={config.header_text || ''}
+                  onChange={(e) => setConfig({ ...config, header_text: e.target.value })}
+                  placeholder="Ex: Análise de Avatar — Minha Empresa"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Aparece no topo de cada página interna do PDF.</p>
               </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Alinhamento do cabeçalho</Label>
+                  <Select
+                    value={config.header_alignment}
+                    onValueChange={(v: 'left' | 'center' | 'right') => setConfig({ ...config, header_alignment: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="left">Esquerda</SelectItem>
+                      <SelectItem value="center">Centro</SelectItem>
+                      <SelectItem value="right">Direita</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Mostrar data</Label>
+                  <Select
+                    value={config.header_show_date ? 'yes' : 'no'}
+                    onValueChange={(v) => setConfig({ ...config, header_show_date: v === 'yes' })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="yes">Sim, mostrar data</SelectItem>
+                      <SelectItem value="no">Não mostrar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="layout" className="mt-4 space-y-4">
+            <Card className="p-6 space-y-4">
               <div>
                 <Label>Texto do rodapé</Label>
                 <Textarea value={config.footer_text || ''} onChange={(e) => setConfig({ ...config, footer_text: e.target.value })} placeholder="Ex: © 2026 Sua Marca | contato@email.com" rows={2} />
+                <p className="text-xs text-muted-foreground mt-1">Aparece no rodapé de todas as páginas.</p>
               </div>
             </Card>
           </TabsContent>
