@@ -643,8 +643,24 @@ export default function ContentHistory() {
                 {filtered.map(h => (
                   <div
                     key={h.id}
-                    className="relative text-left group rounded-xl border border-border bg-card p-3 hover:border-primary hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all"
+                    className={cn(
+                      'relative text-left group rounded-xl border bg-card p-3 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all',
+                      selected.has(h.id) ? 'border-primary ring-2 ring-primary/30' : 'border-border hover:border-primary',
+                    )}
                   >
+                    <div
+                      className={cn(
+                        'absolute top-2 left-2 z-10 rounded-md bg-background/90 border border-border p-1 transition-opacity',
+                        selected.has(h.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                      )}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        checked={selected.has(h.id)}
+                        onCheckedChange={() => toggleSelected(h.id)}
+                        aria-label="Selecionar conteúdo"
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); deleteContent(h); }}
