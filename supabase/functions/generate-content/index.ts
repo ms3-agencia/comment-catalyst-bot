@@ -170,8 +170,22 @@ Adapte tom, formato e duração às melhores práticas de ${body.social_network}
                           script: { type: "string" },
                           visual_idea: { type: "string" },
                           engagement_score: { type: "number" },
+                          slides: {
+                            type: "array",
+                            description: "Sequential narrative slides (carousel only; [] otherwise)",
+                            items: {
+                              type: "object",
+                              properties: {
+                                index: { type: "number" },
+                                text: { type: "string" },
+                                visual: { type: "string" },
+                              },
+                              required: ["index", "text", "visual"],
+                              additionalProperties: false,
+                            },
+                          },
                         },
-                        required: ["title", "caption", "hashtags", "cta", "visual_idea", "engagement_score"],
+                        required: ["title", "caption", "hashtags", "cta", "visual_idea", "engagement_score", "slides"],
                         additionalProperties: false,
                       },
                     },
