@@ -75,7 +75,7 @@ const PdfCustomization = () => {
   useEffect(() => {
     if (!user) return;
     supabase.from('pdf_customizations').select('*').eq('user_id', user.id).maybeSingle().then(({ data }) => {
-      if (data) setConfig({ ...DEFAULT, ...data, templates: (data.templates as any) || [], custom_fields: (data.custom_fields as any) || {} });
+      if (data) setConfig({ ...DEFAULT, ...(data as any), templates: (data.templates as any) || [], custom_fields: (data.custom_fields as any) || {} });
       setLoading(false);
     });
   }, [user]);
