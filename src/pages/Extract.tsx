@@ -16,11 +16,6 @@ import { Youtube, Plus, X, Loader2, MessageSquare, ThumbsUp, Sparkles, AlertTria
 import { AiProfileCard } from '@/components/AiProfileCard';
 import { useCredits } from '@/hooks/useCredits';
 
-// Parse Supabase Edge Function errors. When status != 2xx, supabase-js throws a
-// FunctionsHttpError whose body is in `error.context` (a Response). We read it
-// to surface "insufficient credits" (402) and other structured errors.
-const parseFnError = async (
-  error: unknown,
 // Translates HTTP status / known error codes into user-friendly Portuguese messages.
 const friendlyMessage = (raw: string | undefined, status?: number): string => {
   const msg = (raw || '').toLowerCase();
