@@ -12,6 +12,7 @@ interface Body {
   width?: number;
   height?: number;
   skip_persist?: boolean; // se true, não sobrescreve image_url do conteúdo (uso em editor de vídeo)
+  slide_index?: number;   // se presente, gera imagem para um slide específico do carrossel
 }
 
 const FORMAT_HINTS: Record<string, string> = {
