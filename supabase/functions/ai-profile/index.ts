@@ -190,8 +190,8 @@ Seja detalhado, específico e baseado nos dados reais dos comentários. Use núm
       }
       if (status === 402) {
         return new Response(
-          JSON.stringify({ error: "Créditos de IA insuficientes. Adicione créditos no workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Créditos de IA insuficientes. Adicione créditos no workspace.", insufficient_credits: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       const errText = await response.text();
