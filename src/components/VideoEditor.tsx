@@ -93,13 +93,20 @@ type SourceContent = {
   content_type: string;
 };
 
-type VideoFormat = { ratio: string; w: number; h: number; label: string };
+type VideoFormat = { id: string; ratio: string; w: number; h: number; label: string; platform?: string };
 
 const VIDEO_FORMATS: VideoFormat[] = [
-  { ratio: '9:16', w: 1080, h: 1920, label: 'Vertical 9:16 (Reels/Shorts/TikTok)' },
-  { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado 1:1' },
-  { ratio: '16:9', w: 1920, h: 1080, label: 'Horizontal 16:9 (YouTube)' },
-  { ratio: '4:5', w: 1080, h: 1350, label: 'Vertical 4:5 (Feed)' },
+  // Verticais (Stories / Reels / Shorts / TikTok / Kwai)
+  { id: 'ig-reels', ratio: '9:16', w: 1080, h: 1920, label: 'Instagram Reels / Stories', platform: 'Instagram' },
+  { id: 'tiktok', ratio: '9:16', w: 1080, h: 1920, label: 'TikTok', platform: 'TikTok' },
+  { id: 'kwai', ratio: '9:16', w: 1080, h: 1920, label: 'Kwai', platform: 'Kwai' },
+  { id: 'yt-shorts', ratio: '9:16', w: 1080, h: 1920, label: 'YouTube Shorts', platform: 'YouTube' },
+  // Feed vertical
+  { id: 'ig-feed-4-5', ratio: '4:5', w: 1080, h: 1350, label: 'Instagram Feed 4:5', platform: 'Instagram' },
+  // Quadrado
+  { id: 'square', ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado 1:1 (Feed)', platform: 'Geral' },
+  // Horizontais
+  { id: 'yt-16-9', ratio: '16:9', w: 1920, h: 1080, label: 'YouTube 16:9', platform: 'YouTube' },
 ];
 
 const IMAGE_EFFECTS: { key: ImageEffect; label: string }[] = [
