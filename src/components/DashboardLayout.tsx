@@ -10,6 +10,8 @@ import { CreditsWidget } from '@/components/CreditsWidget';
 import { CopyIconButton } from '@/components/CopyIconButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useUserAddons } from '@/hooks/useUserAddons';
+import { Badge } from '@/components/ui/badge';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -107,6 +109,8 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const { profile, isAdmin, signOut } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
+  const { hasAddon } = useUserAddons();
+  const pdfAddonActive = hasAddon('pdf-customization');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -331,7 +335,12 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                 }`}
               >
                 <FileText size={18} />
-                <span className="flex-1">Add-on: PDF</span>
+                <span className="flex-1">PDF Custom</span>
+                {pdfAddonActive && (
+                  <Badge className="h-5 px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 hover:bg-emerald-500/20">
+                    ATIVO
+                  </Badge>
+                )}
               </Link>
             </div>
           </nav>
