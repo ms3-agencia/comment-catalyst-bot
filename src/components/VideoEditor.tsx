@@ -698,6 +698,33 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const previewWrapRef = useRef<HTMLDivElement>(null);
   const dragStateRef = useRef<{ active: boolean; offsetX: number; offsetY: number } | null>(null);
 
+  // Logo customizado (add-on)
+  const { enabled: logoEnabled, data: logoData, getPosition: getLogoPos } = useLogoCustomization();
+  const logoImgRef = useRef<HTMLImageElement | null>(null);
+  useEffect(() => {
+    if (!logoEnabled || !logoData.logo_url || !logoData.apply_on_videos) {
+      logoImgRef.current = null;
+      return;
+    }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => { logoImgRef.current = img; };
+    img.src = logoData.logo_url;
+  }, [logoEnabled, logoData.logo_url, logoData.apply_on_videos]);
+
+  const drawLogoOnCanvas = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+    const img = logoImgRef.current;
+    if (!img || !logoEnabled || !logoData.apply_on_videos) return;
+    const pos = getLogoPos(pickLogoKeyFromRatio(format.ratio));
+    const targetW = (pos.size / 100) * w;
+    const ratio = img.naturalHeight / img.naturalWidth || 1;
+    const targetH = targetW * ratio;
+    ctx.save();
+    ctx.globalAlpha = pos.opacity;
+    ctx.drawImage(img, pos.x * w, pos.y * h, targetW, targetH);
+    ctx.restore();
+  };
+
   const [genKind, setGenKind] = useState<GenKind>('basic');
   const [providersBasic, setProvidersBasic] = useState<ProviderRow[]>([]);
   const [providersAi, setProvidersAi] = useState<ProviderRow[]>([]);
