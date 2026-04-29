@@ -508,6 +508,7 @@ export type Database = {
         Row: {
           accent_color: string | null
           active_template_id: string | null
+          brand_name: string | null
           cover_image_url: string | null
           cover_subtitle: string | null
           cover_title: string | null
@@ -529,6 +530,7 @@ export type Database = {
         Insert: {
           accent_color?: string | null
           active_template_id?: string | null
+          brand_name?: string | null
           cover_image_url?: string | null
           cover_subtitle?: string | null
           cover_title?: string | null
@@ -550,6 +552,7 @@ export type Database = {
         Update: {
           accent_color?: string | null
           active_template_id?: string | null
+          brand_name?: string | null
           cover_image_url?: string | null
           cover_subtitle?: string | null
           cover_title?: string | null
