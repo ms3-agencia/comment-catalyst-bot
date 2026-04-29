@@ -53,6 +53,8 @@ const DEFAULT: Customization = {
   cover_subtitle: null,
   cover_image_url: null,
   header_text: null,
+  header_alignment: 'left',
+  header_show_date: true,
   footer_text: null,
   watermark_text: null,
   watermark_opacity: 0.1,
