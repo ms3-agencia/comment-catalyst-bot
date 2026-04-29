@@ -296,10 +296,11 @@ const PdfCustomization = () => {
                   <Label>Posição do nome</Label>
                   <Select
                     value={config.brand_position}
-                    onValueChange={(v: 'header' | 'footer' | 'both') => setConfig({ ...config, brand_position: v })}
+                    onValueChange={(v: 'header' | 'footer' | 'both' | 'none') => setConfig({ ...config, brand_position: v })}
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">Sem texto (apenas logo)</SelectItem>
                       <SelectItem value="header">Apenas no topo</SelectItem>
                       <SelectItem value="footer">Apenas no rodapé</SelectItem>
                       <SelectItem value="both">Topo e rodapé</SelectItem>
