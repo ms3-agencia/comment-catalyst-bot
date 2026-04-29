@@ -103,6 +103,76 @@ const Admin = () => {
   const [creditsDescription, setCreditsDescription] = useState('Ajuste manual');
   const [creditsSaving, setCreditsSaving] = useState(false);
 
+  // Logs viewer
+  type SessionLog = {
+    id: string;
+    login_at: string;
+    logout_at: string | null;
+    duration_seconds: number | null;
+    user_agent: string | null;
+    credits_used?: number;
+  };
+  const [logsUser, setLogsUser] = useState<UserProfile | null>(null);
+  const [logsRows, setLogsRows] = useState<SessionLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+
+  const openLogs = async (u: UserProfile) => {
+    setLogsUser(u);
+    setLogsRows([]);
+    setLogsLoading(true);
+    try {
+      const { data: sessions, error: sErr } = await supabase
+        .from('user_session_logs')
+        .select('id, login_at, logout_at, duration_seconds, user_agent')
+        .eq('user_id', u.user_id)
+        .order('login_at', { ascending: false })
+        .limit(100);
+      if (sErr) throw sErr;
+      const rows = (sessions || []) as SessionLog[];
+
+      if (rows.length > 0) {
+        const oldest = rows[rows.length - 1].login_at;
+        const { data: tx } = await supabase
+          .from('credit_transactions')
+          .select('amount, created_at, type')
+          .eq('user_id', u.user_id)
+          .eq('type', 'consumption')
+          .gte('created_at', oldest)
+          .order('created_at', { ascending: false });
+        const txs = (tx || []) as { amount: number; created_at: string }[];
+        for (const r of rows) {
+          const start = new Date(r.login_at).getTime();
+          const end = r.logout_at ? new Date(r.logout_at).getTime() : Date.now();
+          const used = txs
+            .filter(t => {
+              const ts = new Date(t.created_at).getTime();
+              return ts >= start && ts <= end;
+            })
+            .reduce((acc, t) => acc + Math.abs(Number(t.amount) || 0), 0);
+          r.credits_used = used;
+        }
+      }
+      setLogsRows(rows);
+    } catch (e: any) {
+      toast({ title: 'Erro ao carregar logs', description: e.message || 'Tente novamente', variant: 'destructive' });
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  const formatDuration = (sec: number | null, login: string, logout: string | null) => {
+    let s = sec;
+    if (s == null) {
+      s = Math.max(0, Math.floor((Date.now() - new Date(login).getTime()) / 1000));
+    }
+    if (s < 60) return `${s}s`;
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const secs = s % 60;
+    if (h > 0) return `${h}h ${m}min`;
+    return `${m}min ${secs}s`;
+  };
+
   // API Key state
   const [youtubeApiKey, setYoutubeApiKey] = useState('');
   const [apiKeySaved, setApiKeySaved] = useState(false);
