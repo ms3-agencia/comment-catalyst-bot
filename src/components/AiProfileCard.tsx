@@ -622,12 +622,16 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
       const wmText = hasCustomization ? custom.watermark_text : null;
       const wmAlpha = Math.max(0.05, Math.min(0.5, custom.watermark_opacity || 0.1));
 
+      const hasCover = coverBottomPx > 0;
       for (let p = 1; p <= total; p++) {
         pdf.setPage(p);
 
-        // Watermark (diagonal, behind content) — skip first page if it's the cover
-        const isCoverPage = hasCustomization && (custom.cover_title || custom.cover_image_url) && p === 1;
-        if (wmText && !isCoverPage) {
+        // Cover page is full-bleed (its own gradient + footer info) — skip overlays.
+        const isCoverPage = hasCover && p === 1;
+        if (isCoverPage) continue;
+
+        // Watermark (diagonal, behind content)
+        if (wmText) {
           pdf.saveGraphicsState();
           // jsPDF: GState for opacity
           // @ts-ignore
