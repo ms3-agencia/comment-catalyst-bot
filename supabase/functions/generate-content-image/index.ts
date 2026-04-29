@@ -244,18 +244,35 @@ Deno.serve(async (req) => {
     const { data: pub } = admin.storage.from("content-images").getPublicUrl(filePath);
     const publicUrl = pub.publicUrl;
 
-    // Update content row (skip if scene-only image for video editor)
+    // Persist
     if (!body.skip_persist) {
-      await admin
-        .from("generated_contents")
-        .update({ image_url: publicUrl, image_prompt: finalPrompt })
-        .eq("id", content.id);
+      if (isSlideRequest) {
+        // Update the specific slide entry inside slides[]
+        const updatedSlides = slides.map((s: any, i: number) =>
+          i === body.slide_index
+            ? { ...s, image_url: publicUrl, image_prompt: finalPrompt }
+            : s
+        );
+        const patch: Record<string, any> = { slides: updatedSlides };
+        // First slide also becomes the cover image_url
+        if (body.slide_index === 0) {
+          patch.image_url = publicUrl;
+          patch.image_prompt = finalPrompt;
+        }
+        await admin.from("generated_contents").update(patch).eq("id", content.id);
+      } else {
+        await admin
+          .from("generated_contents")
+          .update({ image_url: publicUrl, image_prompt: finalPrompt })
+          .eq("id", content.id);
+      }
     }
 
     return new Response(JSON.stringify({
       success: true,
       image_url: publicUrl,
       image_prompt: finalPrompt,
+      slide_index: isSlideRequest ? body.slide_index : null,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
