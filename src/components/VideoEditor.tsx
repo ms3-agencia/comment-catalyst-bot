@@ -2084,12 +2084,40 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       </div>
 
       {/* Áudio da cena */}
-      <div className="border-t border-border pt-3">
+      <div className="border-t border-border pt-3 space-y-2">
+        <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer select-none" title="Voz / volume da narração serão aplicados a todas as cenas">
+          <input
+            type="checkbox"
+            checked={voiceApplyAll}
+            onChange={(e) => setVoiceApplyAll(e.target.checked)}
+            className="h-3 w-3"
+            disabled={rendering}
+          />
+          <Mic className="h-3 w-3" /> Aplicar voz/volume a todas as cenas
+        </label>
         <AudioPanel
           globalAudio={globalAudio}
           onGlobalAudioChange={setGlobalAudio}
           sceneAudio={activeScene.audio}
-          onSceneAudioChange={(a) => updateScene(activeIdx, { audio: a })}
+          onSceneAudioChange={(a) => {
+            // If "apply to all" is on, propagate voice/provider/volume changes globally,
+            // but keep per-scene fields (text, enable flag, upload url) local to the scene.
+            if (voiceApplyAll) {
+              const prev = activeScene.audio;
+              const voiceChanged =
+                a.narrationVoice !== prev.narrationVoice ||
+                a.narrationProvider !== prev.narrationProvider ||
+                a.narrationVolume !== prev.narrationVolume;
+              if (voiceChanged) {
+                updateAllSceneAudio({
+                  narrationVoice: a.narrationVoice,
+                  narrationProvider: a.narrationProvider,
+                  narrationVolume: a.narrationVolume,
+                });
+              }
+            }
+            updateScene(activeIdx, { audio: a });
+          }}
           sceneText={activeScene.text}
           sceneDuration={activeScene.duration}
           rendering={rendering}
