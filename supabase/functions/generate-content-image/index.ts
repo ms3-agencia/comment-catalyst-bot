@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     // Get content (RLS ensures ownership)
     const { data: content, error: cErr } = await userClient
       .from("generated_contents")
-      .select("id, title, caption, visual_idea, social_network, content_type, project_id")
+      .select("id, title, caption, visual_idea, social_network, content_type, project_id, slides")
       .eq("id", body.content_id)
       .maybeSingle();
     if (cErr || !content) {
@@ -97,7 +97,40 @@ Deno.serve(async (req) => {
     const targetH = body.height;
     const dimsText = targetW && targetH ? ` Exact target dimensions: ${targetW}x${targetH} pixels.` : "";
 
-    const basePrompt = body.custom_prompt?.trim() || content.visual_idea || content.title || content.caption || "social media content";
+    // ---- CARROSSEL: per-slide narrative image ----
+    const slides: any[] = Array.isArray((content as any).slides) ? (content as any).slides : [];
+    const isSlideRequest =
+      typeof body.slide_index === 'number' &&
+      body.slide_index >= 0 &&
+      body.slide_index < slides.length;
+    const currentSlide = isSlideRequest ? slides[body.slide_index!] : null;
+
+    let basePrompt: string;
+    if (isSlideRequest && currentSlide) {
+      const total = slides.length;
+      const idx = body.slide_index! + 1;
+      const styleAnchor = (content.visual_idea || '').trim() || 'modern, vibrant, professional';
+      const prevSlide = body.slide_index! > 0 ? slides[body.slide_index! - 1] : null;
+      const nextSlide = body.slide_index! < slides.length - 1 ? slides[body.slide_index! + 1] : null;
+      const allTexts = slides
+        .map((s: any, i: number) => `${i + 1}. ${String(s?.text || '').trim()}`)
+        .join(' | ');
+      basePrompt = [
+        `This is slide ${idx} of ${total} in a SEQUENTIAL VISUAL STORY (carousel).`,
+        `Overall narrative: ${allTexts}.`,
+        `MASTER VISUAL STYLE (must be IDENTICAL across all slides — same character(s), same color palette, same lighting, same art style, same environment family): ${styleAnchor}.`,
+        prevSlide ? `Previous slide showed: ${String(prevSlide?.visual || prevSlide?.text || '').trim()}.` : '',
+        `THIS slide must depict: ${String(currentSlide?.visual || currentSlide?.text || '').trim()}.`,
+        nextSlide ? `Next slide will show: ${String(nextSlide?.visual || nextSlide?.text || '').trim()} — leave room for visual continuity.` : '',
+        `Slide text overlay (for context only, DO NOT render text in image unless essential): "${String(currentSlide?.text || '').trim()}".`,
+        idx === 1 ? 'This is the COVER/HOOK — make it bold and scroll-stopping.' : '',
+        idx === total ? 'This is the FINAL slide (CTA/conclusion) — visually rewarding closure.' : '',
+        body.custom_prompt ? `Extra user direction: ${body.custom_prompt.trim()}.` : '',
+      ].filter(Boolean).join(' ');
+    } else {
+      basePrompt = body.custom_prompt?.trim() || content.visual_idea || content.title || content.caption || "social media content";
+    }
+
     const finalPrompt = `Create a high-quality, eye-catching social media image for ${content.social_network} ${content.content_type}. ${formatHint}.${dimsText} Frame and compose the entire image to fully fill this aspect ratio — DO NOT add letterbox bars, padding, borders, or whitespace; the subject must occupy the full frame. Visual concept: ${basePrompt}. Style: modern, vibrant, professional, clean composition with a strong focal point centered for the chosen aspect ratio, no text overlays unless essential, optimized for high engagement on ${content.social_network}.`;
 
     const aspectForGemini = selectedRatio ? GEMINI_ASPECT[selectedRatio] : undefined;
