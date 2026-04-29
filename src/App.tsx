@@ -19,6 +19,7 @@ import Drafts from "./pages/Drafts";
 import CreditHistory from "./pages/CreditHistory";
 import Addons from "./pages/Addons";
 import PdfCustomization from "./pages/PdfCustomization";
+import LogoCustomization from "./pages/LogoCustomization";
 import ContentHistory from "./pages/ContentHistory";
 import NotFound from "./pages/NotFound";
 
