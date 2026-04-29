@@ -80,7 +80,7 @@ const LogoCustomizationPage = () => {
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="font-heading text-3xl flex items-center gap-3">
               <ImagePlus className="text-primary" />
@@ -89,6 +89,7 @@ const LogoCustomizationPage = () => {
             </h1>
             <p className="text-muted-foreground mt-1">Posicione seu logo em cada formato. Aplicado automaticamente em conteúdos gerados.</p>
           </div>
+          <SaveStatusIndicator status={saveStatus} lastSavedAt={lastSavedAt} onForceSave={() => flush()} />
         </div>
 
         <div className="grid lg:grid-cols-[320px_1fr] gap-6">
