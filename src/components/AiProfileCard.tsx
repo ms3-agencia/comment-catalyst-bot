@@ -348,20 +348,28 @@ const buildCoverHtml = (
     ? `background: linear-gradient(135deg, ${custom.primary_color}dd, ${custom.secondary_color}dd), url('${escapeHtml(custom.cover_image_url)}') center/cover no-repeat;`
     : `background: linear-gradient(135deg, ${custom.primary_color}, ${custom.secondary_color});`;
   const logo = custom.logo_url || branding.logo_url;
+  const coverLogoSize = Math.max(40, Math.min(160, custom.logo_size || 90));
   const logoMark = logo
-    ? `<img src="${escapeHtml(logo)}" alt="" crossorigin="anonymous" style="max-width:90px;max-height:90px;object-fit:contain;" />`
-    : `<span style="font-size:56px;">🧠</span>`;
+    ? `<img src="${escapeHtml(logo)}" alt="" crossorigin="anonymous" style="max-width:${coverLogoSize}px;max-height:${coverLogoSize}px;object-fit:contain;" />`
+    : `<span style="font-size:${Math.round(coverLogoSize * 0.6)}px;">🧠</span>`;
+  const align = custom.logo_alignment || 'left';
+  const flexJustify = align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start';
+  const textAlign = align === 'center' ? 'center' : align === 'right' ? 'right' : 'left';
+  const brandPos = custom.brand_position || 'footer';
+  const showBrandTop = brandPos === 'header' || brandPos === 'both';
+  const boxSize = coverLogoSize + 12;
   return `
 <div data-pdf-section data-pdf-cover style="${bg} color:#fff; padding:120px 40px; height:1110px; box-sizing:border-box; display:flex; flex-direction:column; justify-content:space-between; font-family:'${custom.font_family}','Inter',sans-serif;">
-  <div style="display:flex;align-items:center;gap:18px;">
-    <div style="width:90px;height:90px;border-radius:18px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.25);overflow:hidden;">
+  <div style="display:flex;align-items:center;gap:18px;justify-content:${flexJustify};">
+    <div style="width:${boxSize}px;height:${boxSize}px;border-radius:18px;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.25);overflow:hidden;flex-shrink:0;">
       ${logoMark}
     </div>
+    ${showBrandTop ? `
     <div>
       <p style="margin:0;font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:0.85;">${escapeHtml(brandLabel)}</p>
-    </div>
+    </div>` : ''}
   </div>
-  <div style="text-align:left;">
+  <div style="text-align:${textAlign};">
     <h1 style="margin:0;font-size:46px;font-weight:800;letter-spacing:-1px;line-height:1.1;">${title}</h1>
     <p style="margin:18px 0 0;font-size:18px;opacity:0.9;font-weight:300;">${subtitle}</p>
     ${projectName ? `<p style="margin:36px 0 0;font-size:14px;opacity:0.8;">Projeto: <strong>${escapeHtml(projectName)}</strong></p>` : ''}
