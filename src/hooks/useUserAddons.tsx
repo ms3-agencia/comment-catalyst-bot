@@ -70,5 +70,5 @@ export const useUserAddons = () => {
     return true;
   }, [addons, userAddons]);
 
-  return { addons, userAddons, loading, refresh, hasAddon };
+  return { addons, userAddons, loading, refresh: refreshAll, hasAddon };
 };
