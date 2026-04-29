@@ -174,26 +174,50 @@ const LogoCustomizationPage = () => {
   );
 };
 
+// ===================== SAVE STATUS =====================
+const SaveStatusIndicator: React.FC<{
+  status: 'idle' | 'saving' | 'saved' | 'error';
+  lastSavedAt: Date | null;
+  onForceSave: () => void;
+}> = ({ status, lastSavedAt, onForceSave }) => {
+  let label = 'Tudo salvo';
+  let color = 'text-muted-foreground';
+  let Icon: any = Check;
+  if (status === 'saving') { label = 'Salvando…'; color = 'text-primary'; Icon = Loader2; }
+  else if (status === 'saved') { label = 'Salvo'; color = 'text-emerald-500'; Icon = Check; }
+  else if (status === 'error') { label = 'Erro ao salvar'; color = 'text-destructive'; Icon = X; }
+  else if (lastSavedAt) { label = `Salvo às ${lastSavedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`; }
+  return (
+    <button
+      onClick={onForceSave}
+      className={`flex items-center gap-2 text-xs ${color} hover:text-foreground transition-colors px-3 py-2 rounded-md border border-border bg-card/40`}
+      title="Forçar salvamento"
+    >
+      <Icon size={14} className={status === 'saving' ? 'animate-spin' : ''} />
+      <span>{label}</span>
+    </button>
+  );
+};
+
 // ===================== MOCKUP EDITOR =====================
 const MockupEditor: React.FC<{
   format: typeof FORMATS[number];
   logoUrl: string | null;
   position: LogoPosition;
   onChange: (p: Partial<LogoPosition>) => void;
+  onCommit: (p: Partial<LogoPosition>) => void;
   onReset: () => void;
-}> = ({ format, logoUrl, position, onChange, onReset }) => {
+}> = ({ format, logoUrl, position, onChange, onCommit, onReset }) => {
   const stageRef = useRef<HTMLDivElement>(null);
-  const [drag, setDrag] = useState<{ ox: number; oy: number } | null>(null);
+  const [drag, setDrag] = useState<{ ox: number; oy: number; lastX: number; lastY: number } | null>(null);
 
   const aspect = format.w / format.h;
-  // Largura visual máxima
   const maxW = 360;
   const maxH = 540;
   let w = maxW, h = maxW / aspect;
   if (h > maxH) { h = maxH; w = h * aspect; }
 
   const logoW = (position.size / 100) * w;
-  const logoH = logoUrl ? logoW : 0; // assume quadrado para mockup; o canvas final mantém proporção
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (!stageRef.current) return;
@@ -202,7 +226,7 @@ const MockupEditor: React.FC<{
     const py = e.clientY - rect.top;
     const lx = position.x * rect.width;
     const ly = position.y * rect.height;
-    setDrag({ ox: px - lx, oy: py - ly });
+    setDrag({ ox: px - lx, oy: py - ly, lastX: position.x, lastY: position.y });
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent) => {
@@ -212,9 +236,16 @@ const MockupEditor: React.FC<{
     let ny = (e.clientY - rect.top - drag.oy) / rect.height;
     nx = Math.max(0, Math.min(1 - position.size / 100, nx));
     ny = Math.max(0, Math.min(1 - (position.size / 100) * (rect.width / rect.height), ny));
+    setDrag(prev => prev ? { ...prev, lastX: nx, lastY: ny } : prev);
     onChange({ x: nx, y: ny });
   };
-  const onPointerUp = () => setDrag(null);
+  const onPointerUp = () => {
+    if (drag) {
+      // Commit final position imediatamente no banco
+      onCommit({ x: drag.lastX, y: drag.lastY });
+    }
+    setDrag(null);
+  };
 
   const presets: { label: string; x: number; y: number }[] = [
     { label: '↖', x: 0.04, y: 0.04 },
@@ -238,8 +269,8 @@ const MockupEditor: React.FC<{
           style={{ width: w, height: h, touchAction: 'none' }}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
         >
-          {/* Mockup chrome simulado */}
           <div className="absolute inset-0 flex items-center justify-center text-white/60 font-heading text-sm pointer-events-none">
             preview do conteúdo gerado
           </div>
@@ -265,17 +296,31 @@ const MockupEditor: React.FC<{
       <div className="space-y-4">
         <div>
           <Label className="text-xs text-muted-foreground">Tamanho: {position.size}%</Label>
-          <Slider value={[position.size]} min={5} max={50} step={1} onValueChange={([v]) => onChange({ size: v })} />
+          <Slider
+            value={[position.size]} min={5} max={50} step={1}
+            onValueChange={([v]) => onChange({ size: v })}
+            onValueCommit={([v]) => onCommit({ size: v })}
+          />
         </div>
         <div>
           <Label className="text-xs text-muted-foreground">Opacidade: {Math.round(position.opacity * 100)}%</Label>
-          <Slider value={[position.opacity * 100]} min={10} max={100} step={5} onValueChange={([v]) => onChange({ opacity: v / 100 })} />
+          <Slider
+            value={[position.opacity * 100]} min={10} max={100} step={5}
+            onValueChange={([v]) => onChange({ opacity: v / 100 })}
+            onValueCommit={([v]) => onCommit({ opacity: v / 100 })}
+          />
         </div>
         <div>
           <Label className="text-xs text-muted-foreground mb-2 block">Atalhos de posição</Label>
           <div className="grid grid-cols-3 gap-1">
             {presets.map((p, i) => (
-              <Button key={i} variant="outline" size="sm" className="h-8 p-0" onClick={() => onChange({ x: Math.max(0, p.x), y: Math.max(0, p.y) })}>
+              <Button
+                key={i}
+                variant="outline"
+                size="sm"
+                className="h-8 p-0"
+                onClick={() => onCommit({ x: Math.max(0, p.x), y: Math.max(0, p.y) })}
+              >
                 {p.label}
               </Button>
             ))}
