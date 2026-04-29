@@ -253,6 +253,18 @@ const PdfCustomization = () => {
                 </div>
               </div>
 
+              <div>
+                <Label>Nome da Marca</Label>
+                <Input
+                  value={config.brand_name || ''}
+                  onChange={(e) => setConfig({ ...config, brand_name: e.target.value })}
+                  placeholder="Ex: Minha Empresa"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Aparece no rodapé do PDF ao lado do número da página.
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label>Cor primária</Label>
