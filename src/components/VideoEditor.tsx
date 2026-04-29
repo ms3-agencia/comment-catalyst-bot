@@ -1427,6 +1427,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         } else {
           drawScene(ctx, scene, cacheRef.current, W, H, Math.max(0, Math.min(1, inSceneT)));
         }
+        drawLogoOnCanvas(ctx, W, H);
         await new Promise(r => setTimeout(r, frameMs * 0.5));
         if (f % 5 === 0) {
           const pct = Math.round((f / totalFrames) * 95);
