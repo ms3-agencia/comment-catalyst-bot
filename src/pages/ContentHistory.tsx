@@ -1,14 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CopyIconButton } from '@/components/CopyIconButton';
 import { VideoEditor } from '@/components/VideoEditor';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import {
   History, Loader2, ArrowLeft, Instagram, Youtube, Facebook, Linkedin,
   Music2, Twitter, Pin, MessageCircle, Sparkles, FileText, TrendingUp,
   Copy, Check, Download, Wand2, ImageIcon, X, Clapperboard, Trash2,
+  Calendar as CalendarIcon, Search, CheckSquare, Square,
 } from 'lucide-react';
 
 const NETWORKS = [
@@ -104,6 +112,42 @@ export default function ContentHistory() {
   const [genLoading, setGenLoading] = useState(false);
   const [genResults, setGenResults] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const toggleSelected = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const bulkDelete = async (ids: string[], label: string) => {
+    if (ids.length === 0) return;
+    if (!confirm(`Excluir ${ids.length} conteúdo(s) ${label}? Esta ação não pode ser desfeita.`)) return;
+    setBulkDeleting(true);
+    try {
+      const { error } = await supabase.from('generated_contents').delete().in('id', ids);
+      if (error) throw error;
+      const idSet = new Set(ids);
+      setAllHistory(prev => prev.filter(x => !idSet.has(x.id)));
+      setSelected(prev => {
+        const next = new Set(prev);
+        ids.forEach(id => next.delete(id));
+        return next;
+      });
+      if (activePost && idSet.has(activePost.id)) setActivePost(null);
+      toast({ title: `${ids.length} conteúdo(s) excluído(s)` });
+    } catch (e: any) {
+      toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const deleteContent = async (h: HistoryItem) => {
     if (!confirm(`Excluir "${h.title || h.caption || 'este conteúdo'}"? Esta ação não pode ser desfeita.`)) return;
@@ -144,7 +188,42 @@ export default function ContentHistory() {
     count: allHistory.filter(h => h.social_network === n.key).length,
   }));
 
-  const filtered = activeNetwork ? allHistory.filter(h => h.social_network === activeNetwork) : [];
+  const filtered = useMemo(() => {
+    if (!activeNetwork) return [];
+    const q = search.trim().toLowerCase();
+    const fromTs = dateFrom ? new Date(dateFrom.getFullYear(), dateFrom.getMonth(), dateFrom.getDate()).getTime() : null;
+    const toTs = dateTo ? new Date(dateTo.getFullYear(), dateTo.getMonth(), dateTo.getDate(), 23, 59, 59, 999).getTime() : null;
+    return allHistory.filter(h => {
+      if (h.social_network !== activeNetwork) return false;
+      if (q) {
+        const hay = `${h.title || ''} ${h.caption || ''} ${h.content_type || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (fromTs || toTs) {
+        const ts = h.created_at ? new Date(h.created_at).getTime() : 0;
+        if (fromTs && ts < fromTs) return false;
+        if (toTs && ts > toTs) return false;
+      }
+      return true;
+    });
+  }, [allHistory, activeNetwork, search, dateFrom, dateTo]);
+
+  const filteredIds = useMemo(() => filtered.map(h => h.id), [filtered]);
+  const allFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selected.has(id));
+  const someFilteredSelected = filteredIds.some(id => selected.has(id));
+  const selectedFilteredIds = filteredIds.filter(id => selected.has(id));
+
+  const toggleSelectAll = () => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        filteredIds.forEach(id => next.delete(id));
+      } else {
+        filteredIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
   const activeNetMeta = NETWORKS.find(n => n.key === activeNetwork);
 
   const buildText = (c: HistoryItem) => [
@@ -454,18 +533,134 @@ export default function ContentHistory() {
           </div>
         ) : activeNetwork ? (
           <div className="space-y-4">
-            <Button variant="ghost" size="sm" onClick={() => setActiveNetwork(null)}>
-              <ArrowLeft className="h-4 w-4 mr-1" /> Todas as redes
-            </Button>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Button variant="ghost" size="sm" onClick={() => { setActiveNetwork(null); setSelected(new Set()); setSearch(''); setDateFrom(undefined); setDateTo(undefined); }}>
+                <ArrowLeft className="h-4 w-4 mr-1" /> Todas as redes
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                {filtered.length} de {allHistory.filter(h => h.social_network === activeNetwork).length} conteúdo(s)
+              </p>
+            </div>
+
+            {/* Filtros */}
+            <div className="rounded-xl border border-border bg-card p-3 flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por título, legenda, tipo…"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-9 h-9"
+                />
+              </div>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn('h-9 gap-1.5', !dateFrom && 'text-muted-foreground')}>
+                    <CalendarIcon className="h-4 w-4" />
+                    {dateFrom ? format(dateFrom, 'dd/MM/yyyy', { locale: ptBR }) : 'De'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className={cn('p-3 pointer-events-auto')} />
+                </PopoverContent>
+              </Popover>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn('h-9 gap-1.5', !dateTo && 'text-muted-foreground')}>
+                    <CalendarIcon className="h-4 w-4" />
+                    {dateTo ? format(dateTo, 'dd/MM/yyyy', { locale: ptBR }) : 'Até'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className={cn('p-3 pointer-events-auto')} />
+                </PopoverContent>
+              </Popover>
+
+              {(search || dateFrom || dateTo) && (
+                <Button variant="ghost" size="sm" className="h-9" onClick={() => { setSearch(''); setDateFrom(undefined); setDateTo(undefined); }}>
+                  <X className="h-3.5 w-3.5 mr-1" /> Limpar
+                </Button>
+              )}
+            </div>
+
+            {/* Barra de seleção em massa */}
+            {filtered.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+                <button
+                  type="button"
+                  onClick={toggleSelectAll}
+                  className="inline-flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors"
+                >
+                  {allFilteredSelected ? (
+                    <CheckSquare className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Square className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  {allFilteredSelected ? 'Desmarcar todos' : 'Selecionar todos'}
+                  {someFilteredSelected && (
+                    <span className="text-xs text-muted-foreground">
+                      ({selectedFilteredIds.length} selecionado{selectedFilteredIds.length > 1 ? 's' : ''})
+                    </span>
+                  )}
+                </button>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {someFilteredSelected && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => bulkDelete(selectedFilteredIds, 'selecionado(s)')}
+                      disabled={bulkDeleting}
+                    >
+                      {bulkDeleting
+                        ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        : <Trash2 className="h-3.5 w-3.5 mr-1" />}
+                      Excluir selecionados ({selectedFilteredIds.length})
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => bulkDelete(filteredIds, 'filtrado(s)')}
+                    disabled={bulkDeleting}
+                  >
+                    {bulkDeleting
+                      ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                      : <Trash2 className="h-3.5 w-3.5 mr-1" />}
+                    Excluir todos filtrados ({filteredIds.length})
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {filtered.length === 0 ? (
-              <p className="text-center text-muted-foreground py-10">Nenhum conteúdo nesta rede.</p>
+              <p className="text-center text-muted-foreground py-10">Nenhum conteúdo encontrado com os filtros aplicados.</p>
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filtered.map(h => (
                   <div
                     key={h.id}
-                    className="relative text-left group rounded-xl border border-border bg-card p-3 hover:border-primary hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all"
+                    className={cn(
+                      'relative text-left group rounded-xl border bg-card p-3 hover:shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all',
+                      selected.has(h.id) ? 'border-primary ring-2 ring-primary/30' : 'border-border hover:border-primary',
+                    )}
                   >
+                    <div
+                      className={cn(
+                        'absolute top-2 left-2 z-10 rounded-md bg-background/90 border border-border p-1 transition-opacity',
+                        selected.has(h.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+                      )}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        checked={selected.has(h.id)}
+                        onCheckedChange={() => toggleSelected(h.id)}
+                        aria-label="Selecionar conteúdo"
+                      />
+                    </div>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); deleteContent(h); }}
@@ -529,7 +724,7 @@ export default function ContentHistory() {
                       <button
                         key={n.key}
                         disabled={disabled}
-                        onClick={() => setActiveNetwork(n.key)}
+                        onClick={() => { setActiveNetwork(n.key); setSelected(new Set()); setSearch(''); setDateFrom(undefined); setDateTo(undefined); }}
                         className={`group relative flex flex-col items-center justify-center gap-2 p-5 rounded-xl border transition-all ${
                           disabled
                             ? 'border-border/50 bg-muted/20 opacity-40 cursor-not-allowed'
