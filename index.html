@@ -2,32 +2,37 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a1019" />
+    <meta name="color-scheme" content="dark" />
+
     <title>YCaptura</title>
-    <meta name="description" content="Sistema de geração de avatar com base nos comentários reais do youtube!">
-    <meta name="author" content="Lovable" />
+    <meta name="description" content="Sistema de geração de avatar com base nos comentários reais do youtube!" />
+    <meta name="author" content="YCaptura" />
 
-    <!-- TODO: Update og:title to match your application name -->
-    
-    
+    <!-- PWA / Installable -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- iOS standalone -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="YCaptura" />
+    <meta name="format-detection" content="telephone=no" />
+
     <meta property="og:type" content="website" />
-    
-
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@Lovable" />
-    
-    
-  
-  
-  
-  <meta property="og:title" content="YCaptura">
-  <meta name="twitter:title" content="YCaptura">
-  <meta property="og:description" content="Sistema de geração de avatar com base nos comentários reais do youtube!">
-  <meta name="twitter:description" content="Sistema de geração de avatar com base nos comentários reais do youtube!">
-  <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/0f5ecace-a291-4232-9f1a-bc2f0d122d29">
-  <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/0f5ecace-a291-4232-9f1a-bc2f0d122d29">
-</head>
+    <meta property="og:title" content="YCaptura" />
+    <meta name="twitter:title" content="YCaptura" />
+    <meta property="og:description" content="Sistema de geração de avatar com base nos comentários reais do youtube!" />
+    <meta name="twitter:description" content="Sistema de geração de avatar com base nos comentários reais do youtube!" />
+    <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/0f5ecace-a291-4232-9f1a-bc2f0d122d29" />
+    <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/0f5ecace-a291-4232-9f1a-bc2f0d122d29" />
+  </head>
 
   <body>
     <div id="root"></div>

@@ -1,7 +1,7 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins, UserCircle, Sparkles, History, FileText, Clapperboard, ImagePlus } from 'lucide-react';
+import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins, UserCircle, Sparkles, History, FileText, Clapperboard, ImagePlus, Smartphone } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CreditsWidget } from '@/components/CreditsWidget';
 import { useUserAddons } from '@/hooks/useUserAddons';
@@ -28,6 +28,9 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const pdfAddonActive = hasAddon('pdf-customization');
   const logoAddonActive = hasAddon('custom-logo');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Fecha sidebar ao navegar (mobile)
+  useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
 
   const allItems = [...navItems, ...(isAdmin ? adminItems : [])];
 
@@ -185,6 +188,11 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                     <UserCircle className="mr-2 h-4 w-4" /> Perfil
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link to="/install">
+                    <Smartphone className="mr-2 h-4 w-4" /> Instalar app
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={signOut} className="text-destructive cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" /> Sair
                 </DropdownMenuItem>
@@ -194,12 +202,15 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0">
-        <header className="flex h-16 items-center gap-4 border-b border-border px-6 lg:px-8">
-          <button className="lg:hidden text-muted-foreground" onClick={() => setSidebarOpen(true)}><Menu size={20} /></button>
+      <main className="flex-1 min-w-0 w-full">
+        <header className="sticky top-0 z-30 flex h-14 lg:h-16 items-center gap-3 border-b border-border bg-background/80 backdrop-blur-md px-4 lg:px-8">
+          <button className="lg:hidden text-muted-foreground -ml-1 p-2" onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
+            <Menu size={22} />
+          </button>
+          <Link to="/dashboard" className="lg:hidden font-heading text-base font-bold gradient-text">YCaptura</Link>
           <div className="flex-1" />
         </header>
-        <div className="p-6 lg:p-8">{children}</div>
+        <div className="p-4 sm:p-6 lg:p-8 max-w-full overflow-x-hidden">{children}</div>
       </main>
 
     </div>
