@@ -112,6 +112,7 @@ type HistoryItem = {
 
 export default function ContentHistory() {
   const { toast } = useToast();
+  const { enabled: logoEnabled, data: logoData, getPosition: getLogoPos } = useLogoCustomization();
   const [loading, setLoading] = useState(true);
   const [allHistory, setAllHistory] = useState<HistoryItem[]>([]);
   const [activeNetwork, setActiveNetwork] = useState<string | null>(null);
