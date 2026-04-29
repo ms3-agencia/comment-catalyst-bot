@@ -206,6 +206,7 @@ function buildInitialScenes(content: SourceContent, preset: StylePreset = DEFAUL
     fontFamily: i === 0 ? (fonts.includes('display') ? 'display' : fonts[0]) : fonts[i % fonts.length],
     fontSize: i === 0 ? Math.min(1.5, preset.fontSize * 1.15) : preset.fontSize,
     audio: defaultSceneAudio(),
+    transitionIn: i === 0 ? 'none' : 'fade',
   }));
 }
 
