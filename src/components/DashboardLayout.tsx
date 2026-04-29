@@ -109,6 +109,8 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const { profile, isAdmin, signOut } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
+  const { hasAddon } = useUserAddons();
+  const pdfAddonActive = hasAddon('pdf-customization');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
