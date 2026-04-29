@@ -72,6 +72,9 @@ export type Scene = {
   imageEffect: ImageEffect;
   textEffect: TextEffect;
   textPosition: TextPosition;
+  /** Optional free-form position (0..1 relative to canvas). When set, overrides `textPosition`. */
+  textXPct?: number;
+  textYPct?: number;
   textColor: string;
   textBg: string; // 'none' | hex (with alpha as rgba)
   fontFamily: FontFamily;
