@@ -304,10 +304,14 @@ const MockupEditor: React.FC<{
     { label: '↘', x: 0.96 - position.size / 100, y: 0.96 - position.size / 100 },
   ];
 
+  // Canvas de preview "ao vivo" — usa mesmas dimensões do stage para fidelidade visual
+  const previewW = Math.round(w);
+  const previewH = Math.round(h);
+
   return (
-    <div className="grid md:grid-cols-[1fr_240px] gap-6 items-start">
+    <div className="grid md:grid-cols-[1fr_1fr_220px] gap-4 items-start">
       <div className="flex flex-col items-center">
-        <p className="text-xs text-muted-foreground mb-2">{format.label} — {format.w}×{format.h} ({format.ratio}) · arraste o logo</p>
+        <p className="text-xs text-muted-foreground mb-2">{format.label} · {format.ratio} · arraste</p>
         <div
           ref={stageRef}
           className="relative rounded-xl overflow-hidden shadow-2xl border border-border bg-gradient-to-br from-fuchsia-500/40 via-purple-600/40 to-cyan-500/40 select-none"
@@ -336,6 +340,21 @@ const MockupEditor: React.FC<{
             <div className="absolute inset-0 flex items-center justify-center text-white/80 text-xs">Envie um logo para começar</div>
           )}
         </div>
+      </div>
+
+      <div className="flex flex-col items-center">
+        <p className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
+          <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          Saída final · {format.w}×{format.h}
+        </p>
+        <canvas
+          ref={previewCanvasRef}
+          width={previewW}
+          height={previewH}
+          className="rounded-xl border border-border shadow-2xl bg-black/40"
+          style={{ width: previewW, height: previewH }}
+        />
+        <p className="text-[10px] text-muted-foreground mt-2">atualiza ao vivo conforme você ajusta</p>
       </div>
 
       <div className="space-y-4">
