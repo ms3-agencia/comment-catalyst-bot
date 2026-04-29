@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   Loader2, Download, Play, Pause, X, Wand2, ImagePlus, Type, Coins,
   ZoomIn, ZoomOut, MoveRight, MoveLeft, Sparkles, RefreshCw, Plus, Trash2,
-  Settings2, Film,
+  Settings2, Film, Mic,
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
