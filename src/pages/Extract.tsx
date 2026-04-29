@@ -85,7 +85,22 @@ type Comment = {
   sentiment?: string;
 };
 
-const Extract = () => {
+// Extracts the YouTube video ID from common URL formats so duplicates are
+// detected even if the user pastes slightly different URLs (e.g. with extra params).
+const extractYoutubeId = (url: string): string | null => {
+  const u = url.trim();
+  if (!u) return null;
+  const patterns = [
+    /youtu\.be\/([A-Za-z0-9_-]{6,})/,
+    /[?&]v=([A-Za-z0-9_-]{6,})/,
+    /youtube\.com\/(?:embed|shorts|live)\/([A-Za-z0-9_-]{6,})/,
+  ];
+  for (const re of patterns) {
+    const m = u.match(re);
+    if (m?.[1]) return m[1];
+  }
+  return null;
+};
   const { user, profile } = useAuth();
   const { refresh: refreshCredits } = useCredits();
   const { toast } = useToast();
