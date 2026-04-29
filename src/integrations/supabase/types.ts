@@ -441,6 +441,45 @@ export type Database = {
         }
         Relationships: []
       }
+      logo_customizations: {
+        Row: {
+          apply_on_images: boolean
+          apply_on_videos: boolean
+          created_at: string
+          default_opacity: number
+          default_size_percent: number
+          id: string
+          logo_url: string | null
+          positions: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          apply_on_images?: boolean
+          apply_on_videos?: boolean
+          created_at?: string
+          default_opacity?: number
+          default_size_percent?: number
+          id?: string
+          logo_url?: string | null
+          positions?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          apply_on_images?: boolean
+          apply_on_videos?: boolean
+          created_at?: string
+          default_opacity?: number
+          default_size_percent?: number
+          id?: string
+          logo_url?: string | null
+          positions?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       payment_orders: {
         Row: {
           addon_id: string | null
