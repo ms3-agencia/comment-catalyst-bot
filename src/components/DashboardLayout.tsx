@@ -26,6 +26,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   const { hasAddon } = useUserAddons();
   const pdfAddonActive = hasAddon('pdf-customization');
+  const logoAddonActive = hasAddon('custom-logo');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const allItems = [...navItems, ...(isAdmin ? adminItems : [])];
