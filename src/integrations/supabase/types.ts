@@ -308,6 +308,7 @@ export type Database = {
           image_url: string | null
           project_id: string
           script: string | null
+          slides: Json
           social_network: string
           title: string | null
           updated_at: string
@@ -326,6 +327,7 @@ export type Database = {
           image_url?: string | null
           project_id: string
           script?: string | null
+          slides?: Json
           social_network: string
           title?: string | null
           updated_at?: string
@@ -344,6 +346,7 @@ export type Database = {
           image_url?: string | null
           project_id?: string
           script?: string | null
+          slides?: Json
           social_network?: string
           title?: string | null
           updated_at?: string
