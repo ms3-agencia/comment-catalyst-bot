@@ -431,6 +431,54 @@ const Extract = () => {
           </div>
         )}
       </div>
+
+      <AlertDialog
+        open={!!duplicateInfo}
+        onOpenChange={(open) => { if (!open) setDuplicateInfo(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              URL já extraída anteriormente
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <p>
+                  {duplicateInfo?.urls.length === 1
+                    ? 'Este vídeo já foi extraído em um projeto seu:'
+                    : `${duplicateInfo?.urls.length} dos vídeos enviados já foram extraídos em projetos seus:`}
+                </p>
+                {duplicateInfo && (
+                  <ul className="list-disc pl-5 space-y-1 text-muted-foreground max-h-32 overflow-y-auto">
+                    {duplicateInfo.projects.map(p => (
+                      <li key={p.id}><strong className="text-foreground">{p.name}</strong></li>
+                    ))}
+                  </ul>
+                )}
+                <p>
+                  Extrair novamente vai consumir créditos e gerar comentários
+                  duplicados. Deseja prosseguir mesmo assim?
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDuplicateInfo(null)}>
+              Não, voltar e mudar a URL
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const validUrls = urls.filter(u => u.trim());
+                setDuplicateInfo(null);
+                runExtraction(validUrls);
+              }}
+            >
+              Sim, extrair novamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };
