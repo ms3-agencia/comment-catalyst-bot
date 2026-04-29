@@ -187,7 +187,7 @@ const GenerateContent = () => {
     setHistoryLoading(true);
     const { data } = await supabase
       .from('generated_contents')
-      .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type, image_url, image_prompt')
+      .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type, image_url, image_prompt, slides')
       .eq('project_id', projectId)
       .order('created_at', { ascending: false })
       .limit(200);
