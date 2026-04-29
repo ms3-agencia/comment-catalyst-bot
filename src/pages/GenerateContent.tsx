@@ -199,6 +199,43 @@ const GenerateContent = () => {
     setImagingId(content.id);
     try {
       const fmt = format || selectedFormat || getFormats(content.social_network, content.content_type)[0];
+      const isCarousel = content.content_type === 'carrossel' && Array.isArray(content.slides) && content.slides.length > 0;
+
+      if (isCarousel) {
+        const slides = content.slides!;
+        toast({
+          title: 'Gerando carrossel narrativo...',
+          description: `Criando ${slides.length} imagens em sequência. Aguarde — isso garante consistência visual.`,
+        });
+        let updatedSlides: Slide[] = [...slides];
+        let cover: { image_url?: string; image_prompt?: string } = {};
+        for (let i = 0; i < slides.length; i++) {
+          const { data, error } = await supabase.functions.invoke('generate-content-image', {
+            body: {
+              content_id: content.id,
+              image_format: fmt.ratio,
+              width: fmt.w,
+              height: fmt.h,
+              slide_index: i,
+            },
+          });
+          if (error) throw error;
+          if ((data as any)?.error) throw new Error((data as any).error);
+          const img = (data as any).image_url;
+          const prompt = (data as any).image_prompt;
+          updatedSlides = updatedSlides.map((s, idx) =>
+            idx === i ? { ...s, image_url: img, image_prompt: prompt } : s
+          );
+          if (i === 0) cover = { image_url: img, image_prompt: prompt };
+          // Live UI update slide-by-slide
+          setResults(prev => prev.map(r => r.id === content.id ? { ...r, slides: updatedSlides, ...(i === 0 ? cover : {}) } : r));
+          setHistory(prev => prev.map(r => r.id === content.id ? { ...r, slides: updatedSlides, ...(i === 0 ? cover : {}) } : r));
+        }
+        refreshCredits();
+        toast({ title: 'Carrossel pronto!', description: `${slides.length} slides gerados em sequência narrativa.` });
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('generate-content-image', {
         body: {
           content_id: content.id,
