@@ -100,9 +100,9 @@ export const AddonsTab = () => {
   const updatePlanAddon = async (plan: string, addonId: string, patch: Partial<PlanAddon>) => {
     const existing = planAddons.find(p => p.plan === plan && p.addon_id === addonId);
     if (existing) {
-      await supabase.from('plan_addons').update(patch).eq('plan', plan as any).eq('addon_id', addonId);
+      await supabase.from('plan_addons').update(patch as any).eq('plan', plan as any).eq('addon_id', addonId);
     } else {
-      await supabase.from('plan_addons').insert({ plan: plan as any, addon_id: addonId, discount_percent: 0, included_free: false, ...patch });
+      await supabase.from('plan_addons').insert({ plan: plan as any, addon_id: addonId, discount_percent: 0, included_free: false, ...patch } as any);
     }
     await refresh();
   };
