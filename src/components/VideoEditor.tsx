@@ -37,6 +37,24 @@ type ImageEffect = 'none' | 'zoom_in' | 'zoom_out' | 'pan_left' | 'pan_right' | 
 type TextEffect = 'fade' | 'typewriter' | 'slide_up' | 'slide_left' | 'bounce' | 'pop' | 'wave' | 'none';
 type TextPosition = 'top' | 'center' | 'bottom';
 type FontFamily = 'sans' | 'serif' | 'mono' | 'display';
+export type Transition =
+  | 'none' | 'fade' | 'slide_left' | 'slide_right' | 'slide_up' | 'slide_down'
+  | 'zoom_in' | 'zoom_out' | 'wipe_left' | 'wipe_right' | 'dissolve';
+
+const TRANSITIONS: { key: Transition; label: string; icon: string }[] = [
+  { key: 'none', label: 'Sem transição', icon: '·' },
+  { key: 'fade', label: 'Fade', icon: '◐' },
+  { key: 'dissolve', label: 'Dissolve', icon: '⁂' },
+  { key: 'slide_left', label: 'Slide ←', icon: '←' },
+  { key: 'slide_right', label: 'Slide →', icon: '→' },
+  { key: 'slide_up', label: 'Slide ↑', icon: '↑' },
+  { key: 'slide_down', label: 'Slide ↓', icon: '↓' },
+  { key: 'zoom_in', label: 'Zoom In', icon: '⊕' },
+  { key: 'zoom_out', label: 'Zoom Out', icon: '⊖' },
+  { key: 'wipe_left', label: 'Wipe ←', icon: '◧' },
+  { key: 'wipe_right', label: 'Wipe →', icon: '◨' },
+];
+const TRANSITION_DURATION = 0.6; // seconds, overlap between scenes
 
 const FONT_MAP: Record<FontFamily, string> = {
   sans: 'Inter, system-ui, sans-serif',
