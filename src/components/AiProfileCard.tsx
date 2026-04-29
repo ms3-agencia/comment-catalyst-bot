@@ -607,8 +607,10 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
 
       // Footer drawn natively on EVERY page at a fixed bottom Y
       // (so it always sits at the end of the sheet, even with white space above on the last page).
-      const footerText = custom.footer_text || branding.footer_text || 'Gerado por YCaptura — Análise inteligente de audiência';
-      const brandLabel = (hasCustomization && custom.brand_name) ? custom.brand_name : (branding.site_name || 'YCaptura');
+      const effectiveBrand = (hasCustomization && custom.brand_name) ? custom.brand_name : (branding.site_name || 'YCaptura');
+      const defaultFooter = `Gerado por ${effectiveBrand}`;
+      const footerText = custom.footer_text || branding.footer_text || defaultFooter;
+      const brandLabel = effectiveBrand;
       const total = pdf.getNumberOfPages();
       // Parse primary color hex into RGB for native PDF drawing
       const hexToRgb = (hex: string): [number, number, number] => {
