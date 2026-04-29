@@ -1255,7 +1255,14 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         }
         const scene = scenes[Math.min(sIdx, scenes.length - 1)];
         const inSceneT = (tSec - sceneStart) / scene.duration;
-        drawScene(ctx, scene, cacheRef.current, W, H, Math.max(0, Math.min(1, inSceneT)));
+        const tInScene = tSec - sceneStart;
+        const trans = scene.transitionIn || 'none';
+        if (sIdx > 0 && trans !== 'none' && tInScene < TRANSITION_DURATION) {
+          const prev = scenes[sIdx - 1];
+          drawTransition(ctx, prev, scene, cacheRef.current, W, H, tInScene / TRANSITION_DURATION, trans);
+        } else {
+          drawScene(ctx, scene, cacheRef.current, W, H, Math.max(0, Math.min(1, inSceneT)));
+        }
         await new Promise(r => setTimeout(r, frameMs * 0.5));
         if (f % 5 === 0) {
           const pct = Math.round((f / totalFrames) * 95);
