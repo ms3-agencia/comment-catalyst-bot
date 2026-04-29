@@ -284,13 +284,17 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                       <div className="overflow-hidden">
                         <div className="pt-1 space-y-1">
                           {item.to === '/dashboard/generate' && (
-                            <button
-                              onClick={openHistory}
-                              className="ml-6 flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                            <Link
+                              to="/dashboard/generate/history"
+                              className={`ml-6 flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                                location.pathname === '/dashboard/generate/history'
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                              }`}
                             >
                               <History size={16} />
                               <span>Histórico</span>
-                            </button>
+                            </Link>
                           )}
                           {item.to === '/dashboard/credits' && (
                             <Link
