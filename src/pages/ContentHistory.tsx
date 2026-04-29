@@ -188,7 +188,42 @@ export default function ContentHistory() {
     count: allHistory.filter(h => h.social_network === n.key).length,
   }));
 
-  const filtered = activeNetwork ? allHistory.filter(h => h.social_network === activeNetwork) : [];
+  const filtered = useMemo(() => {
+    if (!activeNetwork) return [];
+    const q = search.trim().toLowerCase();
+    const fromTs = dateFrom ? new Date(dateFrom.getFullYear(), dateFrom.getMonth(), dateFrom.getDate()).getTime() : null;
+    const toTs = dateTo ? new Date(dateTo.getFullYear(), dateTo.getMonth(), dateTo.getDate(), 23, 59, 59, 999).getTime() : null;
+    return allHistory.filter(h => {
+      if (h.social_network !== activeNetwork) return false;
+      if (q) {
+        const hay = `${h.title || ''} ${h.caption || ''} ${h.content_type || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      if (fromTs || toTs) {
+        const ts = h.created_at ? new Date(h.created_at).getTime() : 0;
+        if (fromTs && ts < fromTs) return false;
+        if (toTs && ts > toTs) return false;
+      }
+      return true;
+    });
+  }, [allHistory, activeNetwork, search, dateFrom, dateTo]);
+
+  const filteredIds = useMemo(() => filtered.map(h => h.id), [filtered]);
+  const allFilteredSelected = filteredIds.length > 0 && filteredIds.every(id => selected.has(id));
+  const someFilteredSelected = filteredIds.some(id => selected.has(id));
+  const selectedFilteredIds = filteredIds.filter(id => selected.has(id));
+
+  const toggleSelectAll = () => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        filteredIds.forEach(id => next.delete(id));
+      } else {
+        filteredIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
   const activeNetMeta = NETWORKS.find(n => n.key === activeNetwork);
 
   const buildText = (c: HistoryItem) => [
