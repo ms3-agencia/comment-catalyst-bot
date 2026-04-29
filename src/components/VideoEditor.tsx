@@ -2028,11 +2028,26 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       </div>
 
       <div>
-        <Label className="text-xs">Tamanho do texto: {activeScene.fontSize.toFixed(2)}x</Label>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs">Tamanho do texto: {activeScene.fontSize.toFixed(2)}x</Label>
+          <label className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer select-none" title="Aplicar este tamanho a todas as cenas">
+            <input
+              type="checkbox"
+              checked={fontApplyAll}
+              onChange={(e) => setFontApplyAll(e.target.checked)}
+              className="h-3 w-3"
+              disabled={rendering}
+            />
+            Aplicar em todas
+          </label>
+        </div>
         <Slider
           value={[activeScene.fontSize]}
           min={0.5} max={1.6} step={0.05}
-          onValueChange={(v) => updateScene(activeIdx, { fontSize: v[0] })}
+          onValueChange={(v) => {
+            if (fontApplyAll) updateAllScenes({ fontSize: v[0] });
+            else updateScene(activeIdx, { fontSize: v[0] });
+          }}
           disabled={rendering}
           className="mt-2"
         />
