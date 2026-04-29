@@ -467,8 +467,14 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
       container.style.top = '0';
       container.style.width = '794px';
       container.style.background = '#ffffff';
-      const branding = await fetchBranding('pdf');
-      container.innerHTML = buildPdfHtml(profile, projectName, branding);
+      const { data: { user } } = await supabase.auth.getUser();
+      const [branding, customRaw] = await Promise.all([
+        fetchBranding('pdf'),
+        user ? fetchPdfCustomization(user.id) : Promise.resolve(null),
+      ]);
+      const hasCustomization = !!customRaw;
+      const custom = customRaw || DEFAULT_PDF_CUSTOMIZATION;
+      container.innerHTML = buildPdfHtml(profile, projectName, branding, custom, hasCustomization);
       document.body.appendChild(container);
 
       // Wait for layout + any images
