@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useLogoCustomization, FORMATS, LogoFormatKey, LogoPosition, defaultPositionFor } from '@/hooks/useLogoCustomization';
 import { useAuth } from '@/hooks/useAuth';
@@ -232,7 +232,7 @@ const MockupEditor: React.FC<{
   }, [logoUrl]);
 
   // Redesenha o canvas de preview ao vivo a cada mudança
-  const drawPreview = useCallbackSafe(() => {
+  const drawPreview = useCallback(() => {
     const canvas = previewCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
