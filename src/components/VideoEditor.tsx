@@ -343,7 +343,7 @@ function drawTextWithEffect(
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.fillStyle = scene.textBg;
-    const bgX = (W - bgW) / 2 + dx;
+    const bgX = xCenter - bgW / 2 + dx;
     const bgY = yCenter - totalH / 2 - bgPadY + dy;
     const r = 18;
     ctx.beginPath();
