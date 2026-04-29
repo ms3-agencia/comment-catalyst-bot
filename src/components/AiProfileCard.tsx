@@ -356,6 +356,7 @@ const buildCoverHtml = (
   const flexJustify = align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start';
   const textAlign = align === 'center' ? 'center' : align === 'right' ? 'right' : 'left';
   const brandPos = custom.brand_position || 'footer';
+  // 'none' = sem texto APENAS na capa (mantém em cabeçalho e segue rodapé conforme abaixo)
   const showBrandTop = brandPos === 'header' || brandPos === 'both';
   const boxSize = coverLogoSize + 12;
   return `
