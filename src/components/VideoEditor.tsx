@@ -665,6 +665,10 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const [regenIdx, setRegenIdx] = useState<number | null>(null);
   const [bulkGen, setBulkGen] = useState<{ active: boolean; current: number; total: number }>({ active: false, current: 0, total: 0 });
   const [mobileTab, setMobileTab] = useState<'preview' | 'edit'>('preview');
+  // When true, voice & font-size changes propagate to ALL scenes (project-wide default).
+  // When false, the current edit only affects the active scene.
+  const [voiceApplyAll, setVoiceApplyAll] = useState(true);
+  const [fontApplyAll, setFontApplyAll] = useState(true);
 
   const [genKind, setGenKind] = useState<GenKind>('basic');
   const [providersBasic, setProvidersBasic] = useState<ProviderRow[]>([]);
