@@ -256,11 +256,26 @@ export default function ContentHistory() {
     toast({ title: 'Conteúdo copiado!' });
   };
 
-  const downloadImage = async (url: string, filename: string) => {
+  const downloadImage = async (url: string, filename: string, network?: string, ratio?: string) => {
     setDownloading(true);
     try {
-      const res = await fetch(url);
-      const blob = await res.blob();
+      let finalUrl = url;
+      // Aplica logo automaticamente se o add-on estiver ativo
+      if (logoEnabled && logoData.apply_on_images && logoData.logo_url) {
+        try {
+          const key = pickLogoFormatKey(network || activePost?.social_network || '', ratio);
+          const pos = getLogoPos(key);
+          finalUrl = await applyLogoOverlay(url, logoData.logo_url, pos);
+        } catch (err) {
+          console.warn('Falha ao aplicar logo, baixando original:', err);
+        }
+      }
+      let blob: Blob;
+      if (finalUrl.startsWith('data:')) {
+        blob = await (await fetch(finalUrl)).blob();
+      } else {
+        blob = await (await fetch(finalUrl)).blob();
+      }
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = blobUrl;
