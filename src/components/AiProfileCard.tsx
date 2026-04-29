@@ -477,104 +477,107 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
       container.innerHTML = buildPdfHtml(profile, projectName, branding, custom, hasCustomization);
       document.body.appendChild(container);
 
-      // Wait for layout + any images
-      await new Promise((r) => setTimeout(r, 150));
+      // Wait for layout + fonts + images (parallel, with timeouts)
+      const imgs = Array.from(container.querySelectorAll('img')) as HTMLImageElement[];
+      await Promise.all([
+        (document as any).fonts?.ready ?? Promise.resolve(),
+        ...imgs.map(
+          (img) =>
+            new Promise<void>((res) => {
+              if (img.complete) return res();
+              const done = () => res();
+              img.addEventListener('load', done, { once: true });
+              img.addEventListener('error', done, { once: true });
+              setTimeout(done, 1500);
+            })
+        ),
+      ]);
 
-      // Atomic sections: structural blocks + each direct child of content block.
-      // Capturing small atomic units guarantees nothing is sliced mid-line.
-      const structural = Array.from(
-        container.querySelectorAll('[data-pdf-section]')
-      ) as HTMLElement[];
-      const contentBlock = container.querySelector('[data-pdf-content]') as HTMLElement | null;
-      const contentChildren = contentBlock
-        ? (Array.from(contentBlock.children) as HTMLElement[])
-        : [];
-
-      // Insertion order matches DOM order (header, project bar, chart, ...content).
-      const sections: HTMLElement[] = [...structural, ...contentChildren];
+      // Collect atomic break-points (px offsets, relative to container) so we
+      // never slice mid-element. We rasterize the WHOLE container ONCE and then
+      // cut by these markers — orders of magnitude faster than per-element render.
+      const atomic: HTMLElement[] = [
+        ...(Array.from(container.querySelectorAll('[data-pdf-section]')) as HTMLElement[]),
+        ...((container.querySelector('[data-pdf-content]')?.children
+          ? (Array.from(
+              (container.querySelector('[data-pdf-content]') as HTMLElement).children
+            ) as HTMLElement[])
+          : []) as HTMLElement[]),
+      ].filter((el) => el && el.offsetHeight >= 2);
 
       // PDF layout (A4 portrait, mm)
       const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
       const PAGE_W = pdf.internal.pageSize.getWidth();
       const PAGE_H = pdf.internal.pageSize.getHeight();
       const MARGIN_TOP = 14;
-      const MARGIN_BOTTOM = 22; // reserved for footer + page number
+      const MARGIN_BOTTOM = 22;
       const MARGIN_X = 12;
       const CONTENT_W = PAGE_W - MARGIN_X * 2;
-      const SECTION_GAP = 2.5;
       const USABLE_H = PAGE_H - MARGIN_TOP - MARGIN_BOTTOM;
-      const SCALE = 1.5; // lower than 2 → much faster, still crisp
+      const SCALE = 1.4; // good print quality, fast rasterization
 
-      let cursorY = MARGIN_TOP;
-      let isFirstOnPage = true;
+      // ONE single rasterization pass for the whole document
+      const fullCanvas = await html2canvas(container, {
+        scale: SCALE,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        windowWidth: 794,
+        logging: false,
+      });
 
-      const renderSection = async (el: HTMLElement) => {
-        // Skip empty/zero-size elements
-        if (!el || el.offsetHeight < 2) return;
+      const pxPerMm = fullCanvas.width / CONTENT_W;
+      const pageHeightPx = Math.floor(USABLE_H * pxPerMm);
+      const containerRect = container.getBoundingClientRect();
 
-        const canvas = await html2canvas(el, {
-          scale: SCALE,
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          windowWidth: 794,
-          logging: false,
-        });
-        const widthMm = CONTENT_W;
-        const pxPerMm = canvas.width / widthMm;
-        const fullHeightMm = canvas.height / pxPerMm;
-        const imgData = canvas.toDataURL('image/jpeg', 0.85);
+      // Build sorted list of atomic boundaries in canvas px
+      const breakPoints = atomic
+        .map((el) => {
+          const r = el.getBoundingClientRect();
+          const top = (r.top - containerRect.top) * SCALE;
+          const bottom = (r.bottom - containerRect.top) * SCALE;
+          return { top, bottom };
+        })
+        .sort((a, b) => a.top - b.top);
 
-        // Section taller than a full page → must slice. We keep it as a fallback,
-        // but our atomic granularity (per paragraph/list/table) makes this rare.
-        if (fullHeightMm > USABLE_H) {
-          if (!isFirstOnPage) {
-            pdf.addPage();
-            cursorY = MARGIN_TOP;
-            isFirstOnPage = true;
+      // Find the best cut Y ≤ desiredCut that doesn't fall inside an atomic block.
+      const findSafeCut = (startPx: number, desiredCut: number): number => {
+        let safe = desiredCut;
+        for (const b of breakPoints) {
+          if (b.bottom <= startPx) continue;
+          if (b.top >= desiredCut) break;
+          // Block straddles desired cut → push cut up to its top
+          if (b.top < desiredCut && b.bottom > desiredCut) {
+            if (b.top > startPx) safe = Math.min(safe, b.top);
           }
-          const pageSlicePx = USABLE_H * pxPerMm;
-          let renderedPx = 0;
-          while (renderedPx < canvas.height) {
-            const sliceHeightPx = Math.min(pageSlicePx, canvas.height - renderedPx);
-            const sliceCanvas = document.createElement('canvas');
-            sliceCanvas.width = canvas.width;
-            sliceCanvas.height = sliceHeightPx;
-            const ctx = sliceCanvas.getContext('2d');
-            if (ctx) {
-              ctx.fillStyle = '#ffffff';
-              ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-              ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
-            }
-            const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.85);
-            const sliceMm = sliceHeightPx / pxPerMm;
-            pdf.addImage(sliceData, 'JPEG', MARGIN_X, MARGIN_TOP, widthMm, sliceMm);
-            renderedPx += sliceHeightPx;
-            if (renderedPx < canvas.height) {
-              pdf.addPage();
-              cursorY = MARGIN_TOP;
-              isFirstOnPage = true;
-            } else {
-              cursorY = MARGIN_TOP + sliceMm + SECTION_GAP;
-              isFirstOnPage = false;
-            }
-          }
-          return;
         }
-
-        // Atomic section fits in a page → break to next page if it won't fit current.
-        const remaining = PAGE_H - MARGIN_BOTTOM - cursorY;
-        if (fullHeightMm > remaining && !isFirstOnPage) {
-          pdf.addPage();
-          cursorY = MARGIN_TOP;
-          isFirstOnPage = true;
-        }
-        pdf.addImage(imgData, 'JPEG', MARGIN_X, cursorY, widthMm, fullHeightMm);
-        cursorY += fullHeightMm + SECTION_GAP;
-        isFirstOnPage = false;
+        // Don't allow tiny pages (would loop). Fallback to desired cut.
+        if (safe - startPx < pageHeightPx * 0.25) return desiredCut;
+        return Math.floor(safe);
       };
 
-      for (const section of sections) {
-        await renderSection(section);
+      let renderedPx = 0;
+      let firstPage = true;
+      while (renderedPx < fullCanvas.height) {
+        const desiredEnd = Math.min(renderedPx + pageHeightPx, fullCanvas.height);
+        const endPx =
+          desiredEnd >= fullCanvas.height ? desiredEnd : findSafeCut(renderedPx, desiredEnd);
+        const sliceH = endPx - renderedPx;
+
+        const slice = document.createElement('canvas');
+        slice.width = fullCanvas.width;
+        slice.height = sliceH;
+        const ctx = slice.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, slice.width, slice.height);
+          ctx.drawImage(fullCanvas, 0, renderedPx, fullCanvas.width, sliceH, 0, 0, fullCanvas.width, sliceH);
+        }
+        const sliceData = slice.toDataURL('image/jpeg', 0.82);
+        const sliceMm = sliceH / pxPerMm;
+        if (!firstPage) pdf.addPage();
+        pdf.addImage(sliceData, 'JPEG', MARGIN_X, MARGIN_TOP, CONTENT_W, sliceMm);
+        firstPage = false;
+        renderedPx = endPx;
       }
 
       // Footer drawn natively on EVERY page at a fixed bottom Y
