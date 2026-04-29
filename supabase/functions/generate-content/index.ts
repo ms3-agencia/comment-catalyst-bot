@@ -79,8 +79,8 @@ Deno.serve(async (req) => {
     );
     if (consumeErr) throw consumeErr;
     if (consumeRes && (consumeRes as any).success === false) {
-      return new Response(JSON.stringify({ error: "insufficient_credits", details: consumeRes }), {
-        status: 402,
+      return new Response(JSON.stringify({ error: "Créditos insuficientes para gerar conteúdo.", insufficient_credits: true, details: consumeRes }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
