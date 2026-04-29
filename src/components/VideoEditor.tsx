@@ -72,6 +72,9 @@ export type Scene = {
   imageEffect: ImageEffect;
   textEffect: TextEffect;
   textPosition: TextPosition;
+  /** Optional free-form position (0..1 relative to canvas). When set, overrides `textPosition`. */
+  textXPct?: number;
+  textYPct?: number;
   textColor: string;
   textBg: string; // 'none' | hex (with alpha as rgba)
   fontFamily: FontFamily;
@@ -318,10 +321,18 @@ function drawTextWithEffect(
     alpha *= 1 - (progress - 0.9) / 0.1;
   }
 
+  let xCenter: number;
   let yCenter: number;
-  if (scene.textPosition === 'top') yCenter = H * 0.18 + totalH / 2;
-  else if (scene.textPosition === 'bottom') yCenter = H * 0.82 - totalH / 2;
-  else yCenter = H / 2;
+  const hasCustomPos = typeof scene.textXPct === 'number' && typeof scene.textYPct === 'number';
+  if (hasCustomPos) {
+    xCenter = Math.max(maxWidth / 2 + padding * 0.2, Math.min(W - maxWidth / 2 - padding * 0.2, (scene.textXPct as number) * W));
+    yCenter = Math.max(totalH / 2 + 8, Math.min(H - totalH / 2 - 8, (scene.textYPct as number) * H));
+  } else {
+    xCenter = W / 2;
+    if (scene.textPosition === 'top') yCenter = H * 0.18 + totalH / 2;
+    else if (scene.textPosition === 'bottom') yCenter = H * 0.82 - totalH / 2;
+    else yCenter = H / 2;
+  }
 
   // background
   if (scene.textBg && scene.textBg !== 'none') {
@@ -332,7 +343,7 @@ function drawTextWithEffect(
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.fillStyle = scene.textBg;
-    const bgX = (W - bgW) / 2 + dx;
+    const bgX = xCenter - bgW / 2 + dx;
     const bgY = yCenter - totalH / 2 - bgPadY + dy;
     const r = 18;
     ctx.beginPath();
@@ -352,7 +363,7 @@ function drawTextWithEffect(
   ctx.shadowColor = 'rgba(0,0,0,0.6)';
   ctx.shadowBlur = baseFs * 0.18;
 
-  const cx = W / 2 + dx;
+  const cx = xCenter + dx;
   const startY = yCenter - totalH / 2 + lineHeight / 2 + dy;
 
   if (scene.textEffect === 'pop') {
@@ -676,6 +687,9 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   // When false, the current edit only affects the active scene.
   const [voiceApplyAll, setVoiceApplyAll] = useState(true);
   const [fontApplyAll, setFontApplyAll] = useState(true);
+  const [posApplyAll, setPosApplyAll] = useState(true);
+  const previewWrapRef = useRef<HTMLDivElement>(null);
+  const dragStateRef = useRef<{ active: boolean; offsetX: number; offsetY: number } | null>(null);
 
   const [genKind, setGenKind] = useState<GenKind>('basic');
   const [providersBasic, setProvidersBasic] = useState<ProviderRow[]>([]);
@@ -1549,6 +1563,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       )}
 
       <div
+        ref={previewWrapRef}
         className="relative bg-black rounded-lg overflow-hidden mx-auto"
         style={{
           aspectRatio: `${format.w}/${format.h}`,
@@ -1563,6 +1578,66 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           height={format.h}
           className="w-full h-full block"
         />
+        {/* Draggable text-position handle (preview only — not rendered into the exported video) */}
+        {!rendering && !bulkGen.active && !playing && activeScene?.text && (() => {
+          const xPct = typeof activeScene.textXPct === 'number'
+            ? activeScene.textXPct
+            : 0.5;
+          const yPct = typeof activeScene.textYPct === 'number'
+            ? activeScene.textYPct
+            : (activeScene.textPosition === 'top' ? 0.18 : activeScene.textPosition === 'bottom' ? 0.82 : 0.5);
+
+          const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+            e.preventDefault();
+            (e.target as HTMLElement).setPointerCapture(e.pointerId);
+            dragStateRef.current = { active: true, offsetX: 0, offsetY: 0 };
+          };
+          const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+            if (!dragStateRef.current?.active) return;
+            const wrap = previewWrapRef.current;
+            if (!wrap) return;
+            const rect = wrap.getBoundingClientRect();
+            const nx = Math.max(0.08, Math.min(0.92, (e.clientX - rect.left) / rect.width));
+            const ny = Math.max(0.08, Math.min(0.92, (e.clientY - rect.top) / rect.height));
+            const patch = { textXPct: nx, textYPct: ny } as Partial<Scene>;
+            if (posApplyAll) updateAllScenes(patch);
+            else updateScene(activeIdx, patch);
+          };
+          const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+            try { (e.target as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+            dragStateRef.current = null;
+          };
+
+          return (
+            <div
+              role="button"
+              aria-label="Arraste para reposicionar o texto"
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={onPointerUp}
+              onDoubleClick={() => {
+                const patch = { textXPct: undefined, textYPct: undefined } as Partial<Scene>;
+                if (posApplyAll) updateAllScenes(patch);
+                else updateScene(activeIdx, patch);
+                toast({ title: 'Posição do texto restaurada', description: posApplyAll ? 'Aplicado em todas as cenas.' : 'Aplicado apenas nesta cena.' });
+              }}
+              title="Arraste para mover o texto · Duplo clique para resetar"
+              className="absolute -translate-x-1/2 -translate-y-1/2 cursor-move select-none touch-none rounded-md border-2 border-dashed border-primary/70 bg-primary/5 hover:bg-primary/10 transition-colors"
+              style={{
+                left: `${xPct * 100}%`,
+                top: `${yPct * 100}%`,
+                width: '70%',
+                height: '18%',
+                minHeight: 36,
+              }}
+            >
+              <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary text-primary-foreground whitespace-nowrap">
+                Texto · arraste {posApplyAll ? '· todas as cenas' : '· só esta cena'}
+              </span>
+            </div>
+          );
+        })()}
         <RenderOverlay
           visible={rendering || bulkGen.active}
           stage={
@@ -1995,21 +2070,43 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <Label className="text-xs">Posição</Label>
-          <div className="flex gap-1 mt-1">
-            {(['top', 'center', 'bottom'] as TextPosition[]).map(p => (
-              <button
-                key={p}
-                onClick={() => updateScene(activeIdx, { textPosition: p })}
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-xs">Posição do texto</Label>
+            <label className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer select-none" title="Aplicar mudanças de posição em todas as cenas">
+              <input
+                type="checkbox"
+                checked={posApplyAll}
+                onChange={(e) => setPosApplyAll(e.target.checked)}
+                className="h-3 w-3"
                 disabled={rendering}
-                className={`text-[11px] px-2 py-1.5 rounded border flex-1 ${
-                  activeScene.textPosition === p
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border'
-                }`}
-              >{p === 'top' ? 'Topo' : p === 'center' ? 'Meio' : 'Base'}</button>
-            ))}
+              />
+              Em todas
+            </label>
           </div>
+          <div className="flex gap-1 mt-1">
+            {(['top', 'center', 'bottom'] as TextPosition[]).map(p => {
+              const active = activeScene.textPosition === p && typeof activeScene.textXPct !== 'number';
+              return (
+                <button
+                  key={p}
+                  onClick={() => {
+                    const patch = { textPosition: p, textXPct: undefined, textYPct: undefined } as Partial<Scene>;
+                    if (posApplyAll) updateAllScenes(patch);
+                    else updateScene(activeIdx, patch);
+                  }}
+                  disabled={rendering}
+                  className={`text-[11px] px-2 py-1.5 rounded border flex-1 ${
+                    active
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border'
+                  }`}
+                >{p === 'top' ? 'Topo' : p === 'center' ? 'Meio' : 'Base'}</button>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-1 leading-tight">
+            Dica: arraste o texto direto no preview para posicionar livremente. Duplo clique reseta.
+          </p>
         </div>
         <div>
           <Label className="text-xs">Tipografia</Label>
