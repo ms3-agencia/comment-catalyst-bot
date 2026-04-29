@@ -45,6 +45,22 @@ export const useUserAddons = () => {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  // Sync entre instâncias do hook (DashboardLayout, Addons page, etc.)
+  useEffect(() => {
+    const handler = () => refresh();
+    window.addEventListener('user-addons:refresh', handler);
+    window.addEventListener('focus', handler);
+    return () => {
+      window.removeEventListener('user-addons:refresh', handler);
+      window.removeEventListener('focus', handler);
+    };
+  }, [refresh]);
+
+  const refreshAll = useCallback(async () => {
+    await refresh();
+    window.dispatchEvent(new Event('user-addons:refresh'));
+  }, [refresh]);
+
   const hasAddon = useCallback((slug: string) => {
     const addon = addons.find(a => a.slug === slug);
     if (!addon) return false;
@@ -54,5 +70,5 @@ export const useUserAddons = () => {
     return true;
   }, [addons, userAddons]);
 
-  return { addons, userAddons, loading, refresh, hasAddon };
+  return { addons, userAddons, loading, refresh: refreshAll, hasAddon };
 };
