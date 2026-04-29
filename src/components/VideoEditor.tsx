@@ -1018,6 +1018,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     const ctx = c.getContext('2d');
     if (!ctx) return;
     const idx = drawFrameAt(ctx, c.width, c.height, timeSec);
+    drawLogoOnCanvas(ctx, c.width, c.height);
     if (idx !== activeIdx && playing) setActiveIdx(idx);
   };
 
