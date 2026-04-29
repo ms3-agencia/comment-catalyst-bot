@@ -23,6 +23,14 @@ type Project = {
   total_comments: number | null;
 };
 
+type Slide = {
+  index: number;
+  text: string;
+  visual?: string | null;
+  image_url?: string | null;
+  image_prompt?: string | null;
+};
+
 type GeneratedContent = {
   id: string;
   title: string | null;
@@ -36,6 +44,7 @@ type GeneratedContent = {
   content_type: string;
   image_url?: string | null;
   image_prompt?: string | null;
+  slides?: Slide[] | null;
 };
 
 const NETWORKS = [
@@ -178,7 +187,7 @@ const GenerateContent = () => {
     setHistoryLoading(true);
     const { data } = await supabase
       .from('generated_contents')
-      .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type, image_url, image_prompt')
+      .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type, image_url, image_prompt, slides')
       .eq('project_id', projectId)
       .order('created_at', { ascending: false })
       .limit(200);
@@ -190,6 +199,43 @@ const GenerateContent = () => {
     setImagingId(content.id);
     try {
       const fmt = format || selectedFormat || getFormats(content.social_network, content.content_type)[0];
+      const isCarousel = content.content_type === 'carrossel' && Array.isArray(content.slides) && content.slides.length > 0;
+
+      if (isCarousel) {
+        const slides = content.slides!;
+        toast({
+          title: 'Gerando carrossel narrativo...',
+          description: `Criando ${slides.length} imagens em sequência. Aguarde — isso garante consistência visual.`,
+        });
+        let updatedSlides: Slide[] = [...slides];
+        let cover: { image_url?: string; image_prompt?: string } = {};
+        for (let i = 0; i < slides.length; i++) {
+          const { data, error } = await supabase.functions.invoke('generate-content-image', {
+            body: {
+              content_id: content.id,
+              image_format: fmt.ratio,
+              width: fmt.w,
+              height: fmt.h,
+              slide_index: i,
+            },
+          });
+          if (error) throw error;
+          if ((data as any)?.error) throw new Error((data as any).error);
+          const img = (data as any).image_url;
+          const prompt = (data as any).image_prompt;
+          updatedSlides = updatedSlides.map((s, idx) =>
+            idx === i ? { ...s, image_url: img, image_prompt: prompt } : s
+          );
+          if (i === 0) cover = { image_url: img, image_prompt: prompt };
+          // Live UI update slide-by-slide
+          setResults(prev => prev.map(r => r.id === content.id ? { ...r, slides: updatedSlides, ...(i === 0 ? cover : {}) } : r));
+          setHistory(prev => prev.map(r => r.id === content.id ? { ...r, slides: updatedSlides, ...(i === 0 ? cover : {}) } : r));
+        }
+        refreshCredits();
+        toast({ title: 'Carrossel pronto!', description: `${slides.length} slides gerados em sequência narrativa.` });
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('generate-content-image', {
         body: {
           content_id: content.id,
@@ -559,7 +605,38 @@ const GenerateContent = () => {
                         <p className="mt-2 text-foreground/90">{c.visual_idea}</p>
                       </details>
                     )}
-                    {/* AI Image */}
+                    {/* Sequência narrativa do carrossel */}
+                    {c.content_type === 'carrossel' && Array.isArray(c.slides) && c.slides.length > 0 && (
+                      <div className="border-t border-border pt-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Layers className="h-4 w-4 text-primary" />
+                          <h4 className="text-sm font-semibold">Roteiro do carrossel ({c.slides.length} slides)</h4>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Cada slide é uma cena conectada — juntos contam uma história sequencial.
+                        </p>
+                        <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory">
+                          {c.slides.map((s, i) => (
+                            <div key={i} className="shrink-0 w-40 rounded-lg border border-border bg-muted/30 overflow-hidden snap-start">
+                              <div className="relative aspect-[4/5] bg-muted flex items-center justify-center">
+                                {s.image_url ? (
+                                  <img src={s.image_url} alt={`Slide ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                                ) : imagingId === c.id ? (
+                                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                ) : (
+                                  <span className="text-[10px] text-muted-foreground px-2 text-center">Aguardando geração</span>
+                                )}
+                                <span className="absolute top-1 left-1 text-[10px] font-bold bg-background/80 text-foreground rounded px-1.5 py-0.5">
+                                  {i + 1}/{c.slides!.length}
+                                </span>
+                              </div>
+                              <p className="text-[11px] p-2 line-clamp-3 text-foreground/90 leading-snug">{s.text}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* AI Image (capa) */}
                     <div className="border-t border-border pt-3 space-y-2">
                       {c.image_url ? (
                         <div className="space-y-2">
@@ -680,9 +757,9 @@ const GenerateContent = () => {
                           disabled={imagingId === c.id}
                         >
                           {imagingId === c.id ? (
-                            <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Gerando imagem...</>
+                            <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Gerando {c.content_type === 'carrossel' && c.slides?.length ? `${c.slides.length} slides em sequência...` : 'imagem...'}</>
                           ) : (
-                            <><Wand2 className="h-3.5 w-3.5 mr-1" /> Gerar imagem</>
+                            <><Wand2 className="h-3.5 w-3.5 mr-1" /> {c.content_type === 'carrossel' && c.slides?.length ? `Gerar ${c.slides.length} imagens em sequência` : 'Gerar imagem'}</>
                           )}
                         </Button>
                       )}
