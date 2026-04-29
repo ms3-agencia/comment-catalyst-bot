@@ -7,41 +7,70 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Youtube, Plus, X, Loader2, MessageSquare, ThumbsUp, Sparkles } from 'lucide-react';
+import { Youtube, Plus, X, Loader2, MessageSquare, ThumbsUp, Sparkles, AlertTriangle } from 'lucide-react';
 import { AiProfileCard } from '@/components/AiProfileCard';
 import { useCredits } from '@/hooks/useCredits';
 
-// Parse Supabase Edge Function errors. When status != 2xx, supabase-js throws a
-// FunctionsHttpError whose body is in `error.context` (a Response). We read it
-// to surface "insufficient credits" (402) and other structured errors.
+// Translates HTTP status / known error codes into user-friendly Portuguese messages.
+const friendlyMessage = (raw: string | undefined, status?: number): string => {
+  const msg = (raw || '').toLowerCase();
+  if (status === 401 || msg.includes('unauthorized') || msg.includes('jwt'))
+    return 'Sua sessão expirou. Faça login novamente para continuar.';
+  if (status === 402 || msg.includes('insufficient_credits') || msg.includes('sem créditos'))
+    return 'Você está sem créditos suficientes para esta operação.';
+  if (status === 403 || msg.includes('forbidden') || msg.includes('quota'))
+    return 'Acesso negado pela API do YouTube. Pode ser limite de cota diária — tente novamente mais tarde.';
+  if (status === 404 || msg.includes('not found') || msg.includes('video not found'))
+    return 'Vídeo não encontrado. Verifique se o link está correto e o vídeo é público.';
+  if (status === 429 || msg.includes('rate limit') || msg.includes('too many'))
+    return 'Muitas requisições em pouco tempo. Aguarde alguns instantes e tente novamente.';
+  if (msg.includes('comments_disabled') || msg.includes('comentários desabilitados'))
+    return 'Os comentários deste vídeo estão desabilitados pelo autor.';
+  if (msg.includes('invalid url') || msg.includes('url inválida') || msg.includes('parse'))
+    return 'Uma das URLs enviadas é inválida. Use links completos do YouTube (ex: https://youtube.com/watch?v=...).';
+  if (msg.includes('network') || msg.includes('failed to fetch') || msg.includes('timeout'))
+    return 'Falha de conexão com o servidor. Verifique sua internet e tente novamente.';
+  if (msg.includes('youtube_api_key') || msg.includes('api key'))
+    return 'A chave da YouTube API não está configurada. Avise o administrador.';
+  if (status && status >= 500)
+    return 'O serviço está temporariamente indisponível. Tente novamente em alguns instantes.';
+  return raw || 'Ocorreu um erro inesperado. Tente novamente.';
+};
+
 const parseFnError = async (
   error: unknown,
   data: { error?: string; insufficient_credits?: boolean } | null
 ): Promise<{ message: string; insufficient: boolean }> => {
   if (data?.error) {
-    return { message: data.error, insufficient: !!data.insufficient_credits };
+    return {
+      message: friendlyMessage(data.error),
+      insufficient: !!data.insufficient_credits,
+    };
   }
   const ctx = (error as { context?: Response } | null)?.context;
   if (ctx && typeof ctx.json === 'function') {
     try {
       const body = await ctx.clone().json();
-      if (body?.insufficient_credits || ctx.status === 402) {
-        return {
-          message: body?.error || 'Você está sem créditos. Compre mais para continuar.',
-          insufficient: true,
-        };
-      }
-      if (body?.error) return { message: body.error, insufficient: false };
+      const insufficient = !!body?.insufficient_credits || ctx.status === 402;
+      return {
+        message: friendlyMessage(body?.error, ctx.status),
+        insufficient,
+      };
     } catch {
       // body wasn't JSON
     }
-    if (ctx.status === 402) {
-      return { message: 'Você está sem créditos. Compre mais para continuar.', insufficient: true };
-    }
+    return {
+      message: friendlyMessage(undefined, ctx.status),
+      insufficient: ctx.status === 402,
+    };
   }
   return {
-    message: (error as { message?: string } | null)?.message || 'Erro desconhecido',
+    message: friendlyMessage((error as { message?: string } | null)?.message),
     insufficient: false,
   };
 };
@@ -54,6 +83,23 @@ type Comment = {
   published_at: string;
   video_url: string;
   sentiment?: string;
+};
+
+// Extracts the YouTube video ID from common URL formats so duplicates are
+// detected even if the user pastes slightly different URLs (e.g. with extra params).
+const extractYoutubeId = (url: string): string | null => {
+  const u = url.trim();
+  if (!u) return null;
+  const patterns = [
+    /youtu\.be\/([A-Za-z0-9_-]{6,})/,
+    /[?&]v=([A-Za-z0-9_-]{6,})/,
+    /youtube\.com\/(?:embed|shorts|live)\/([A-Za-z0-9_-]{6,})/,
+  ];
+  for (const re of patterns) {
+    const m = u.match(re);
+    if (m?.[1]) return m[1];
+  }
+  return null;
 };
 
 const Extract = () => {
@@ -77,18 +123,16 @@ const Extract = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [aiProfile, setAiProfile] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState<
+    { urls: string[]; projects: { id: string; name: string }[] } | null
+  >(null);
 
   const addUrl = () => setUrls([...urls, '']);
   const removeUrl = (i: number) => setUrls(urls.filter((_, idx) => idx !== i));
   const updateUrl = (i: number, val: string) => { const u = [...urls]; u[i] = val; setUrls(u); };
 
-  const handleExtract = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const validUrls = urls.filter(u => u.trim());
-    if (!validUrls.length || !projectName.trim()) {
-      toast({ title: 'Preencha todos os campos', variant: 'destructive' });
-      return;
-    }
+  // Performs the actual extraction (separated so the duplicate dialog can call it).
+  const runExtraction = async (validUrls: string[]) => {
     setLoading(true);
 
     // Stable idempotency key per (project name + urls). Persists across retries
@@ -168,6 +212,71 @@ const Extract = () => {
       }
     }
     setLoading(false);
+  };
+
+  const handleExtract = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const validUrls = urls.filter(u => u.trim());
+    if (!validUrls.length || !projectName.trim()) {
+      toast({
+        title: 'Preencha todos os campos',
+        description: 'Informe um nome de projeto e ao menos uma URL do YouTube.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate URL format quickly to give better UX before hitting the API.
+    const invalid = validUrls.filter(u => !extractYoutubeId(u));
+    if (invalid.length) {
+      toast({
+        title: 'URL inválida',
+        description: `Verifique: ${invalid[0]}. Use links completos do YouTube.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check for previous extractions of the same video IDs across the user's projects.
+    try {
+      const ids = validUrls.map(extractYoutubeId).filter(Boolean) as string[];
+      const orFilter = ids.map(id => `video_urls.cs.{${id}}`).join(',');
+      // Fallback: also try matching the raw URL in case the project saved the full URL.
+      const rawOr = validUrls.map(u => `video_urls.cs.{${u}}`).join(',');
+      const { data: existingProjects } = await supabase
+        .from('projects')
+        .select('id, name, video_urls')
+        .eq('user_id', user!.id)
+        .or([orFilter, rawOr].filter(Boolean).join(','));
+
+      const matched = (existingProjects || []).filter(p =>
+        (p.video_urls || []).some((vu: string) => {
+          const pid = extractYoutubeId(vu);
+          return ids.some(id => id === pid) || validUrls.includes(vu);
+        }),
+      );
+
+      if (matched.length > 0) {
+        const dupUrls = validUrls.filter(u => {
+          const id = extractYoutubeId(u);
+          return matched.some(p =>
+            (p.video_urls || []).some((vu: string) =>
+              extractYoutubeId(vu) === id || vu === u,
+            ),
+          );
+        });
+        setDuplicateInfo({
+          urls: dupUrls,
+          projects: matched.map(p => ({ id: p.id, name: p.name })),
+        });
+        return;
+      }
+    } catch (err) {
+      // Non-blocking: if the duplicate check fails we still proceed with extraction.
+      console.warn('duplicate check failed', err);
+    }
+
+    await runExtraction(validUrls);
   };
 
   const handleGenerateAI = async () => {
@@ -322,6 +431,54 @@ const Extract = () => {
           </div>
         )}
       </div>
+
+      <AlertDialog
+        open={!!duplicateInfo}
+        onOpenChange={(open) => { if (!open) setDuplicateInfo(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              URL já extraída anteriormente
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm">
+                <p>
+                  {duplicateInfo?.urls.length === 1
+                    ? 'Este vídeo já foi extraído em um projeto seu:'
+                    : `${duplicateInfo?.urls.length} dos vídeos enviados já foram extraídos em projetos seus:`}
+                </p>
+                {duplicateInfo && (
+                  <ul className="list-disc pl-5 space-y-1 text-muted-foreground max-h-32 overflow-y-auto">
+                    {duplicateInfo.projects.map(p => (
+                      <li key={p.id}><strong className="text-foreground">{p.name}</strong></li>
+                    ))}
+                  </ul>
+                )}
+                <p>
+                  Extrair novamente vai consumir créditos e gerar comentários
+                  duplicados. Deseja prosseguir mesmo assim?
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDuplicateInfo(null)}>
+              Não, voltar e mudar a URL
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const validUrls = urls.filter(u => u.trim());
+                setDuplicateInfo(null);
+                runExtraction(validUrls);
+              }}
+            >
+              Sim, extrair novamente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   );
 };
