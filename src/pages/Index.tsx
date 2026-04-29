@@ -246,7 +246,7 @@ const Index = () => {
       </section>
 
       {/* Planos */}
-      <section className="px-6 lg:px-12 py-16 max-w-6xl mx-auto">
+      <section id="planos" className="px-6 lg:px-12 py-16 max-w-6xl mx-auto scroll-mt-20">
         <div className="text-center mb-12">
           <Badge variant="outline" className="mb-3 border-primary/40 text-primary"><ShieldCheck size={12} className="mr-1" /> Planos mensais</Badge>
           <h2 className="font-heading text-3xl lg:text-4xl font-bold">Escolha o plano e <span className="gradient-text">comece a vender mais</span></h2>
