@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins, UserCircle, Sparkles, History, FileText, Clapperboard, ImagePlus } from 'lucide-react';
@@ -28,6 +28,9 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const pdfAddonActive = hasAddon('pdf-customization');
   const logoAddonActive = hasAddon('custom-logo');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Fecha sidebar ao navegar (mobile)
+  useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
 
   const allItems = [...navItems, ...(isAdmin ? adminItems : [])];
 
