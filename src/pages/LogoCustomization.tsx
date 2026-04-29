@@ -56,6 +56,21 @@ const LogoCustomizationPage = () => {
   const resetPos = (key: LogoFormatKey) => {
     const { [key]: _, ...rest } = data.positions;
     save({ positions: rest }, { immediate: true });
+    toast({ title: 'Formato restaurado ao padrão' });
+  };
+
+  const resetNetwork = (network: string) => {
+    const keysToRemove = FORMATS.filter(f => f.network === network).map(f => f.key);
+    const rest = { ...data.positions };
+    keysToRemove.forEach(k => { delete rest[k]; });
+    save({ positions: rest }, { immediate: true });
+    toast({ title: `Posições do ${network} restauradas` });
+  };
+
+  const resetAll = () => {
+    if (!confirm('Restaurar TODAS as posições e tamanhos padrão? Seu logo enviado será mantido.')) return;
+    save({ positions: {}, default_size_percent: 15, default_opacity: 1 }, { immediate: true });
+    toast({ title: 'Todas as posições foram restauradas' });
   };
 
   if (loading) {
