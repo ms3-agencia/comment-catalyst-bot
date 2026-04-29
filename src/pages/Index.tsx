@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { TestimonialsCarousel } from '@/components/TestimonialsCarousel';
 import { useBranding } from '@/hooks/useBranding';
+import { InstallPwaPopup } from '@/components/InstallPwaPopup';
 
 type Pkg = { id: string; name: string; credits: number; price_brl: number; sort_order: number; features: string[] | null };
 type Plan = { plan: 'free' | 'pro' | 'enterprise'; display_name: string; monthly_credits: number; price_brl: number; description: string | null; features: string[] | null };
@@ -106,6 +107,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <InstallPwaPopup />
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 lg:px-12 h-16 border-b border-border/50 sticky top-0 z-40 bg-background/80 backdrop-blur-md">
         <div className="flex items-center gap-2.5 min-w-0">
