@@ -228,7 +228,7 @@ const PdfCustomization = () => {
               ) : (
                 <div
                   className="rounded-lg bg-white/15 flex items-center justify-center text-2xl"
-                  style={{ height: Math.min(80, config.logo_size), width: Math.min(80, config.logo_size) }}
+                  style={{ height: Math.min(160, config.logo_size), width: Math.min(160, config.logo_size) }}
                 >🧠</div>
               )}
               {(config.brand_position === 'header' || config.brand_position === 'both') && (
