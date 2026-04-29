@@ -631,7 +631,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   content: SourceContent;
-  onImageRegen: (sceneIdx: number, prompt: string) => Promise<string | null>;
+  onImageRegen: (sceneIdx: number, prompt: string, format?: { ratio: string; w: number; h: number }) => Promise<string | null>;
 };
 
 type GenKind = 'basic' | 'ai';
@@ -1066,7 +1066,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     if (!sc) return;
     setRegenIdx(idx);
     try {
-      const url = await onImageRegen(idx, sc.text);
+      const url = await onImageRegen(idx, sc.text, { ratio: format.ratio, w: format.w, h: format.h });
       if (url) {
         updateScene(idx, { imageUrl: url });
         cacheRef.current.set(url, await loadImage(url));
@@ -1101,7 +1101,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       setRegenIdx(idx);
       setActiveIdx(idx);
       try {
-        const url = await onImageRegen(idx, sc.text);
+        const url = await onImageRegen(idx, sc.text, { ratio: format.ratio, w: format.w, h: format.h });
         if (url) {
           updateScene(idx, { imageUrl: url });
           try { cacheRef.current.set(url, await loadImage(url)); } catch { /* ignore */ }

@@ -645,9 +645,10 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
           open={!!videoEditorPost}
           onClose={() => setVideoEditorPost(null)}
           content={videoEditorPost as any}
-          onImageRegen={async (_idx, prompt) => {
+          onImageRegen={async (_idx, prompt, editorFormat) => {
             try {
-              const fmt = getFormats(videoEditorPost.social_network, videoEditorPost.content_type)[0];
+              const fallback = getFormats(videoEditorPost.social_network, videoEditorPost.content_type)[0];
+              const fmt = editorFormat || { ratio: fallback.ratio, w: fallback.w, h: fallback.h };
               const { data, error } = await supabase.functions.invoke('generate-content-image', {
                 body: {
                   content_id: videoEditorPost.id,
