@@ -93,13 +93,20 @@ type SourceContent = {
   content_type: string;
 };
 
-type VideoFormat = { ratio: string; w: number; h: number; label: string };
+type VideoFormat = { id: string; ratio: string; w: number; h: number; label: string; platform?: string };
 
 const VIDEO_FORMATS: VideoFormat[] = [
-  { ratio: '9:16', w: 1080, h: 1920, label: 'Vertical 9:16 (Reels/Shorts/TikTok)' },
-  { ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado 1:1' },
-  { ratio: '16:9', w: 1920, h: 1080, label: 'Horizontal 16:9 (YouTube)' },
-  { ratio: '4:5', w: 1080, h: 1350, label: 'Vertical 4:5 (Feed)' },
+  // Verticais (Stories / Reels / Shorts / TikTok / Kwai)
+  { id: 'ig-reels', ratio: '9:16', w: 1080, h: 1920, label: 'Instagram Reels / Stories', platform: 'Instagram' },
+  { id: 'tiktok', ratio: '9:16', w: 1080, h: 1920, label: 'TikTok', platform: 'TikTok' },
+  { id: 'kwai', ratio: '9:16', w: 1080, h: 1920, label: 'Kwai', platform: 'Kwai' },
+  { id: 'yt-shorts', ratio: '9:16', w: 1080, h: 1920, label: 'YouTube Shorts', platform: 'YouTube' },
+  // Feed vertical
+  { id: 'ig-feed-4-5', ratio: '4:5', w: 1080, h: 1350, label: 'Instagram Feed 4:5', platform: 'Instagram' },
+  // Quadrado
+  { id: 'square', ratio: '1:1', w: 1080, h: 1080, label: 'Quadrado 1:1 (Feed)', platform: 'Geral' },
+  // Horizontais
+  { id: 'yt-16-9', ratio: '16:9', w: 1920, h: 1080, label: 'YouTube 16:9', platform: 'YouTube' },
 ];
 
 const IMAGE_EFFECTS: { key: ImageEffect; label: string }[] = [
@@ -718,7 +725,14 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         const draft = await loadDraft(content.id);
         if (draft && Array.isArray(draft.scenes) && draft.scenes.length > 0) {
           setScenes(draft.scenes as Scene[]);
-          if (draft.format) setFormat(draft.format);
+          if (draft.format) {
+            const df: any = draft.format;
+            const matched = (df.id && VIDEO_FORMATS.find(f => f.id === df.id))
+              || VIDEO_FORMATS.find(f => f.w === df.w && f.h === df.h)
+              || VIDEO_FORMATS.find(f => f.ratio === df.ratio)
+              || VIDEO_FORMATS[0];
+            setFormat(matched);
+          }
           if (draft.globalAudio) setGlobalAudio(draft.globalAudio);
           if (draft.selectedPresetId) setSelectedPresetId(draft.selectedPresetId);
           if (draft.container) setContainer(draft.container as Container);
@@ -735,12 +749,14 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           setScenes(buildInitialScenes(content, def?.config || DEFAULT_PRESET));
           setSelectedPresetId(def?.id || '');
           const t = content.content_type;
+          const findById = (id: string) => VIDEO_FORMATS.find(f => f.id === id) || VIDEO_FORMATS[0];
           if (['reels', 'shorts', 'story', 'video'].includes(t) && content.social_network !== 'youtube') {
-            setFormat(VIDEO_FORMATS[0]);
+            // padrão vertical: usa Reels/Stories do Instagram (mesmas dimensões de TikTok/Kwai/Shorts)
+            setFormat(findById('ig-reels'));
           } else if (t === 'video' && content.social_network === 'youtube') {
-            setFormat(VIDEO_FORMATS[2]);
+            setFormat(findById('yt-16-9'));
           } else {
-            setFormat(VIDEO_FORMATS[1]);
+            setFormat(findById('square'));
           }
         }
         setActiveIdx(0);
@@ -793,7 +809,14 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const applyDraftState = (draft: EditorDraftState) => {
     draftHydratingRef.current = true;
     if (Array.isArray(draft.scenes)) setScenes(draft.scenes as Scene[]);
-    if (draft.format) setFormat(draft.format);
+    if (draft.format) {
+      const df: any = draft.format;
+      const matched = (df.id && VIDEO_FORMATS.find(f => f.id === df.id))
+        || VIDEO_FORMATS.find(f => f.w === df.w && f.h === df.h)
+        || VIDEO_FORMATS.find(f => f.ratio === df.ratio)
+        || VIDEO_FORMATS[0];
+      setFormat(matched);
+    }
     if (draft.globalAudio) setGlobalAudio(draft.globalAudio);
     if (draft.selectedPresetId) setSelectedPresetId(draft.selectedPresetId);
     if (draft.container) setContainer(draft.container as Container);
@@ -1445,18 +1468,23 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     <Card className="p-2 sm:p-3 bg-card">
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-          {VIDEO_FORMATS.map(f => (
-            <Button
-              key={f.ratio}
-              variant={format.ratio === f.ratio ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFormat(f)}
-              disabled={rendering}
-              className="h-8 px-2 sm:px-3 text-xs"
-            >
-              {f.ratio}
-            </Button>
-          ))}
+          {VIDEO_FORMATS.map(f => {
+            const active = format.id === f.id;
+            return (
+              <Button
+                key={f.id}
+                variant={active ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFormat(f)}
+                disabled={rendering}
+                className="h-8 px-2 sm:px-3 text-xs gap-1"
+                title={`${f.label} · ${f.w}×${f.h}`}
+              >
+                <span>{f.label}</span>
+                <span className="opacity-60">{f.ratio}</span>
+              </Button>
+            );
+          })}
         </div>
         <Badge variant={insufficient ? 'destructive' : 'outline'} className="gap-1 text-xs">
           <Coins className="h-3 w-3" /> {totalCost} créd · saldo {balance} · {totalDuration}s
