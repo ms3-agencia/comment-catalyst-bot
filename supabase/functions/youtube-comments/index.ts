@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
           balance,
         }),
         {
-          status: 402,
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
