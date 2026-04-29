@@ -90,7 +90,15 @@ Deno.serve(async (req) => {
       ? project.ai_profile
       : "Audiência geral, sem perfil específico definido.";
 
-    const systemPrompt = `Você é um estrategista sênior de conteúdo para redes sociais, especializado em maximizar engajamento. Sempre responda em português do Brasil. Seja específico, criativo e use copywriting persuasivo.`;
+    const isCarousel = body.content_type === 'carrossel';
+
+    const systemPrompt = `Você é um estrategista sênior de conteúdo para redes sociais, especializado em maximizar engajamento. Sempre responda em português do Brasil. Seja específico, criativo e use copywriting persuasivo.${
+      isCarousel
+        ? ' Para CARROSSEIS, você é também um roteirista visual: cada slide é uma cena de uma MESMA história/raciocínio, com começo (gancho), meio (desenvolvimento) e fim (CTA/conclusão). Mantenha o mesmo personagem, paleta, ambiente e estilo visual em todos os slides para garantir consistência visual.'
+        : ''
+    }`;
+
+    const carouselSlideCount = isCarousel ? 7 : 0; // 6-8 slides recomendado
 
     const userPrompt = `Crie ${quantity} ideia(s) de conteúdo otimizadas para ENGAJAMENTO MÁXIMO.
 
@@ -109,8 +117,21 @@ Para cada conteúdo, forneça:
 - hashtags: array com 5 a 12 hashtags relevantes (sem o #)
 - cta: chamada para ação clara
 - script: roteiro cena a cena (apenas para reels/shorts/vídeo/video; caso contrário use string vazia "")
-- visual_idea: descrição da ideia visual / thumbnail / capa
+- visual_idea: descrição da ideia visual / thumbnail / capa (para carrossel: descreva o ESTILO VISUAL GERAL — paleta, personagem, ambiente, mood — que será mantido em TODOS os slides)
 - engagement_score: número de 1 a 100 estimando o potencial de engajamento
+${
+  isCarousel
+    ? `- slides: array com ${carouselSlideCount} slides (mínimo 5, máximo 10) que CONTAM UMA HISTÓRIA SEQUENCIAL. Cada slide deve ter:
+    * index: número da ordem (1, 2, 3...)
+    * text: texto curto e impactante que aparecerá no slide (máx 2 linhas, leitura em ~3s)
+    * visual: descrição CONCRETA da imagem desta cena, conectada visualmente à anterior (mesmo personagem, paleta, ambiente, ângulo evoluindo). Ex: "slide 2: mesmo personagem do slide 1, agora olhando para um gráfico subindo, mesma paleta azul/roxo, ambiente de escritório minimalista".
+  Estrutura narrativa obrigatória:
+    - Slide 1: GANCHO (capa, pergunta provocativa ou problema)
+    - Slides intermediários: DESENVOLVIMENTO (cada slide = um ponto da linha de raciocínio, conectado ao anterior por "então", "mas", "porém", "depois")
+    - Último slide: CTA/CONCLUSÃO (resposta + chamada para ação)
+  Os slides devem se LER COMO UM FILMINHO: se você juntar todos os textos em sequência, vira um mini-storytelling coerente.`
+    : '- slides: array vazio []'
+}
 
 Adapte tom, formato e duração às melhores práticas de ${body.social_network} (${body.content_type}).`;
 
