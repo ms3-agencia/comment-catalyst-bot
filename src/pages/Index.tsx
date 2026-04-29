@@ -176,6 +176,58 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Recursos completos */}
+      <section id="recursos" className="px-6 lg:px-12 py-16 max-w-6xl mx-auto scroll-mt-20">
+        <div className="text-center mb-10">
+          <Badge variant="outline" className="mb-3 border-primary/40 text-primary">
+            <Sparkles size={12} className="mr-1" /> Recursos completos
+          </Badge>
+          <h2 className="font-heading text-3xl lg:text-4xl font-bold">
+            Tudo o que você ganha ao <span className="gradient-text">entrar agora</span>
+          </h2>
+          <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
+            Da extração ao vídeo final pronto para postar — todas as ferramentas em uma só plataforma.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-2 mb-8">
+          {featureTags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => setActiveTag(tag)}
+              className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                activeTag === tag
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {visibleFeatures.map((f, i) => (
+            <Card key={i} className="glass p-5 hover:border-primary/40 transition-all">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <f.icon className="text-primary" size={20} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-heading font-semibold text-sm">{f.title}</h3>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-border/60 text-muted-foreground">
+                      {f.tag}
+                    </Badge>
+                  </div>
+                  <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </section>
+
       {/* Depoimentos */}
       <section className="px-6 lg:px-12 py-16 max-w-6xl mx-auto">
         <div className="text-center mb-10">
