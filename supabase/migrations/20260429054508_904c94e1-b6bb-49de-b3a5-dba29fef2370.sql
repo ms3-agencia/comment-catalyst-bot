@@ -1,0 +1,1 @@
+ALTER TABLE public.pdf_customizations ADD COLUMN IF NOT EXISTS brand_name text;

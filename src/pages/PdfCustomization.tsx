@@ -17,6 +17,7 @@ import { Link } from 'react-router-dom';
 
 type Customization = {
   logo_url: string | null;
+  brand_name: string | null;
   primary_color: string;
   secondary_color: string;
   accent_color: string;
@@ -35,6 +36,7 @@ type Customization = {
 
 const DEFAULT: Customization = {
   logo_url: null,
+  brand_name: null,
   primary_color: '#06b6d4',
   secondary_color: '#0f172a',
   accent_color: '#22d3ee',
@@ -207,7 +209,7 @@ const PdfCustomization = () => {
               ) : (
                 <div className="h-12 w-12 rounded-lg bg-white/15 flex items-center justify-center text-2xl">🧠</div>
               )}
-              <span className="text-xs uppercase tracking-widest opacity-80">Sua Marca</span>
+              <span className="text-xs uppercase tracking-widest opacity-80">{config.brand_name || 'Sua Marca'}</span>
             </div>
             <div className="relative">
               <h2 className="text-3xl font-bold leading-tight">{config.cover_title || 'Título da capa'}</h2>
@@ -223,7 +225,7 @@ const PdfCustomization = () => {
             style={{ background: config.primary_color }}
           >
             <span>{config.footer_text || 'Rodapé personalizado aparecerá em todas as páginas'}</span>
-            <span>Página 1/1</span>
+            <span>{config.brand_name || 'Sua Marca'} · Página 1/1</span>
           </div>
         </Card>
 
@@ -249,6 +251,18 @@ const PdfCustomization = () => {
                     </Button>
                   </label>
                 </div>
+              </div>
+
+              <div>
+                <Label>Nome da Marca</Label>
+                <Input
+                  value={config.brand_name || ''}
+                  onChange={(e) => setConfig({ ...config, brand_name: e.target.value })}
+                  placeholder="Ex: Minha Empresa"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Aparece no rodapé do PDF ao lado do número da página.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
