@@ -348,7 +348,7 @@ const buildCoverHtml = (
     ? `background: linear-gradient(135deg, ${custom.primary_color}dd, ${custom.secondary_color}dd), url('${escapeHtml(custom.cover_image_url)}') center/cover no-repeat;`
     : `background: linear-gradient(135deg, ${custom.primary_color}, ${custom.secondary_color});`;
   const logo = custom.logo_url || branding.logo_url;
-  const coverLogoSize = Math.max(40, Math.min(160, custom.logo_size || 90));
+  const coverLogoSize = Math.max(40, Math.min(300, custom.logo_size || 90));
   const logoMark = logo
     ? `<img src="${escapeHtml(logo)}" alt="" crossorigin="anonymous" style="max-width:${coverLogoSize}px;max-height:${coverLogoSize}px;object-fit:contain;" />`
     : `<span style="font-size:${Math.round(coverLogoSize * 0.6)}px;">🧠</span>`;
