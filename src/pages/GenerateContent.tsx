@@ -169,7 +169,11 @@ const GenerateContent = () => {
         body: { content_id: content.id, edit_prompt: prompt.trim() },
       });
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
+      if ((data as any)?.error) {
+        const isCredit = !!(data as any).insufficient_credits;
+        toast({ title: isCredit ? 'Créditos insuficientes' : 'Erro ao editar', description: (data as any).error, variant: 'destructive' });
+        return;
+      }
       const updated = { image_url: (data as any).image_url, image_prompt: (data as any).image_prompt };
       setResults(prev => prev.map(r => r.id === content.id ? { ...r, ...updated } : r));
       setHistory(prev => prev.map(r => r.id === content.id ? { ...r, ...updated } : r));
