@@ -103,6 +103,23 @@ export default function ContentHistory() {
   const [genQuantity, setGenQuantity] = useState(1);
   const [genLoading, setGenLoading] = useState(false);
   const [genResults, setGenResults] = useState<string[]>([]);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const deleteContent = async (h: HistoryItem) => {
+    if (!confirm(`Excluir "${h.title || h.caption || 'este conteúdo'}"? Esta ação não pode ser desfeita.`)) return;
+    setDeletingId(h.id);
+    try {
+      const { error } = await supabase.from('generated_contents').delete().eq('id', h.id);
+      if (error) throw error;
+      setAllHistory(prev => prev.filter(x => x.id !== h.id));
+      if (activePost?.id === h.id) setActivePost(null);
+      toast({ title: 'Conteúdo excluído' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   useEffect(() => {
     (async () => {
