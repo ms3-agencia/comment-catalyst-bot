@@ -327,7 +327,7 @@ const PdfCustomization = () => {
                     value={[config.logo_size]}
                     onValueChange={(v) => setConfig({ ...config, logo_size: v[0] })}
                     min={24}
-                    max={120}
+                    max={300}
                     step={2}
                     className="mt-3"
                   />
