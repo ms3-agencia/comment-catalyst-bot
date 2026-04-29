@@ -63,31 +63,50 @@ Deno.serve(async (req) => {
     }).eq("id", orderId);
 
     if (mappedStatus === "approved") {
-      // Credit user directly using service role (bypass RLS, no auth.uid())
-      const { data: existing } = await admin
-        .from("user_credits")
-        .select("balance")
-        .eq("user_id", order.user_id)
-        .maybeSingle();
-
-      if (existing) {
-        await admin
-          .from("user_credits")
-          .update({ balance: existing.balance + order.credits })
-          .eq("user_id", order.user_id);
+      if (order.order_type === "addon" && order.addon_id) {
+        // Activate add-on
+        const { data: addon } = await admin.from("addons").select("*").eq("id", order.addon_id).maybeSingle();
+        if (addon) {
+          const expiresAt = addon.billing_type === "monthly"
+            ? new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString()
+            : null;
+          await admin.from("user_addons").upsert({
+            user_id: order.user_id,
+            addon_id: order.addon_id,
+            billing_type: addon.billing_type,
+            expires_at: expiresAt,
+            payment_method: "mercado_pago",
+            status: "active",
+            activated_at: new Date().toISOString(),
+          }, { onConflict: "user_id,addon_id" });
+        }
       } else {
-        await admin
+        // Credit user
+        const { data: existing } = await admin
           .from("user_credits")
-          .insert({ user_id: order.user_id, balance: order.credits });
-      }
+          .select("balance")
+          .eq("user_id", order.user_id)
+          .maybeSingle();
 
-      await admin.from("credit_transactions").insert({
-        user_id: order.user_id,
-        amount: order.credits,
-        type: "purchase",
-        description: `Pagamento aprovado MP #${dataId}`,
-        reference_id: order.id,
-      });
+        if (existing) {
+          await admin
+            .from("user_credits")
+            .update({ balance: existing.balance + order.credits })
+            .eq("user_id", order.user_id);
+        } else {
+          await admin
+            .from("user_credits")
+            .insert({ user_id: order.user_id, balance: order.credits });
+        }
+
+        await admin.from("credit_transactions").insert({
+          user_id: order.user_id,
+          amount: order.credits,
+          type: "purchase",
+          description: `Pagamento aprovado MP #${dataId}`,
+          reference_id: order.id,
+        });
+      }
     }
 
     return new Response("ok", { status: 200, headers: corsHeaders });
