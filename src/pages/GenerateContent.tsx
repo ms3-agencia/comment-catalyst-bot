@@ -757,9 +757,9 @@ const GenerateContent = () => {
                           disabled={imagingId === c.id}
                         >
                           {imagingId === c.id ? (
-                            <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Gerando imagem...</>
+                            <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Gerando {c.content_type === 'carrossel' && c.slides?.length ? `${c.slides.length} slides em sequência...` : 'imagem...'}</>
                           ) : (
-                            <><Wand2 className="h-3.5 w-3.5 mr-1" /> Gerar imagem</>
+                            <><Wand2 className="h-3.5 w-3.5 mr-1" /> {c.content_type === 'carrossel' && c.slides?.length ? `Gerar ${c.slides.length} imagens em sequência` : 'Gerar imagem'}</>
                           )}
                         </Button>
                       )}
