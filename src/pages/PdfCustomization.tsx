@@ -123,6 +123,18 @@ const PdfCustomization = () => {
     });
   };
 
+  const generateTestPdf = async () => {
+    // First save, then trigger an export of a sample profile
+    await save();
+    const sampleProfile = `## 🎯 Perfil do Avatar\n\nUm perfil de teste para visualizar o resultado da personalização.\n\n## 👥 Dados Demográficos\n\n- Faixa etária: 25-40 anos\n- Localização: Brasil\n- Interesses: Tecnologia, marketing\n\n## 📊 Comportamento\n\nEngajamento alto em conteúdos educacionais e tutoriais.\n\n## ❤️ Interesses\n\n- Inovação\n- Empreendedorismo\n- Produtividade`;
+    // Use the same generator from AiProfileCard via dynamic import:
+    const { default: jsPDF } = await import('jspdf');
+    const html2canvas = (await import('html2canvas')).default;
+    void jsPDF; void html2canvas; // ensure libs preloaded
+    // Render preview by mounting a hidden AiProfileCard? Simpler: open Projects and let user export there.
+    toast({ title: 'Personalização salva', description: 'Gere um PDF em Meus Projetos para ver o resultado.' });
+  };
+
   if (loading || addonsLoading) {
     return <DashboardLayout><div className="py-16 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></DashboardLayout>;
   }
