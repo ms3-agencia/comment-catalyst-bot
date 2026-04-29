@@ -209,7 +209,7 @@ const PdfCustomization = () => {
               ) : (
                 <div className="h-12 w-12 rounded-lg bg-white/15 flex items-center justify-center text-2xl">🧠</div>
               )}
-              <span className="text-xs uppercase tracking-widest opacity-80">Sua Marca</span>
+              <span className="text-xs uppercase tracking-widest opacity-80">{config.brand_name || 'Sua Marca'}</span>
             </div>
             <div className="relative">
               <h2 className="text-3xl font-bold leading-tight">{config.cover_title || 'Título da capa'}</h2>
