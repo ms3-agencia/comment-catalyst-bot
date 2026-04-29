@@ -279,6 +279,7 @@ const Extract = () => {
     await runExtraction(validUrls);
   };
 
+  const handleGenerateAI = async () => {
     setAiLoading(true);
 
     // Idempotency: stable per project so a retry doesn't burn credits twice.
