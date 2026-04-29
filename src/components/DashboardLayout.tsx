@@ -368,7 +368,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                     <Wand2 className="h-4 w-4" /> Gerar imagem
                   </Button>
                 )}
-                {(activePost.script || activePost.caption) && (
+                {activePost.script && activePost.script.trim() && (
                   <Button
                     variant="outline"
                     className="border-primary/40 hover:bg-primary/10"
