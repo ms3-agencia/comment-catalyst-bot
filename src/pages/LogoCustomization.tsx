@@ -9,7 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Upload, ImagePlus, Lock, RotateCcw, Instagram, Youtube, Music2 } from 'lucide-react';
+import { Loader2, Upload, ImagePlus, Lock, RotateCcw, Instagram, Youtube, Music2, Check, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
