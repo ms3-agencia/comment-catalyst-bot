@@ -243,6 +243,18 @@ Adapte tom, formato e duração às melhores práticas de ${body.social_network}
       script: c.script ?? null,
       visual_idea: c.visual_idea ?? null,
       engagement_score: Math.round(Number(c.engagement_score) || 0),
+      slides: Array.isArray(c.slides)
+        ? c.slides
+            .map((s: any, i: number) => ({
+              index: Number(s?.index) || i + 1,
+              text: String(s?.text || '').trim(),
+              visual: String(s?.visual || '').trim(),
+              image_url: null,
+              image_prompt: null,
+            }))
+            .filter((s: any) => s.text || s.visual)
+            .sort((a: any, b: any) => a.index - b.index)
+        : [],
     }));
 
     let saved: any[] = [];
