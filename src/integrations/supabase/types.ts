@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      addons: {
+        Row: {
+          billing_type: string
+          created_at: string
+          credits_cost: number
+          description: string | null
+          features: string[]
+          icon: string | null
+          id: string
+          is_active: boolean
+          name: string
+          price_brl: number
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          billing_type?: string
+          created_at?: string
+          credits_cost?: number
+          description?: string | null
+          features?: string[]
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          price_brl?: number
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          billing_type?: string
+          created_at?: string
+          credits_cost?: number
+          description?: string | null
+          features?: string[]
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_brl?: number
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_providers: {
         Row: {
           created_at: string
@@ -395,10 +443,12 @@ export type Database = {
       }
       payment_orders: {
         Row: {
+          addon_id: string | null
           amount_brl: number
           created_at: string
           credits: number
           id: string
+          order_type: string
           package_id: string | null
           payment_id: string | null
           preference_id: string | null
@@ -408,10 +458,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          addon_id?: string | null
           amount_brl: number
           created_at?: string
           credits: number
           id?: string
+          order_type?: string
           package_id?: string | null
           payment_id?: string | null
           preference_id?: string | null
@@ -421,10 +473,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          addon_id?: string | null
           amount_brl?: number
           created_at?: string
           credits?: number
           id?: string
+          order_type?: string
           package_id?: string | null
           payment_id?: string | null
           preference_id?: string | null
@@ -435,10 +489,118 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "payment_orders_addon_id_fkey"
+            columns: ["addon_id"]
+            isOneToOne: false
+            referencedRelation: "addons"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "payment_orders_package_id_fkey"
             columns: ["package_id"]
             isOneToOne: false
             referencedRelation: "credit_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdf_customizations: {
+        Row: {
+          accent_color: string | null
+          active_template_id: string | null
+          cover_image_url: string | null
+          cover_subtitle: string | null
+          cover_title: string | null
+          created_at: string
+          custom_fields: Json
+          font_family: string | null
+          footer_text: string | null
+          header_text: string | null
+          id: string
+          logo_url: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          templates: Json
+          updated_at: string
+          user_id: string
+          watermark_opacity: number | null
+          watermark_text: string | null
+        }
+        Insert: {
+          accent_color?: string | null
+          active_template_id?: string | null
+          cover_image_url?: string | null
+          cover_subtitle?: string | null
+          cover_title?: string | null
+          created_at?: string
+          custom_fields?: Json
+          font_family?: string | null
+          footer_text?: string | null
+          header_text?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          templates?: Json
+          updated_at?: string
+          user_id: string
+          watermark_opacity?: number | null
+          watermark_text?: string | null
+        }
+        Update: {
+          accent_color?: string | null
+          active_template_id?: string | null
+          cover_image_url?: string | null
+          cover_subtitle?: string | null
+          cover_title?: string | null
+          created_at?: string
+          custom_fields?: Json
+          font_family?: string | null
+          footer_text?: string | null
+          header_text?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          templates?: Json
+          updated_at?: string
+          user_id?: string
+          watermark_opacity?: number | null
+          watermark_text?: string | null
+        }
+        Relationships: []
+      }
+      plan_addons: {
+        Row: {
+          addon_id: string
+          created_at: string
+          discount_percent: number
+          id: string
+          included_free: boolean
+          plan: Database["public"]["Enums"]["app_plan"]
+        }
+        Insert: {
+          addon_id: string
+          created_at?: string
+          discount_percent?: number
+          id?: string
+          included_free?: boolean
+          plan: Database["public"]["Enums"]["app_plan"]
+        }
+        Update: {
+          addon_id?: string
+          created_at?: string
+          discount_percent?: number
+          id?: string
+          included_free?: boolean
+          plan?: Database["public"]["Enums"]["app_plan"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_addons_addon_id_fkey"
+            columns: ["addon_id"]
+            isOneToOne: false
+            referencedRelation: "addons"
             referencedColumns: ["id"]
           },
         ]
@@ -595,6 +757,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      user_addons: {
+        Row: {
+          activated_at: string
+          addon_id: string
+          billing_type: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          payment_method: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activated_at?: string
+          addon_id: string
+          billing_type: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          payment_method?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activated_at?: string
+          addon_id?: string
+          billing_type?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          payment_method?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_addons_addon_id_fkey"
+            columns: ["addon_id"]
+            isOneToOne: false
+            referencedRelation: "addons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_credits: {
         Row: {
@@ -886,6 +1095,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_addon_with_credits: {
+        Args: { _addon_id: string }
+        Returns: Json
+      }
       admin_add_credits: {
         Args: { _amount: number; _description?: string; _user_id: string }
         Returns: Json
@@ -915,6 +1128,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      user_has_addon: {
+        Args: { _addon_slug: string; _user_id: string }
         Returns: boolean
       }
     }
