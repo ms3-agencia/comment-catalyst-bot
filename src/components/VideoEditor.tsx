@@ -2070,21 +2070,43 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <Label className="text-xs">Posição</Label>
-          <div className="flex gap-1 mt-1">
-            {(['top', 'center', 'bottom'] as TextPosition[]).map(p => (
-              <button
-                key={p}
-                onClick={() => updateScene(activeIdx, { textPosition: p })}
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-xs">Posição do texto</Label>
+            <label className="flex items-center gap-1 text-[10px] text-muted-foreground cursor-pointer select-none" title="Aplicar mudanças de posição em todas as cenas">
+              <input
+                type="checkbox"
+                checked={posApplyAll}
+                onChange={(e) => setPosApplyAll(e.target.checked)}
+                className="h-3 w-3"
                 disabled={rendering}
-                className={`text-[11px] px-2 py-1.5 rounded border flex-1 ${
-                  activeScene.textPosition === p
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border'
-                }`}
-              >{p === 'top' ? 'Topo' : p === 'center' ? 'Meio' : 'Base'}</button>
-            ))}
+              />
+              Em todas
+            </label>
           </div>
+          <div className="flex gap-1 mt-1">
+            {(['top', 'center', 'bottom'] as TextPosition[]).map(p => {
+              const active = activeScene.textPosition === p && typeof activeScene.textXPct !== 'number';
+              return (
+                <button
+                  key={p}
+                  onClick={() => {
+                    const patch = { textPosition: p, textXPct: undefined, textYPct: undefined } as Partial<Scene>;
+                    if (posApplyAll) updateAllScenes(patch);
+                    else updateScene(activeIdx, patch);
+                  }}
+                  disabled={rendering}
+                  className={`text-[11px] px-2 py-1.5 rounded border flex-1 ${
+                    active
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border'
+                  }`}
+                >{p === 'top' ? 'Topo' : p === 'center' ? 'Meio' : 'Base'}</button>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-1 leading-tight">
+            Dica: arraste o texto direto no preview para posicionar livremente. Duplo clique reseta.
+          </p>
         </div>
         <div>
           <Label className="text-xs">Tipografia</Label>
