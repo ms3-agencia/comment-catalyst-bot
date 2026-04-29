@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Upload, Loader2, Save, Plus, Trash2, Lock, Sparkles } from 'lucide-react';
+import { FileText, Upload, Loader2, Save, Plus, Trash2, Lock, Sparkles, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 type Customization = {
