@@ -1,0 +1,5 @@
+UPDATE public.audio_library SET url = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', preview_url = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' WHERE title = 'Upbeat Corporate';
+UPDATE public.audio_library SET url = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', preview_url = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3' WHERE title = 'Inspiring Cinematic';
+UPDATE public.audio_library SET url = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', preview_url = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3' WHERE title = 'Lofi Chill';
+UPDATE public.audio_library SET url = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', preview_url = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3' WHERE title = 'Energetic Pop';
+UPDATE public.audio_library SET url = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3', preview_url = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3' WHERE title = 'Ambient Tech';
