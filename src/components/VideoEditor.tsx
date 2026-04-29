@@ -16,6 +16,13 @@ import {
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useLogoCustomization, LogoFormatKey } from '@/hooks/useLogoCustomization';
+
+const pickLogoKeyFromRatio = (ratio: string): LogoFormatKey => {
+  if (ratio === '9:16') return 'tiktok';
+  if (ratio === '16:9') return 'youtube-thumb';
+  return 'instagram-feed';
+};
 import { AudioPanel } from './video/AudioPanel';
 import { defaultSceneAudio, type SceneAudio, type GlobalAudio } from './video/audioTypes';
 import { buildMixedAudioTrack } from './video/audioMixer';
