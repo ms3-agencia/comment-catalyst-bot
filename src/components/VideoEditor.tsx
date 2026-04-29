@@ -1101,7 +1101,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       setRegenIdx(idx);
       setActiveIdx(idx);
       try {
-        const url = await onImageRegen(idx, sc.text);
+        const url = await onImageRegen(idx, sc.text, { ratio: format.ratio, w: format.w, h: format.h });
         if (url) {
           updateScene(idx, { imageUrl: url });
           try { cacheRef.current.set(url, await loadImage(url)); } catch { /* ignore */ }
