@@ -77,6 +77,8 @@ export type Scene = {
   fontFamily: FontFamily;
   fontSize: number; // 0.5..1.5 multiplier
   audio: SceneAudio;
+  /** Transition that plays AT THE START of this scene (i.e. between previous scene and this one). Ignored on scene index 0. */
+  transitionIn?: Transition;
 };
 
 type SourceContent = {
