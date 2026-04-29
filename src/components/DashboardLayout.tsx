@@ -10,6 +10,8 @@ import { CreditsWidget } from '@/components/CreditsWidget';
 import { CopyIconButton } from '@/components/CopyIconButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useUserAddons } from '@/hooks/useUserAddons';
+import { Badge } from '@/components/ui/badge';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
