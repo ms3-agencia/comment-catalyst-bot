@@ -32,7 +32,7 @@ const LogoCustomizationPage = () => {
       const { error } = await supabase.storage.from('branding').upload(path, file, { upsert: true });
       if (error) throw error;
       const { data: pub } = supabase.storage.from('branding').getPublicUrl(path);
-      await save({ logo_url: pub.publicUrl });
+      await save({ logo_url: pub.publicUrl }, { immediate: true });
       toast({ title: 'Logo atualizado!' });
     } catch (e: any) {
       toast({ title: 'Erro no upload', description: e.message, variant: 'destructive' });
@@ -41,15 +41,21 @@ const LogoCustomizationPage = () => {
     }
   };
 
-  const updatePos = async (key: LogoFormatKey, patch: Partial<LogoPosition>) => {
+  const updatePos = (key: LogoFormatKey, patch: Partial<LogoPosition>) => {
     const cur = getPosition(key);
     const next = { ...cur, ...patch };
-    await save({ positions: { ...data.positions, [key]: next } });
+    save({ positions: { ...data.positions, [key]: next } });
   };
 
-  const resetPos = async (key: LogoFormatKey) => {
+  const updatePosCommit = (key: LogoFormatKey, patch: Partial<LogoPosition>) => {
+    const cur = getPosition(key);
+    const next = { ...cur, ...patch };
+    save({ positions: { ...data.positions, [key]: next } }, { immediate: true });
+  };
+
+  const resetPos = (key: LogoFormatKey) => {
     const { [key]: _, ...rest } = data.positions;
-    await save({ positions: rest });
+    save({ positions: rest }, { immediate: true });
   };
 
   if (loading) {
