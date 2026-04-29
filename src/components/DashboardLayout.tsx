@@ -1,7 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins, UserCircle, Sparkles, History, FileText, Clapperboard } from 'lucide-react';
+import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins, UserCircle, Sparkles, History, FileText, Clapperboard, ImagePlus } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CreditsWidget } from '@/components/CreditsWidget';
 import { useUserAddons } from '@/hooks/useUserAddons';
@@ -26,6 +26,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   const { hasAddon } = useUserAddons();
   const pdfAddonActive = hasAddon('pdf-customization');
+  const logoAddonActive = hasAddon('custom-logo');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const allItems = [...navItems, ...(isAdmin ? adminItems : [])];
@@ -139,6 +140,22 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                 <FileText size={18} />
                 <span className="flex-1">PDF Custom</span>
                 {pdfAddonActive && (
+                  <Badge className="h-5 px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 hover:bg-emerald-500/20">
+                    ATIVO
+                  </Badge>
+                )}
+              </Link>
+              <Link
+                to="/dashboard/logo-customization"
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  location.pathname === '/dashboard/logo-customization'
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                }`}
+              >
+                <ImagePlus size={18} />
+                <span className="flex-1">Logo Custom</span>
+                {logoAddonActive && (
                   <Badge className="h-5 px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 hover:bg-emerald-500/20">
                     ATIVO
                   </Badge>

@@ -18,6 +18,19 @@ import {
   Copy, Check, Download, Wand2, ImageIcon, X, Clapperboard, Trash2,
   Calendar as CalendarIcon, Search, CheckSquare, Square,
 } from 'lucide-react';
+import { useLogoCustomization, applyLogoOverlay, LogoFormatKey } from '@/hooks/useLogoCustomization';
+
+// Mapeia network + ratio para a chave de formato do logo (best-effort)
+const pickLogoFormatKey = (network: string, ratio?: string): LogoFormatKey => {
+  const n = network.toLowerCase();
+  if (n === 'tiktok') return 'tiktok';
+  if (n === 'youtube') return ratio === '16:9' ? 'youtube-thumb' : 'youtube-short';
+  if (n === 'instagram') {
+    if (ratio === '9:16') return 'instagram-reels';
+    return 'instagram-feed';
+  }
+  return 'instagram-feed';
+};
 
 const NETWORKS = [
   { key: 'instagram', label: 'Instagram', icon: Instagram },
@@ -99,6 +112,7 @@ type HistoryItem = {
 
 export default function ContentHistory() {
   const { toast } = useToast();
+  const { enabled: logoEnabled, data: logoData, getPosition: getLogoPos } = useLogoCustomization();
   const [loading, setLoading] = useState(true);
   const [allHistory, setAllHistory] = useState<HistoryItem[]>([]);
   const [activeNetwork, setActiveNetwork] = useState<string | null>(null);
@@ -242,11 +256,26 @@ export default function ContentHistory() {
     toast({ title: 'Conteúdo copiado!' });
   };
 
-  const downloadImage = async (url: string, filename: string) => {
+  const downloadImage = async (url: string, filename: string, network?: string, ratio?: string) => {
     setDownloading(true);
     try {
-      const res = await fetch(url);
-      const blob = await res.blob();
+      let finalUrl = url;
+      // Aplica logo automaticamente se o add-on estiver ativo
+      if (logoEnabled && logoData.apply_on_images && logoData.logo_url) {
+        try {
+          const key = pickLogoFormatKey(network || activePost?.social_network || '', ratio);
+          const pos = getLogoPos(key);
+          finalUrl = await applyLogoOverlay(url, logoData.logo_url, pos);
+        } catch (err) {
+          console.warn('Falha ao aplicar logo, baixando original:', err);
+        }
+      }
+      let blob: Blob;
+      if (finalUrl.startsWith('data:')) {
+        blob = await (await fetch(finalUrl)).blob();
+      } else {
+        blob = await (await fetch(finalUrl)).blob();
+      }
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = blobUrl;

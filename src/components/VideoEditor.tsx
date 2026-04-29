@@ -16,6 +16,13 @@ import {
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useLogoCustomization, LogoFormatKey } from '@/hooks/useLogoCustomization';
+
+const pickLogoKeyFromRatio = (ratio: string): LogoFormatKey => {
+  if (ratio === '9:16') return 'tiktok';
+  if (ratio === '16:9') return 'youtube-thumb';
+  return 'instagram-feed';
+};
 import { AudioPanel } from './video/AudioPanel';
 import { defaultSceneAudio, type SceneAudio, type GlobalAudio } from './video/audioTypes';
 import { buildMixedAudioTrack } from './video/audioMixer';
@@ -691,6 +698,33 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
   const previewWrapRef = useRef<HTMLDivElement>(null);
   const dragStateRef = useRef<{ active: boolean; offsetX: number; offsetY: number } | null>(null);
 
+  // Logo customizado (add-on)
+  const { enabled: logoEnabled, data: logoData, getPosition: getLogoPos } = useLogoCustomization();
+  const logoImgRef = useRef<HTMLImageElement | null>(null);
+  useEffect(() => {
+    if (!logoEnabled || !logoData.logo_url || !logoData.apply_on_videos) {
+      logoImgRef.current = null;
+      return;
+    }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => { logoImgRef.current = img; };
+    img.src = logoData.logo_url;
+  }, [logoEnabled, logoData.logo_url, logoData.apply_on_videos]);
+
+  const drawLogoOnCanvas = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+    const img = logoImgRef.current;
+    if (!img || !logoEnabled || !logoData.apply_on_videos) return;
+    const pos = getLogoPos(pickLogoKeyFromRatio(format.ratio));
+    const targetW = (pos.size / 100) * w;
+    const ratio = img.naturalHeight / img.naturalWidth || 1;
+    const targetH = targetW * ratio;
+    ctx.save();
+    ctx.globalAlpha = pos.opacity;
+    ctx.drawImage(img, pos.x * w, pos.y * h, targetW, targetH);
+    ctx.restore();
+  };
+
   const [genKind, setGenKind] = useState<GenKind>('basic');
   const [providersBasic, setProvidersBasic] = useState<ProviderRow[]>([]);
   const [providersAi, setProvidersAi] = useState<ProviderRow[]>([]);
@@ -984,6 +1018,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
     const ctx = c.getContext('2d');
     if (!ctx) return;
     const idx = drawFrameAt(ctx, c.width, c.height, timeSec);
+    drawLogoOnCanvas(ctx, c.width, c.height);
     if (idx !== activeIdx && playing) setActiveIdx(idx);
   };
 
@@ -1392,6 +1427,7 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
         } else {
           drawScene(ctx, scene, cacheRef.current, W, H, Math.max(0, Math.min(1, inSceneT)));
         }
+        drawLogoOnCanvas(ctx, W, H);
         await new Promise(r => setTimeout(r, frameMs * 0.5));
         if (f % 5 === 0) {
           const pct = Math.round((f / totalFrames) * 95);
