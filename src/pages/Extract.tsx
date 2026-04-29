@@ -101,6 +101,8 @@ const extractYoutubeId = (url: string): string | null => {
   }
   return null;
 };
+
+const Extract = () => {
   const { user, profile } = useAuth();
   const { refresh: refreshCredits } = useCredits();
   const { toast } = useToast();
