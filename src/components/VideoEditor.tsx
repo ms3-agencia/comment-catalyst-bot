@@ -1514,36 +1514,82 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
           </span>
         </div>
 
-        {/* Scene strip */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+        {/* Scene strip with transition slots between scenes */}
+        <div className="flex items-stretch gap-1 overflow-x-auto pb-1 -mx-1 px-1">
           {scenes.map((s, i) => (
-            <button
-              key={s.id}
-              onClick={() => {
-                setPlaying(false);
-                setActiveIdx(i);
-                if (isMobile) setMobileTab('edit');
-              }}
-              disabled={rendering}
-              className={`shrink-0 px-2 py-1.5 rounded border text-[11px] min-w-[90px] max-w-[120px] text-left transition-colors ${
-                i === activeIdx
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-border bg-card hover:border-primary/40'
-              }`}
-            >
-              <div className="font-semibold">Cena {i + 1}</div>
-              <div className="truncate opacity-70">{s.text || '—'}</div>
-              <div className="opacity-60">{s.duration}s</div>
-            </button>
+            <React.Fragment key={s.id}>
+              {/* Transition slot BEFORE scene i (only when i>0) */}
+              {i > 0 && (
+                <TransitionSlot
+                  value={s.transitionIn || 'none'}
+                  onChange={(t) => updateScene(i, { transitionIn: t })}
+                  disabled={rendering}
+                />
+              )}
+              <button
+                onClick={() => {
+                  setPlaying(false);
+                  setActiveIdx(i);
+                  if (isMobile) setMobileTab('edit');
+                }}
+                disabled={rendering}
+                className={`shrink-0 px-2 py-1.5 rounded border text-[11px] min-w-[90px] max-w-[120px] text-left transition-colors ${
+                  i === activeIdx
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border bg-card hover:border-primary/40'
+                }`}
+              >
+                <div className="font-semibold">Cena {i + 1}</div>
+                <div className="truncate opacity-70">{s.text || '—'}</div>
+                <div className="opacity-60">{s.duration}s</div>
+              </button>
+            </React.Fragment>
           ))}
           <button
             onClick={addScene}
             disabled={rendering}
-            className="shrink-0 px-3 py-1.5 rounded border border-dashed border-border text-[11px] hover:border-primary hover:text-primary"
+            className="shrink-0 self-center px-3 py-1.5 rounded border border-dashed border-border text-[11px] hover:border-primary hover:text-primary"
           >
             <Plus className="h-3 w-3 inline mr-1" /> Cena
           </button>
         </div>
+
+        {/* Transitions palette — drag onto a slot between scenes */}
+        {scenes.length > 1 && (
+          <div className="rounded-lg border border-border bg-background/50 p-2">
+            <div className="flex items-center justify-between mb-1.5">
+              <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Transições — arraste para o quadro entre cenas
+              </Label>
+              <button
+                type="button"
+                onClick={() => updateAllScenes({ transitionIn: 'fade' } as any)}
+                disabled={rendering}
+                className="text-[10px] text-primary hover:underline"
+                title="Aplicar Fade entre todas as cenas"
+              >
+                Aplicar Fade em todas
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {TRANSITIONS.map(t => (
+                <div
+                  key={t.key}
+                  draggable={!rendering}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/transition', t.key);
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  className="cursor-grab active:cursor-grabbing select-none text-[11px] px-2 py-1 rounded border border-border bg-card hover:border-primary/60 flex items-center gap-1"
+                  title={`Arraste "${t.label}" para o quadro entre duas cenas`}
+                >
+                  <span className="text-base leading-none">{t.icon}</span>
+                  <span>{t.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Tipo de geração + provedor */}
         <div className="rounded-lg border border-border bg-background/50 p-2 space-y-2">
