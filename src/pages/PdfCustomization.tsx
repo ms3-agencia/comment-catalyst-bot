@@ -289,9 +289,48 @@ const PdfCustomization = () => {
                   onChange={(e) => setConfig({ ...config, brand_name: e.target.value })}
                   placeholder="Ex: Minha Empresa"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Aparece no rodapé do PDF ao lado do número da página.
-                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label>Posição do nome</Label>
+                  <Select
+                    value={config.brand_position}
+                    onValueChange={(v: 'header' | 'footer' | 'both') => setConfig({ ...config, brand_position: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="header">Apenas no topo</SelectItem>
+                      <SelectItem value="footer">Apenas no rodapé</SelectItem>
+                      <SelectItem value="both">Topo e rodapé</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Alinhamento do logo</Label>
+                  <Select
+                    value={config.logo_alignment}
+                    onValueChange={(v: 'left' | 'center' | 'right') => setConfig({ ...config, logo_alignment: v })}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="left">Esquerda</SelectItem>
+                      <SelectItem value="center">Centro</SelectItem>
+                      <SelectItem value="right">Direita</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Tamanho do logo: {config.logo_size}px</Label>
+                  <Slider
+                    value={[config.logo_size]}
+                    onValueChange={(v) => setConfig({ ...config, logo_size: v[0] })}
+                    min={24}
+                    max={120}
+                    step={2}
+                    className="mt-3"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
