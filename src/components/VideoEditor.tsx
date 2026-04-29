@@ -321,10 +321,18 @@ function drawTextWithEffect(
     alpha *= 1 - (progress - 0.9) / 0.1;
   }
 
+  let xCenter: number;
   let yCenter: number;
-  if (scene.textPosition === 'top') yCenter = H * 0.18 + totalH / 2;
-  else if (scene.textPosition === 'bottom') yCenter = H * 0.82 - totalH / 2;
-  else yCenter = H / 2;
+  const hasCustomPos = typeof scene.textXPct === 'number' && typeof scene.textYPct === 'number';
+  if (hasCustomPos) {
+    xCenter = Math.max(maxWidth / 2 + padding * 0.2, Math.min(W - maxWidth / 2 - padding * 0.2, (scene.textXPct as number) * W));
+    yCenter = Math.max(totalH / 2 + 8, Math.min(H - totalH / 2 - 8, (scene.textYPct as number) * H));
+  } else {
+    xCenter = W / 2;
+    if (scene.textPosition === 'top') yCenter = H * 0.18 + totalH / 2;
+    else if (scene.textPosition === 'bottom') yCenter = H * 0.82 - totalH / 2;
+    else yCenter = H / 2;
+  }
 
   // background
   if (scene.textBg && scene.textBg !== 'none') {
