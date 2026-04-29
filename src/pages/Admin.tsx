@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2, CreditCard, Package, Coins, Wallet, Plus, Pencil, Palette, Clapperboard } from 'lucide-react';
+import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2, CreditCard, Package, Coins, Wallet, Plus, Pencil, Palette, Clapperboard, FileText, Clock } from 'lucide-react';
 import { BrandingTab } from '@/components/admin/BrandingTab';
 import { VideoProvidersTab } from '@/components/admin/VideoProvidersTab';
 import { VideoStylePresetsTab } from '@/components/admin/VideoStylePresetsTab';
@@ -102,6 +102,76 @@ const Admin = () => {
   const [creditsAmount, setCreditsAmount] = useState<number>(100);
   const [creditsDescription, setCreditsDescription] = useState('Ajuste manual');
   const [creditsSaving, setCreditsSaving] = useState(false);
+
+  // Logs viewer
+  type SessionLog = {
+    id: string;
+    login_at: string;
+    logout_at: string | null;
+    duration_seconds: number | null;
+    user_agent: string | null;
+    credits_used?: number;
+  };
+  const [logsUser, setLogsUser] = useState<UserProfile | null>(null);
+  const [logsRows, setLogsRows] = useState<SessionLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+
+  const openLogs = async (u: UserProfile) => {
+    setLogsUser(u);
+    setLogsRows([]);
+    setLogsLoading(true);
+    try {
+      const { data: sessions, error: sErr } = await supabase
+        .from('user_session_logs')
+        .select('id, login_at, logout_at, duration_seconds, user_agent')
+        .eq('user_id', u.user_id)
+        .order('login_at', { ascending: false })
+        .limit(100);
+      if (sErr) throw sErr;
+      const rows = (sessions || []) as SessionLog[];
+
+      if (rows.length > 0) {
+        const oldest = rows[rows.length - 1].login_at;
+        const { data: tx } = await supabase
+          .from('credit_transactions')
+          .select('amount, created_at, type')
+          .eq('user_id', u.user_id)
+          .eq('type', 'consumption')
+          .gte('created_at', oldest)
+          .order('created_at', { ascending: false });
+        const txs = (tx || []) as { amount: number; created_at: string }[];
+        for (const r of rows) {
+          const start = new Date(r.login_at).getTime();
+          const end = r.logout_at ? new Date(r.logout_at).getTime() : Date.now();
+          const used = txs
+            .filter(t => {
+              const ts = new Date(t.created_at).getTime();
+              return ts >= start && ts <= end;
+            })
+            .reduce((acc, t) => acc + Math.abs(Number(t.amount) || 0), 0);
+          r.credits_used = used;
+        }
+      }
+      setLogsRows(rows);
+    } catch (e: any) {
+      toast({ title: 'Erro ao carregar logs', description: e.message || 'Tente novamente', variant: 'destructive' });
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  const formatDuration = (sec: number | null, login: string, logout: string | null) => {
+    let s = sec;
+    if (s == null) {
+      s = Math.max(0, Math.floor((Date.now() - new Date(login).getTime()) / 1000));
+    }
+    if (s < 60) return `${s}s`;
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const secs = s % 60;
+    if (h > 0) return `${h}h ${m}min`;
+    return `${m}min ${secs}s`;
+  };
 
   // API Key state
   const [youtubeApiKey, setYoutubeApiKey] = useState('');
@@ -688,6 +758,9 @@ const Admin = () => {
                                 <DropdownMenuItem onClick={() => { setCreditsUser(u); setCreditsAmount(100); setCreditsDescription('Ajuste manual'); }}>
                                   <Coins className="mr-2 h-4 w-4" /> Adicionar créditos
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openLogs(u)}>
+                                  <FileText className="mr-2 h-4 w-4" /> Logs
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => toggleAdmin(u)} disabled={isSelf}>
                                   {u.is_admin ? (
@@ -845,6 +918,80 @@ const Admin = () => {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+
+            {/* Logs viewer */}
+            <Dialog open={!!logsUser} onOpenChange={(open) => !open && setLogsUser(null)}>
+              <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-primary" /> Logs de acesso
+                  </DialogTitle>
+                  <DialogDescription>
+                    Histórico de sessões de <strong>{logsUser?.email}</strong> — data, hora, tempo logado e créditos consumidos no período.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex-1 overflow-auto -mx-6 px-6">
+                  {logsLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                  ) : logsRows.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground text-sm">
+                      Este usuário ainda não possui registros de sessão.
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Login</TableHead>
+                          <TableHead>Logout</TableHead>
+                          <TableHead><Clock className="inline h-3.5 w-3.5 mr-1" />Tempo</TableHead>
+                          <TableHead className="text-right"><Coins className="inline h-3.5 w-3.5 mr-1" />Créditos</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {logsRows.map(r => {
+                          const login = new Date(r.login_at);
+                          const logout = r.logout_at ? new Date(r.logout_at) : null;
+                          return (
+                            <TableRow key={r.id}>
+                              <TableCell className="text-sm">
+                                {login.toLocaleDateString('pt-BR')}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {login.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {logout
+                                  ? logout.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                                  : <Badge variant="outline" className="text-[10px]">Em aberto</Badge>}
+                              </TableCell>
+                              <TableCell className="text-sm font-mono">
+                                {formatDuration(r.duration_seconds, r.login_at, r.logout_at)}
+                              </TableCell>
+                              <TableCell className="text-right font-semibold">
+                                {r.credits_used && r.credits_used > 0 ? (
+                                  <span className="text-primary">{r.credits_used}c</span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+                <DialogFooter className="border-t border-border pt-3 mt-2">
+                  <div className="flex items-center justify-between w-full text-xs text-muted-foreground">
+                    <span>{logsRows.length > 0 && `${logsRows.length} sessão(ões) — total ${logsRows.reduce((a, r) => a + (r.credits_used || 0), 0)}c consumidos`}</span>
+                    <Button variant="outline" size="sm" onClick={() => setLogsUser(null)}>Fechar</Button>
+                  </div>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* PLANOS */}

@@ -644,6 +644,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_session_logs: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          login_at: string
+          logout_at: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          login_at?: string
+          logout_at?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          login_at?: string
+          logout_at?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       video_editor_draft_versions: {
         Row: {
           content_id: string
