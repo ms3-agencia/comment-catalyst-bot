@@ -17,6 +17,7 @@ import { Link } from 'react-router-dom';
 
 type Customization = {
   logo_url: string | null;
+  brand_name: string | null;
   primary_color: string;
   secondary_color: string;
   accent_color: string;
@@ -35,6 +36,7 @@ type Customization = {
 
 const DEFAULT: Customization = {
   logo_url: null,
+  brand_name: null,
   primary_color: '#06b6d4',
   secondary_color: '#0f172a',
   accent_color: '#22d3ee',
