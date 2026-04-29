@@ -56,6 +56,21 @@ const LogoCustomizationPage = () => {
   const resetPos = (key: LogoFormatKey) => {
     const { [key]: _, ...rest } = data.positions;
     save({ positions: rest }, { immediate: true });
+    toast({ title: 'Formato restaurado ao padrão' });
+  };
+
+  const resetNetwork = (network: string) => {
+    const keysToRemove = FORMATS.filter(f => f.network === network).map(f => f.key);
+    const rest = { ...data.positions };
+    keysToRemove.forEach(k => { delete rest[k]; });
+    save({ positions: rest }, { immediate: true });
+    toast({ title: `Posições do ${network} restauradas` });
+  };
+
+  const resetAll = () => {
+    if (!confirm('Restaurar TODAS as posições e tamanhos padrão? Seu logo enviado será mantido.')) return;
+    save({ positions: {}, default_size_percent: 15, default_opacity: 1 }, { immediate: true });
+    toast({ title: 'Todas as posições foram restauradas' });
   };
 
   if (loading) {
@@ -136,11 +151,26 @@ const LogoCustomizationPage = () => {
                 <Label className="text-xs text-muted-foreground">Opacidade padrão: {Math.round(data.default_opacity * 100)}%</Label>
                 <Slider value={[data.default_opacity * 100]} min={10} max={100} step={5} onValueChange={([v]) => save({ default_opacity: v / 100 })} />
               </div>
+              <Button variant="outline" size="sm" className="w-full mt-2" onClick={resetAll}>
+                <RotateCcw className="mr-2" size={14} /> Restaurar tudo
+              </Button>
             </Card>
           </div>
 
           {/* Mockups */}
           <Card className="p-4 bg-card/60 border-border">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <span className="text-xs text-muted-foreground mr-1">Restaurar por rede:</span>
+              {['Instagram', 'TikTok', 'YouTube'].map((net) => {
+                const Icon = NETWORK_ICONS[net] || ImagePlus;
+                return (
+                  <Button key={net} variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => resetNetwork(net)}>
+                    <Icon size={12} className="mr-1" /> {net}
+                    <RotateCcw size={11} className="ml-1.5 opacity-60" />
+                  </Button>
+                );
+              })}
+            </div>
             <Tabs value={activeFormat} onValueChange={(v) => setActiveFormat(v as LogoFormatKey)}>
               <TabsList className="grid grid-cols-3 lg:grid-cols-6 mb-4 h-auto">
                 {FORMATS.map(f => {
