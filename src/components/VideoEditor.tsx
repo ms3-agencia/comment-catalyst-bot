@@ -770,49 +770,69 @@ export const VideoEditor = ({ open, onClose, content, onImageRegen }: Props) => 
       setDraftLoaded(false);
       setDraftStatus('idle');
       (async () => {
-        const draft = await loadDraft(content.id);
-        if (draft && Array.isArray(draft.scenes) && draft.scenes.length > 0) {
-          setScenes(draft.scenes as Scene[]);
-          if (draft.format) {
-            const df: any = draft.format;
-            const matched = (df.id && VIDEO_FORMATS.find(f => f.id === df.id))
-              || VIDEO_FORMATS.find(f => f.w === df.w && f.h === df.h)
-              || VIDEO_FORMATS.find(f => f.ratio === df.ratio)
-              || VIDEO_FORMATS[0];
-            setFormat(matched);
-          }
-          if (draft.globalAudio) setGlobalAudio(draft.globalAudio);
-          if (draft.selectedPresetId) setSelectedPresetId(draft.selectedPresetId);
-          if (draft.container) setContainer(draft.container as Container);
-          if (draft.codec) setCodec(draft.codec as CodecKey);
-          if (draft.quality) setQuality(draft.quality as QualityKey);
-          if (typeof draft.customBitrate === 'number') setCustomBitrate(draft.customBitrate);
-          if (typeof draft.resolutionScale === 'number') setResolutionScale(draft.resolutionScale as ResolutionScale);
-          if (draft.selectedProvider) setSelectedProvider(draft.selectedProvider);
-          if (draft.genKind) setGenKind(draft.genKind as GenKind);
-          setDraftStatus('saved');
-          toast({ title: 'Rascunho restaurado', description: 'Sua última edição foi carregada automaticamente.' });
-        } else {
-          const def = presets.find(p => p.is_default) || presets[0];
-          setScenes(buildInitialScenes(content, def?.config || DEFAULT_PRESET));
-          setSelectedPresetId(def?.id || '');
-          const t = content.content_type;
-          const findById = (id: string) => VIDEO_FORMATS.find(f => f.id === id) || VIDEO_FORMATS[0];
-          if (['reels', 'shorts', 'story', 'video'].includes(t) && content.social_network !== 'youtube') {
-            // padrão vertical: usa Reels/Stories do Instagram (mesmas dimensões de TikTok/Kwai/Shorts)
-            setFormat(findById('ig-reels'));
-          } else if (t === 'video' && content.social_network === 'youtube') {
-            setFormat(findById('yt-16-9'));
+        try {
+          const draft = await loadDraft(content.id).catch((err) => {
+            console.warn('[VideoEditor] loadDraft failed, using defaults:', err);
+            return null;
+          });
+          if (draft && Array.isArray(draft.scenes) && draft.scenes.length > 0) {
+            setScenes(draft.scenes as Scene[]);
+            if (draft.format) {
+              const df: any = draft.format;
+              const matched = (df.id && VIDEO_FORMATS.find(f => f.id === df.id))
+                || VIDEO_FORMATS.find(f => f.w === df.w && f.h === df.h)
+                || VIDEO_FORMATS.find(f => f.ratio === df.ratio)
+                || VIDEO_FORMATS[0];
+              setFormat(matched);
+            }
+            if (draft.globalAudio) setGlobalAudio(draft.globalAudio);
+            if (draft.selectedPresetId) setSelectedPresetId(draft.selectedPresetId);
+            if (draft.container) setContainer(draft.container as Container);
+            if (draft.codec) setCodec(draft.codec as CodecKey);
+            if (draft.quality) setQuality(draft.quality as QualityKey);
+            if (typeof draft.customBitrate === 'number') setCustomBitrate(draft.customBitrate);
+            if (typeof draft.resolutionScale === 'number') setResolutionScale(draft.resolutionScale as ResolutionScale);
+            if (draft.selectedProvider) setSelectedProvider(draft.selectedProvider);
+            if (draft.genKind) setGenKind(draft.genKind as GenKind);
+            setDraftStatus('saved');
+            toast({ title: 'Rascunho restaurado', description: 'Sua última edição foi carregada automaticamente.' });
           } else {
-            setFormat(findById('square'));
+            const def = presets.find(p => p.is_default) || presets[0];
+            setScenes(buildInitialScenes(content, def?.config || DEFAULT_PRESET));
+            setSelectedPresetId(def?.id || '');
+            const t = content.content_type;
+            const findById = (id: string) => VIDEO_FORMATS.find(f => f.id === id) || VIDEO_FORMATS[0];
+            if (['reels', 'shorts', 'story', 'video'].includes(t) && content.social_network !== 'youtube') {
+              setFormat(findById('ig-reels'));
+            } else if (t === 'video' && content.social_network === 'youtube') {
+              setFormat(findById('yt-16-9'));
+            } else {
+              setFormat(findById('square'));
+            }
           }
+        } catch (err) {
+          console.error('[VideoEditor] init failed, falling back to defaults:', err);
+          // Fallback de emergência: garante cenas mínimas para o editor não ficar vazio/preto
+          try {
+            setScenes(buildInitialScenes(content, DEFAULT_PRESET));
+          } catch (fallbackErr) {
+            console.error('[VideoEditor] fallback also failed:', fallbackErr);
+            setScenes([]);
+          }
+          setFormat(VIDEO_FORMATS[0]);
+          setDraftStatus('error');
+          toast({
+            title: 'Aviso ao abrir o editor',
+            description: 'Não foi possível restaurar seu rascunho. Iniciamos com o padrão.',
+            variant: 'destructive',
+          });
+        } finally {
+          setActiveIdx(0);
+          setPreviewProgress(0);
+          setPlaying(false);
+          setDraftLoaded(true);
+          setTimeout(() => { draftHydratingRef.current = false; }, 300);
         }
-        setActiveIdx(0);
-        setPreviewProgress(0);
-        setPlaying(false);
-        setDraftLoaded(true);
-        // small delay before enabling autosave to avoid saving during hydration
-        setTimeout(() => { draftHydratingRef.current = false; }, 300);
       })();
     } else {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
