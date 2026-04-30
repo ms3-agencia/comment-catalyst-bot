@@ -504,7 +504,26 @@ export const AiProfileCard = ({ profile, projectName, onDelete, deleting }: AiPr
         user ? fetchPdfCustomization(user.id) : Promise.resolve(null),
       ]);
       const hasCustomization = !!customRaw;
-      const custom = customRaw || DEFAULT_PDF_CUSTOMIZATION;
+      // Quando o addon de personalização NÃO está ativo, ignoramos totalmente
+      // qualquer customização e usamos os defaults do SISTEMA (branding + cores
+      // padrão da plataforma). Apenas com o addon ativo o `customRaw` é usado.
+      const SYSTEM_PDF: PdfCustomization = {
+        ...DEFAULT_PDF_CUSTOMIZATION,
+        brand_name: branding.site_name || DEFAULT_PDF_CUSTOMIZATION.brand_name,
+        logo_url: branding.logo_url || null,
+        cover_title: null,
+        cover_subtitle: branding.tagline || null,
+        cover_image_url: null,
+        header_text: null,
+        footer_text: branding.footer_text || null,
+        watermark_text: null,
+        brand_position: 'footer',
+        logo_alignment: 'left',
+        header_alignment: 'left',
+        header_show_date: true,
+        layout: 'modern',
+      };
+      const custom = hasCustomization ? (customRaw as PdfCustomization) : SYSTEM_PDF;
       container.innerHTML = buildPdfHtml(profile, projectName, branding, custom, hasCustomization);
       document.body.appendChild(container);
 
