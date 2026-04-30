@@ -781,33 +781,35 @@ export default function ContentHistory() {
       </div>
 
       {videoEditorPost && (
-        <VideoEditor
-          open={!!videoEditorPost}
-          onClose={() => setVideoEditorPost(null)}
-          content={videoEditorPost as any}
-          onImageRegen={async (_idx, prompt, editorFormat) => {
-            try {
-              const fallback = getFormats(videoEditorPost.social_network, videoEditorPost.content_type)[0];
-              const fmt = editorFormat || { ratio: fallback.ratio, w: fallback.w, h: fallback.h };
-              const { data, error } = await supabase.functions.invoke('generate-content-image', {
-                body: {
-                  content_id: videoEditorPost.id,
-                  image_format: fmt.ratio,
-                  width: fmt.w,
-                  height: fmt.h,
-                  custom_prompt: prompt,
-                  skip_persist: true,
-                },
-              });
-              if (error) throw error;
-              if ((data as any)?.error) throw new Error((data as any).error);
-              return (data as any).image_url || null;
-            } catch (e: any) {
-              toast({ title: 'Erro ao gerar imagem', description: e.message, variant: 'destructive' });
-              return null;
-            }
-          }}
-        />
+        <VideoEditorErrorBoundary onClose={() => setVideoEditorPost(null)}>
+          <VideoEditor
+            open={!!videoEditorPost}
+            onClose={() => setVideoEditorPost(null)}
+            content={videoEditorPost as any}
+            onImageRegen={async (_idx, prompt, editorFormat) => {
+              try {
+                const fallback = getFormats(videoEditorPost.social_network, videoEditorPost.content_type)[0];
+                const fmt = editorFormat || { ratio: fallback.ratio, w: fallback.w, h: fallback.h };
+                const { data, error } = await supabase.functions.invoke('generate-content-image', {
+                  body: {
+                    content_id: videoEditorPost.id,
+                    image_format: fmt.ratio,
+                    width: fmt.w,
+                    height: fmt.h,
+                    custom_prompt: prompt,
+                    skip_persist: true,
+                  },
+                });
+                if (error) throw error;
+                if ((data as any)?.error) throw new Error((data as any).error);
+                return (data as any).image_url || null;
+              } catch (e: any) {
+                toast({ title: 'Erro ao gerar imagem', description: e.message, variant: 'destructive' });
+                return null;
+              }
+            }}
+          />
+        </VideoEditorErrorBoundary>
       )}
     </DashboardLayout>
   );
