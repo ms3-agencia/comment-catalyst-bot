@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { VideoEditor } from '@/components/VideoEditor';
+import { VideoEditorErrorBoundary } from '@/components/VideoEditorErrorBoundary';
 import {
   History as HistoryIcon, FileText, Clapperboard, Search, Trash2, RefreshCw, ArrowRight,
 } from 'lucide-react';
