@@ -270,12 +270,14 @@ export default function Drafts() {
       </div>
 
       {activePost && (
-        <VideoEditor
-          open={!!activePost}
-          onClose={() => { setActivePost(null); load(); }}
-          content={activePost}
-          onImageRegen={async () => ''}
-        />
+        <VideoEditorErrorBoundary onClose={() => { setActivePost(null); load(); }}>
+          <VideoEditor
+            open={!!activePost}
+            onClose={() => { setActivePost(null); load(); }}
+            content={activePost}
+            onImageRegen={async () => ''}
+          />
+        </VideoEditorErrorBoundary>
       )}
     </DashboardLayout>
   );
