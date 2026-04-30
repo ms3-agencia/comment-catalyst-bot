@@ -96,15 +96,32 @@ const AddonsPage = () => {
     setBusy(addonId);
     try {
       const { data, error } = await supabase.rpc('activate_addon_with_credits', { _addon_id: addonId });
-      if (error) throw error;
-      if (!(data as any)?.success) throw new Error((data as any)?.error || 'Falha ao ativar');
-      toast({ title: 'Add-on ativado!' });
-      await refresh();
-      await refreshCredits();
+      if (error) {
+        console.error('[Addons] activate_addon_with_credits error:', error);
+        throw new Error(error.message || 'Falha ao ativar add-on');
+      }
+      const result = (data as any) || {};
+      if (!result.success) {
+        if (result.error === 'insufficient_credits') {
+          throw new Error(`Créditos insuficientes. Você tem ${result.balance ?? 0} e precisa de ${result.required ?? cost}.`);
+        }
+        throw new Error(result.error || 'Falha ao ativar');
+      }
+      toast({ title: 'Add-on ativado!', description: 'Recursos liberados imediatamente.' });
+      // Refresh em paralelo + tolerante a falha (não deve bloquear UI / causar tela preta)
+      await Promise.allSettled([refresh(), refreshCredits()]);
     } catch (e: any) {
-      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+      console.error('[Addons] buyWithCredits failed:', e);
+      toast({ title: 'Erro ao ativar', description: e?.message || 'Tente novamente.', variant: 'destructive' });
     } finally {
       setBusy(null);
+      // Garante que nenhum scroll-lock residual fique travado (bug Radix em re-renders)
+      requestAnimationFrame(() => {
+        if (document.body.style.pointerEvents === 'none') {
+          document.body.style.pointerEvents = '';
+        }
+        document.body.removeAttribute('data-scroll-locked');
+      });
     }
   };
 

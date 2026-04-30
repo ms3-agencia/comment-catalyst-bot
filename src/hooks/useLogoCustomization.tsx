@@ -98,24 +98,29 @@ export const useLogoCustomization = () => {
     const snapshot = pendingRef.current;
     pendingRef.current = null;
     setSaveStatus('saving');
-    const { error } = await supabase.from('logo_customizations').upsert({
-      user_id: user.id,
-      logo_url: snapshot.logo_url,
-      default_size_percent: snapshot.default_size_percent,
-      default_opacity: snapshot.default_opacity,
-      positions: snapshot.positions as any,
-      apply_on_images: snapshot.apply_on_images,
-      apply_on_videos: snapshot.apply_on_videos,
-    }, { onConflict: 'user_id' });
-    if (error) {
+    try {
+      const { error } = await supabase.from('logo_customizations').upsert({
+        user_id: user.id,
+        logo_url: snapshot.logo_url,
+        default_size_percent: snapshot.default_size_percent,
+        default_opacity: snapshot.default_opacity,
+        positions: snapshot.positions as any,
+        apply_on_images: snapshot.apply_on_images,
+        apply_on_videos: snapshot.apply_on_videos,
+      }, { onConflict: 'user_id' });
+      if (error) {
+        setSaveStatus('error');
+        console.error('Erro ao salvar logo customization:', error);
+        return;
+      }
+      setSaveStatus('saved');
+      setLastSavedAt(new Date());
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 1800);
+    } catch (err) {
+      console.error('Erro inesperado ao salvar logo customization:', err);
       setSaveStatus('error');
-      console.error('Erro ao salvar logo customization:', error);
-      return;
     }
-    setSaveStatus('saved');
-    setLastSavedAt(new Date());
-    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-    savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 1800);
   }, [user]);
 
   /**
