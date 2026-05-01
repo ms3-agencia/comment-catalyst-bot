@@ -159,6 +159,38 @@ const GenerateContent = () => {
   const [videoEditorContent, setVideoEditorContent] = useState<GeneratedContent | null>(null);
   const [generatingVideoId, setGeneratingVideoId] = useState<string | null>(null);
 
+  // ----- Limit & credit guards (shared across flow) -----
+  const balance = credits?.balance ?? usage?.credits_balance ?? 0;
+  const projectsRemaining = usage?.projects_remaining; // null = unlimited
+  const noProjectsLeft =
+    projectsRemaining !== null &&
+    projectsRemaining !== undefined &&
+    projectsRemaining <= 0 &&
+    projects.length === 0;
+
+  /** Redirects user to the credits & plans page. */
+  const goToCredits = () => navigate('/dashboard/credits');
+
+  /** Shows an "insufficient credits" toast and redirects to the credits page. */
+  const notifyInsufficient = (cost?: number, current?: number) => {
+    toast({
+      title: 'Créditos insuficientes',
+      description: `Saldo atual: ${current ?? balance} créditos${cost ? ` · necessário: ${cost}` : ''}. Redirecionando para Créditos & Planos…`,
+      variant: 'destructive',
+    });
+    setTimeout(goToCredits, 1200);
+  };
+
+  /** Server-authoritative pre-check; returns true if the user can afford the action. */
+  const guardAffordable = async (actionKey: string) => {
+    const aff = await checkAffordable(actionKey);
+    if (!aff.affordable) {
+      notifyInsufficient(aff.cost, aff.balance);
+      return false;
+    }
+    return true;
+  };
+
   const generateAiVideo = async (content: GeneratedContent) => {
     if (!content.script || !content.script.trim()) {
       toast({ title: 'Sem roteiro', description: 'Este conteúdo não possui roteiro para gerar o vídeo.', variant: 'destructive' });
