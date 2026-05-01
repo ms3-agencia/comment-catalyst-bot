@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUserAddons } from '@/hooks/useUserAddons';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { exportEbookPdf, exportEbookDocx, exportEbookMarkdown, exportEbookTxt, EbookFull } from '@/lib/ebookExport';
+import { EbookGenerationOverlay, EbookGenStage } from '@/components/ebook/EbookGenerationOverlay';
 
 export default function EbookEditor() {
   const { id } = useParams<{ id: string }>();
