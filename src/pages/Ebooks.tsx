@@ -173,15 +173,40 @@ export default function EbooksPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Template de configuração</Label>
-                <p className="text-xs text-muted-foreground">
-                  Usando: <strong>{selectedConfig?.name || 'Padrão do sistema'}</strong> · {selectedConfig?.num_chapters || 8} capítulos · {selectedConfig?.depth_level || 'intermediario'}
-                  {selectedConfig?.premium_product_mode && ' · 💎 Modo Produto'}
-                </p>
+                <Select
+                  value={selectedConfig?.id || ''}
+                  onValueChange={(v) => {
+                    const cfg = availableConfigs.find(c => c.id === v);
+                    if (cfg) setSelectedConfig(cfg);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableConfigs.length === 0 && (
+                      <SelectItem value="__none__" disabled>Nenhum template disponível</SelectItem>
+                    )}
+                    {availableConfigs.map(c => (
+                      <SelectItem key={c.id} value={c.id!}>
+                        {c.name}
+                        {c.user_id && user && c.user_id === user.id ? ' (meu)' : ' (equipe)'}
+                        {c.is_default ? ' · padrão' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedConfig && (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedConfig.num_chapters || 8} capítulos · {selectedConfig.depth_level || 'intermediario'}
+                    {selectedConfig.premium_product_mode && ' · 💎 Modo Produto'}
+                  </p>
+                )}
                 {hasCustomization ? (
                   <p className="text-xs text-muted-foreground">Você pode escolher entre os templates da equipe ou criar/editar os seus na aba <strong>Personalizar Template</strong>.</p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    Os templates são definidos pela equipe administrativa. Para personalizar nº de capítulos, estilo, profundidade, público e elementos opcionais, ative o add-on <Link to="/dashboard/addons" className="text-primary underline">Personalizar Template</Link> ou <Link to="/dashboard/addons" className="text-primary underline">eBooks Premium</Link>.
+                    Use os templates disponibilizados pela equipe. Para criar/editar templates personalizados, ative o add-on <Link to="/dashboard/addons" className="text-primary underline">Personalizar Template</Link> ou <Link to="/dashboard/addons" className="text-primary underline">eBooks Premium</Link>.
                   </p>
                 )}
               </div>
