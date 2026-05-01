@@ -75,47 +75,6 @@ const INTEGRATIONS: IntegrationConfig[] = [
       ],
     },
   },
-  {
-    id: 'youtube',
-    name: 'YouTube Data API v3',
-    description: 'Extração de comentários públicos de vídeos do YouTube. Usado pela funcionalidade de análise de avatar.',
-    icon: BookOpen,
-    fields: [
-      { key: 'youtube_api_key', label: 'API Key', type: 'password', placeholder: 'AIza...', helper: 'Chave gerada no Google Cloud Console.' },
-    ],
-    manual: {
-      title: 'Como obter a chave da YouTube Data API',
-      docsUrl: 'https://console.cloud.google.com/apis/library/youtube.googleapis.com',
-      steps: [
-        { title: '1. Acessar o Google Cloud Console', description: 'Entre em console.cloud.google.com e crie (ou selecione) um projeto.' },
-        { title: '2. Ativar a YouTube Data API v3', description: 'Em "APIs e serviços → Biblioteca", busque por "YouTube Data API v3" e clique em Ativar.' },
-        { title: '3. Criar credencial', description: 'Vá em "APIs e serviços → Credenciais → Criar credenciais → Chave de API". Copie a chave gerada.' },
-        { title: '4. Restringir a chave (recomendado)', description: 'Em "Restrições de aplicativo" deixe "Nenhuma" ou restrinja por IP do servidor. Em "Restrições de API" selecione apenas "YouTube Data API v3".' },
-        { title: '5. Colar e salvar abaixo', description: 'Cole a chave no campo API Key e clique em Salvar.' },
-      ],
-    },
-  },
-  {
-    id: 'mercadopago',
-    name: 'Mercado Pago',
-    description: 'Processamento de pagamentos para compra de créditos e assinaturas dos planos.',
-    icon: BookOpen,
-    fields: [
-      { key: 'mercadopago_access_token', label: 'Access Token', type: 'password', placeholder: 'APP_USR-...' },
-      { key: 'mercadopago_public_key', label: 'Public Key', type: 'text', placeholder: 'APP_USR-...' },
-      { key: 'app_base_url', label: 'URL base do app', type: 'text', placeholder: 'https://seudominio.com', helper: 'Usada para gerar URLs de retorno após pagamento.' },
-    ],
-    manual: {
-      title: 'Como obter as credenciais do Mercado Pago',
-      docsUrl: 'https://www.mercadopago.com.br/developers/panel/app',
-      steps: [
-        { title: '1. Criar uma aplicação', description: 'Acesse o painel de desenvolvedores do Mercado Pago e crie uma aplicação do tipo "Pagamentos online".' },
-        { title: '2. Copiar credenciais de produção', description: 'Em "Credenciais de produção", copie o Access Token e a Public Key.' },
-        { title: '3. Configurar URL de retorno', description: 'Informe abaixo a URL pública do seu app (ex.: https://comment-catalyst-bot.lovable.app).' },
-        { title: '4. Salvar', description: 'Cole os três valores nos campos correspondentes e clique em Salvar.' },
-      ],
-    },
-  },
 ];
 
 export function IntegrationsTab() {
