@@ -1117,6 +1117,75 @@ export type Database = {
         }
         Relationships: []
       }
+      pwa_settings: {
+        Row: {
+          apple_touch_icon_url: string | null
+          background_color: string
+          categories: string[]
+          created_at: string
+          description: string | null
+          display: string
+          icon_192_url: string | null
+          icon_512_url: string | null
+          id: string
+          lang: string
+          maskable_icon_url: string | null
+          name: string
+          orientation: string
+          scope: string
+          short_name: string
+          splash_dark_url: string | null
+          splash_url: string | null
+          start_url: string
+          theme_color: string
+          updated_at: string
+        }
+        Insert: {
+          apple_touch_icon_url?: string | null
+          background_color?: string
+          categories?: string[]
+          created_at?: string
+          description?: string | null
+          display?: string
+          icon_192_url?: string | null
+          icon_512_url?: string | null
+          id?: string
+          lang?: string
+          maskable_icon_url?: string | null
+          name?: string
+          orientation?: string
+          scope?: string
+          short_name?: string
+          splash_dark_url?: string | null
+          splash_url?: string | null
+          start_url?: string
+          theme_color?: string
+          updated_at?: string
+        }
+        Update: {
+          apple_touch_icon_url?: string | null
+          background_color?: string
+          categories?: string[]
+          created_at?: string
+          description?: string | null
+          display?: string
+          icon_192_url?: string | null
+          icon_512_url?: string | null
+          id?: string
+          lang?: string
+          maskable_icon_url?: string | null
+          name?: string
+          orientation?: string
+          scope?: string
+          short_name?: string
+          splash_dark_url?: string | null
+          splash_url?: string | null
+          start_url?: string
+          theme_color?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       system_notifications: {
         Row: {
           created_at: string
