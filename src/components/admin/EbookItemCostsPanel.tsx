@@ -157,32 +157,48 @@ export function EbookItemCostsPanel() {
             Ressincronizar padrões
           </Button>
         </div>
-        <div className="space-y-2 mt-4">
-          {items.map(it => (
-            <div key={it.id} className="grid grid-cols-12 gap-2 items-center p-2 rounded-md border hover:bg-accent/30">
-              <div className="col-span-5">
-                <p className="text-sm font-medium">{it.display_name}</p>
-                {it.description && <p className="text-xs text-muted-foreground">{it.description}</p>}
-                <p className="text-[10px] text-muted-foreground font-mono">{it.item_key}</p>
+        <div className="space-y-6 mt-4">
+          {GROUPS.map(group => {
+            const groupItems = group.keys
+              .map(k => items.find(it => it.item_key === k))
+              .filter(Boolean) as ItemCost[];
+            if (groupItems.length === 0) return null;
+            const Icon = group.icon;
+            return (
+              <div key={group.id} className="space-y-2">
+                <div className="flex items-center gap-2 pb-1 border-b">
+                  <Icon className="h-4 w-4 text-primary" />
+                  <h4 className="text-sm font-semibold">{group.title}</h4>
+                  <span className="text-[10px] text-muted-foreground">— {group.description}</span>
+                </div>
+                {groupItems.map(it => (
+                  <div key={it.id} className="grid grid-cols-12 gap-2 items-center p-2 rounded-md border hover:bg-accent/30">
+                    <div className="col-span-5">
+                      <p className="text-sm font-medium">{it.display_name}</p>
+                      {it.description && <p className="text-xs text-muted-foreground">{it.description}</p>}
+                      <p className="text-[10px] text-muted-foreground font-mono">{it.item_key}</p>
+                    </div>
+                    <div className="col-span-3">
+                      <Input
+                        type="number" min={0} max={50}
+                        value={it.cost_per_chapter}
+                        onChange={e => setItems(prev => prev.map(x => x.id === it.id ? { ...x, cost_per_chapter: Number(e.target.value) } : x))}
+                      />
+                    </div>
+                    <div className="col-span-2 flex items-center gap-2">
+                      <Switch checked={it.enabled} onCheckedChange={v => updateItem(it.id, { enabled: v })} />
+                      <span className="text-xs text-muted-foreground">{it.enabled ? 'Ativo' : 'Off'}</span>
+                    </div>
+                    <div className="col-span-2 flex justify-end">
+                      <Button size="sm" onClick={() => updateItem(it.id, { cost_per_chapter: it.cost_per_chapter })} disabled={savingId === it.id}>
+                        {savingId === it.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="col-span-3">
-                <Input
-                  type="number" min={0} max={50}
-                  value={it.cost_per_chapter}
-                  onChange={e => setItems(prev => prev.map(x => x.id === it.id ? { ...x, cost_per_chapter: Number(e.target.value) } : x))}
-                />
-              </div>
-              <div className="col-span-2 flex items-center gap-2">
-                <Switch checked={it.enabled} onCheckedChange={v => updateItem(it.id, { enabled: v })} />
-                <span className="text-xs text-muted-foreground">{it.enabled ? 'Ativo' : 'Off'}</span>
-              </div>
-              <div className="col-span-2 flex justify-end">
-                <Button size="sm" onClick={() => updateItem(it.id, { cost_per_chapter: it.cost_per_chapter })} disabled={savingId === it.id}>
-                  {savingId === it.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                </Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
     </div>
