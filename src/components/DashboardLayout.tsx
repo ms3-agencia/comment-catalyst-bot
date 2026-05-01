@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins, UserCircle, Sparkles, History, FileText, Clapperboard, ImagePlus, Smartphone, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins, UserCircle, Sparkles, History, FileText, Clapperboard, ImagePlus, Smartphone, BookOpen, Crown } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CreditsWidget } from '@/components/CreditsWidget';
 import { useUserAddons } from '@/hooks/useUserAddons';
@@ -30,6 +30,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const pdfAddonActive = hasAddon('pdf-customization');
   const logoAddonActive = hasAddon('custom-logo');
   const ebookAddonActive = hasAddon('ebook-generator') || hasAddon('ebook-premium');
+  const ebookPremiumActive = hasAddon('ebook-premium');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Fecha sidebar ao navegar (mobile)
@@ -181,6 +182,9 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                   <Badge className="h-5 px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 hover:bg-emerald-500/20">
                     ATIVO
                   </Badge>
+                )}
+                {ebookPremiumActive && (
+                  <Crown size={14} className="text-amber-400 fill-amber-400/30" aria-label="eBook Premium ativo" />
                 )}
               </Link>
             </div>
