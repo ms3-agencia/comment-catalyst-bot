@@ -43,6 +43,27 @@ export default function EbooksPage() {
   const [savedConfigId, setSavedConfigId] = useState<string | null>(null);
   const [savingPref, setSavingPref] = useState(false);
 
+  // Ajustes opcionais do usuário (preservados junto com o template)
+  type Overrides = {
+    writing_style?: string;
+    custom_style?: string;
+    depth_level?: string;
+    target_audience?: string;
+    extra_notes?: string;
+  };
+  const [overrides, setOverrides] = useState<Overrides>({});
+  const [savedOverrides, setSavedOverrides] = useState<Overrides>({});
+
+  const overridesEqual = (a: Overrides, b: Overrides) =>
+    (a.writing_style || '') === (b.writing_style || '') &&
+    (a.custom_style || '') === (b.custom_style || '') &&
+    (a.depth_level || '') === (b.depth_level || '') &&
+    (a.target_audience || '') === (b.target_audience || '') &&
+    (a.extra_notes || '') === (b.extra_notes || '');
+
+  const setOv = <K extends keyof Overrides>(k: K, v: Overrides[K]) =>
+    setOverrides(prev => ({ ...prev, [k]: v }));
+
   const loadConfigs = async (preferredId?: string | null) => {
     // RLS permite ler templates globais (admin) + do próprio usuário
     const { data } = await supabase.from('ebook_configs').select('*')
@@ -64,11 +85,14 @@ export default function EbooksPage() {
       .then(({ data }) => setProjects((data || []) as any));
     supabase.from('ebooks').select('id, title, subtitle, status, created_at').eq('user_id', user.id).order('created_at', { ascending: false })
       .then(({ data }) => setEbooks(data || []));
-    // Carrega preferência salva do usuário e templates
-    supabase.from('profiles').select('preferred_ebook_config_id').eq('user_id', user.id).maybeSingle()
+    // Carrega preferência salva do usuário (template + overrides) e templates
+    supabase.from('profiles').select('preferred_ebook_config_id, ebook_overrides').eq('user_id', user.id).maybeSingle()
       .then(({ data }) => {
         const pref = (data as any)?.preferred_ebook_config_id || null;
+        const ov = ((data as any)?.ebook_overrides || {}) as Overrides;
         setSavedConfigId(pref);
+        setOverrides(ov);
+        setSavedOverrides(ov);
         loadConfigs(pref);
       });
   }, [user]);
@@ -78,11 +102,15 @@ export default function EbooksPage() {
     setSavingPref(true);
     try {
       const { error } = await supabase.from('profiles')
-        .update({ preferred_ebook_config_id: selectedConfig.id } as any)
+        .update({
+          preferred_ebook_config_id: selectedConfig.id,
+          ebook_overrides: overrides as any,
+        } as any)
         .eq('user_id', user.id);
       if (error) throw error;
       setSavedConfigId(selectedConfig.id);
-      toast({ title: 'Preferência salva!', description: `Template "${selectedConfig.name}" será usado por padrão.` });
+      setSavedOverrides(overrides);
+      toast({ title: 'Preferências salvas!', description: `Template "${selectedConfig.name}" e ajustes guardados.` });
     } catch (e: any) {
       toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
     } finally {
@@ -99,8 +127,18 @@ export default function EbooksPage() {
     if (!topic.trim()) { toast({ title: 'Informe o tema', variant: 'destructive' }); return; }
     setGenerating(true);
     try {
+      // Filtra overrides vazios para não sobrescrever campos do template sem necessidade
+      const cleanOverrides = Object.fromEntries(
+        Object.entries(overrides).filter(([, v]) => typeof v === 'string' && v.trim() !== '')
+      );
       const { data, error } = await supabase.functions.invoke('ebook-generate-outline', {
-        body: { topic, project_id: projectId && projectId !== 'none' ? projectId : null, config_id: selectedConfig?.id || null, premium_product_mode: selectedConfig?.premium_product_mode },
+        body: {
+          topic,
+          project_id: projectId && projectId !== 'none' ? projectId : null,
+          config_id: selectedConfig?.id || null,
+          premium_product_mode: selectedConfig?.premium_product_mode,
+          overrides: cleanOverrides,
+        },
       });
       if (error) {
         let msg = error.message;
@@ -231,18 +269,27 @@ export default function EbooksPage() {
                     type="button"
                     variant="outline"
                     onClick={savePreference}
-                    disabled={savingPref || !selectedConfig?.id || savedConfigId === selectedConfig?.id}
-                    title="Salvar como meu template padrão"
+                    disabled={
+                      savingPref ||
+                      !selectedConfig?.id ||
+                      (savedConfigId === selectedConfig?.id && overridesEqual(overrides, savedOverrides))
+                    }
+                    title="Salvar template e ajustes como meus padrões"
                   >
-                    {savingPref ? <Loader2 className="h-4 w-4 animate-spin" />
-                      : savedConfigId === selectedConfig?.id ? <Check className="h-4 w-4" />
-                      : <Save className="h-4 w-4" />}
-                    <span className="ml-1">{savedConfigId === selectedConfig?.id ? 'Salvo' : 'Salvar'}</span>
+                    {(() => {
+                      const isSaved = savedConfigId === selectedConfig?.id && overridesEqual(overrides, savedOverrides);
+                      return savingPref ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : isSaved ? <Check className="h-4 w-4" />
+                        : <Save className="h-4 w-4" />;
+                    })()}
+                    <span className="ml-1">
+                      {savedConfigId === selectedConfig?.id && overridesEqual(overrides, savedOverrides) ? 'Salvo' : 'Salvar'}
+                    </span>
                   </Button>
                 </div>
                 {selectedConfig && (
                   <p className="text-xs text-muted-foreground">
-                    {selectedConfig.num_chapters || 8} capítulos · {selectedConfig.depth_level || 'intermediario'}
+                    {selectedConfig.num_chapters || 8} capítulos · {overrides.depth_level || selectedConfig.depth_level || 'intermediario'}
                     {selectedConfig.premium_product_mode && ' · 💎 Modo Produto'}
                   </p>
                 )}
@@ -254,6 +301,78 @@ export default function EbooksPage() {
                   </p>
                 )}
               </div>
+
+              {/* Ajustes opcionais (sobrescrevem campos do template; salvos junto) */}
+              <details className="rounded-md border bg-muted/30">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-medium flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Ajustes opcionais (tema, estilo, observações)
+                  {(overrides.writing_style || overrides.depth_level || overrides.target_audience || overrides.extra_notes || overrides.custom_style) && (
+                    <Badge variant="secondary" className="text-[10px]">personalizado</Badge>
+                  )}
+                </summary>
+                <div className="p-3 border-t space-y-3">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Estilo de escrita</Label>
+                      <Select value={overrides.writing_style || 'inherit'} onValueChange={v => setOv('writing_style', v === 'inherit' ? '' : v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="inherit">Usar do template</SelectItem>
+                          <SelectItem value="didatico">Didático</SelectItem>
+                          <SelectItem value="persuasivo">Persuasivo</SelectItem>
+                          <SelectItem value="tecnico">Técnico</SelectItem>
+                          <SelectItem value="storytelling">Storytelling</SelectItem>
+                          <SelectItem value="motivacional">Motivacional</SelectItem>
+                          <SelectItem value="custom">Personalizado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Profundidade</Label>
+                      <Select value={overrides.depth_level || 'inherit'} onValueChange={v => setOv('depth_level', v === 'inherit' ? '' : v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="inherit">Usar do template</SelectItem>
+                          <SelectItem value="basico">Básico</SelectItem>
+                          <SelectItem value="intermediario">Intermediário</SelectItem>
+                          <SelectItem value="avancado">Avançado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  {overrides.writing_style === 'custom' && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Descrição do estilo personalizado</Label>
+                      <Input
+                        value={overrides.custom_style || ''}
+                        onChange={e => setOv('custom_style', e.target.value)}
+                        placeholder="Ex.: Tom irreverente, com humor sutil"
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Público-alvo (opcional)</Label>
+                    <Input
+                      value={overrides.target_audience || ''}
+                      onChange={e => setOv('target_audience', e.target.value)}
+                      placeholder="Ex.: Empreendedores iniciantes, 25-40 anos"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Observações adicionais (opcional)</Label>
+                    <Textarea
+                      rows={3}
+                      value={overrides.extra_notes || ''}
+                      onChange={e => setOv('extra_notes', e.target.value)}
+                      placeholder="Ex.: Incluir casos brasileiros, evitar jargão técnico…"
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Estes ajustes são gravados junto com o template ao clicar em <strong>Salvar</strong> e aplicados em cada geração.
+                  </p>
+                </div>
+              </details>
 
               <Button size="lg" onClick={generateFromAvatar} disabled={generating} className="w-full">
                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
