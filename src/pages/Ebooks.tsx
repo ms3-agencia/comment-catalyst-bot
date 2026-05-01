@@ -45,8 +45,8 @@ export default function EbooksPage() {
       .then(({ data }) => setProjects((data || []) as any));
     supabase.from('ebooks').select('id, title, subtitle, status, created_at').eq('user_id', user.id).order('created_at', { ascending: false })
       .then(({ data }) => setEbooks(data || []));
-    // Carrega template padrão (configurado em Add-ons → Ebooks)
-    supabase.from('ebook_configs').select('*').eq('user_id', user.id).order('is_default', { ascending: false }).order('created_at', { ascending: false }).limit(1).maybeSingle()
+    // Carrega template padrão global (configurado pelo admin em /admin → Ebooks)
+    supabase.from('ebook_configs').select('*').order('is_default', { ascending: false }).order('created_at', { ascending: false }).limit(1).maybeSingle()
       .then(({ data }) => { if (data) setSelectedConfig(data as any); });
   }, [user]);
 
@@ -159,12 +159,10 @@ export default function EbooksPage() {
               <div className="space-y-1.5">
                 <Label>Template de configuração</Label>
                 <p className="text-xs text-muted-foreground">
-                  Usando: <strong>{selectedConfig?.name || 'Padrão'}</strong> · {selectedConfig?.num_chapters || 8} capítulos · {selectedConfig?.depth_level || 'intermediario'}
+                  Usando: <strong>{selectedConfig?.name || 'Padrão do sistema'}</strong> · {selectedConfig?.num_chapters || 8} capítulos · {selectedConfig?.depth_level || 'intermediario'}
                   {selectedConfig?.premium_product_mode && ' · 💎 Modo Produto'}
                 </p>
-                <Link to="/dashboard/addons?tab=ebooks" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
-                  Editar templates em Add-ons → Ebooks <ArrowRight className="h-3 w-3" />
-                </Link>
+                <p className="text-xs text-muted-foreground">Os templates são definidos pela equipe administrativa.</p>
               </div>
               <Button size="lg" onClick={generateFromAvatar} disabled={generating} className="w-full">
                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
