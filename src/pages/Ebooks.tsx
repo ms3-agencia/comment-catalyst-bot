@@ -65,14 +65,11 @@ export default function EbooksPage() {
       .then(({ data }) => setProjects((data || []) as any));
     supabase.from('ebooks').select('id, title, subtitle, status, created_at').eq('user_id', user.id).order('created_at', { ascending: false })
       .then(({ data }) => setEbooks(data || []));
-    // Carrega preferência salva do usuário (template + overrides) e templates
-    supabase.from('profiles').select('preferred_ebook_config_id, ebook_overrides').eq('user_id', user.id).maybeSingle()
+    // Carrega preferência salva do usuário (template padrão)
+    supabase.from('profiles').select('preferred_ebook_config_id').eq('user_id', user.id).maybeSingle()
       .then(({ data }) => {
         const pref = (data as any)?.preferred_ebook_config_id || null;
-        const ov = ((data as any)?.ebook_overrides || {}) as Overrides;
         setSavedConfigId(pref);
-        setOverrides(ov);
-        setSavedOverrides(ov);
         loadConfigs(pref);
       });
   }, [user]);
