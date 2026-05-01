@@ -73,6 +73,8 @@ const PdfCustomization = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   const owned = hasAddon('pdf-customization');
 
