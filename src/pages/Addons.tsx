@@ -7,11 +7,10 @@ import { useCredits } from '@/hooks/useCredits';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Check, Loader2, Coins, CreditCard, Crown, FileText, Palette, Zap, BookOpen, Lock } from 'lucide-react';
+import { Sparkles, Check, Loader2, Coins, CreditCard, Crown, FileText, Palette, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { EbookConfigPanel } from '@/components/ebook/EbookConfigPanel';
 
 const ICONS: Record<string, any> = { Sparkles, FileText, Palette, Zap, Crown };
 
@@ -255,11 +254,6 @@ const AddonsPage = () => {
           <TabsList>
             <TabsTrigger value="all">Todos</TabsTrigger>
             <TabsTrigger value="mine">Meus Add-ons</TabsTrigger>
-            <TabsTrigger value="ebooks" disabled={!hasAddon('ebook-generator') && !hasAddon('ebook-premium')}>
-              <BookOpen className="h-4 w-4 mr-1" />
-              Ebooks
-              {!hasAddon('ebook-generator') && !hasAddon('ebook-premium') && <Lock className="h-3 w-3 ml-1" />}
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="mt-4">
@@ -282,27 +276,6 @@ const AddonsPage = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="ebooks" className="mt-4">
-            {(hasAddon('ebook-generator') || hasAddon('ebook-premium')) ? (
-              <div className="space-y-4">
-                <Card className="p-4 bg-primary/5 border-primary/20">
-                  <div className="flex items-start gap-3">
-                    <BookOpen className="h-5 w-5 text-primary mt-0.5" />
-                    <div>
-                      <h3 className="font-semibold">Configurações do Gerador de eBooks</h3>
-                      <p className="text-sm text-muted-foreground">Crie e gerencie templates que serão usados ao gerar seus eBooks na página <strong>eBooks</strong>.</p>
-                    </div>
-                  </div>
-                </Card>
-                <EbookConfigPanel />
-              </div>
-            ) : (
-              <Card className="p-12 text-center space-y-3">
-                <Lock className="h-10 w-10 mx-auto text-muted-foreground" />
-                <p className="text-muted-foreground">Ative o add-on <strong>Gerador de eBooks</strong> para acessar as configurações.</p>
-              </Card>
-            )}
-          </TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
