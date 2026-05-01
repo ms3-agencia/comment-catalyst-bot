@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Plus, Trash2, Save, Star, Lock, Gem } from 'lucide-react';
+import { Loader2, Plus, Trash2, Save, Star, Lock, Gem, Copy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUserAddons } from '@/hooks/useUserAddons';
 
@@ -133,16 +133,17 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
     }
   };
 
-  const duplicateCurrent = async () => {
+  const duplicateTemplate = async (source?: EbookConfig) => {
     if (!canEdit) {
       toast({ title: 'Add-on necessário', description: 'Ative o add-on Personalizar Template ou eBooks Premium para duplicar templates.', variant: 'destructive' });
       return;
     }
+    const src = source || current;
     setSaving(true);
     try {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error('Não autenticado');
-      const payload: any = { ...current, name: `${current.name} (cópia)`, is_default: false, user_id: u.user.id };
+      const payload: any = { ...src, name: `${src.name} (cópia)`, is_default: false, user_id: u.user.id };
       delete payload.id;
       delete payload.created_at;
       delete payload.updated_at;
@@ -158,6 +159,7 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
       setSaving(false);
     }
   };
+  const duplicateCurrent = () => duplicateTemplate(current);
 
   const newTemplate = async () => {
     if (!canEdit) {
@@ -243,14 +245,23 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shrink-0">equipe</span>
                 )}
               </span>
-              {!isGlobal ? (
-                <Trash2
-                  className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive shrink-0"
-                  onClick={(e) => { e.stopPropagation(); remove(c.id, c.user_id); }}
-                />
-              ) : (
-                <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-label="Template da equipe (somente leitura)" />
-              )}
+              <span className="flex items-center gap-1.5 shrink-0">
+                {canEdit && (
+                  <Copy
+                    className="h-3.5 w-3.5 text-muted-foreground hover:text-cyan-400"
+                    aria-label="Duplicar template"
+                    onClick={(e) => { e.stopPropagation(); duplicateTemplate(c); }}
+                  />
+                )}
+                {!isGlobal ? (
+                  <Trash2
+                    className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive"
+                    onClick={(e) => { e.stopPropagation(); remove(c.id, c.user_id); }}
+                  />
+                ) : (
+                  <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-label="Template da equipe (somente leitura)" />
+                )}
+              </span>
             </button>
           );
         })}
