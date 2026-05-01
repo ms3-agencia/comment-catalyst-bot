@@ -1544,7 +1544,21 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="settings" className="mt-4">
+          {/* APIs & IA (sub-aba de Integrações) */}
+          <TabsContent value="settings" className="mt-4 space-y-4">
+            <Card className="glass p-2">
+              <div className="flex flex-wrap gap-1">
+                <Button size="sm" variant="ghost" onClick={() => setIntegrationsTab('connectors')} className="gap-1.5">
+                  <Plug size={14} /> Conectores
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setIntegrationsTab('payments')} className="gap-1.5">
+                  <Wallet size={14} /> Mercado Pago
+                </Button>
+                <Button size="sm" variant="default" className="gap-1.5">
+                  <Key size={14} /> APIs & IA
+                </Button>
+              </div>
+            </Card>
             <Card className="glass p-6 space-y-6">
               <div>
                 <h3 className="font-heading text-lg font-bold flex items-center gap-2">
