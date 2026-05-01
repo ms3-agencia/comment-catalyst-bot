@@ -99,11 +99,13 @@ const Admin = () => {
   const [deleteUser, setDeleteUser] = useState<UserProfile | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Add credits
+  // Add/remove credits
   const [creditsUser, setCreditsUser] = useState<UserProfile | null>(null);
   const [creditsAmount, setCreditsAmount] = useState<number>(100);
   const [creditsDescription, setCreditsDescription] = useState('Ajuste manual');
   const [creditsSaving, setCreditsSaving] = useState(false);
+  const [creditsMode, setCreditsMode] = useState<'add' | 'remove'>('add');
+  const [creditsCurrentBalance, setCreditsCurrentBalance] = useState<number | null>(null);
 
   // Manage user addons
   type AdminAddon = { id: string; slug: string; name: string; billing_type: string; is_active: boolean };
