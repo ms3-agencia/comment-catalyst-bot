@@ -83,7 +83,7 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
 
   const save = async () => {
     if (!canEdit) {
-      toast({ title: 'Add-on necessário', description: 'Você precisa do add-on eBooks Premium para criar/editar templates.', variant: 'destructive' });
+      toast({ title: 'Add-on necessário', description: 'Ative o add-on Personalizar Template ou eBooks Premium para criar/editar templates.', variant: 'destructive' });
       return;
     }
     setSaving(true);
