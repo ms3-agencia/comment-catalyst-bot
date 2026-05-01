@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { CheckCircle2, AlertCircle, ExternalLink, Save, Loader2, BookOpen, Copy, Film, Wand2, Image as ImageIcon, Video } from 'lucide-react';
+import { CheckCircle2, AlertCircle, ExternalLink, Save, Loader2, BookOpen, Copy, Film, Wand2, Image as ImageIcon, Video, Power } from 'lucide-react';
 
 type IntegrationStatus = 'connected' | 'disconnected';
 
