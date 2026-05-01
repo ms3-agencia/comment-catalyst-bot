@@ -156,6 +156,44 @@ const GenerateContent = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [zipDownloadingId, setZipDownloadingId] = useState<string | null>(null);
   const [videoEditorContent, setVideoEditorContent] = useState<GeneratedContent | null>(null);
+  const [generatingVideoId, setGeneratingVideoId] = useState<string | null>(null);
+
+  const generateAiVideo = async (content: GeneratedContent) => {
+    if (!content.script || !content.script.trim()) {
+      toast({ title: 'Sem roteiro', description: 'Este conteúdo não possui roteiro para gerar o vídeo.', variant: 'destructive' });
+      return;
+    }
+    setGeneratingVideoId(content.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-ai-video', {
+        body: { content_id: content.id, script: content.script },
+      });
+      if (error) throw error;
+      const res = data as any;
+      if (res?.error) {
+        toast({
+          title: res.insufficient_credits ? 'Créditos insuficientes' : 'Erro ao gerar vídeo',
+          description: res.error,
+          variant: 'destructive',
+        });
+        return;
+      }
+      refreshCredits();
+      if (res?.status === 'completed' && res?.video_url) {
+        toast({ title: 'Vídeo gerado!', description: `Provedor: ${res.provider_name}. Veja em Admin → Integrações → Log.` });
+      } else {
+        toast({
+          title: 'Solicitação enviada',
+          description: `Vídeo na fila do ${res?.provider_name || 'provedor'}. Acompanhe em Admin → Integrações → Log.`,
+        });
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e?.message || 'Falha ao gerar vídeo', variant: 'destructive' });
+    } finally {
+      setGeneratingVideoId(null);
+    }
+  };
+
 
   const EDIT_SUGGESTIONS = [
     'Arrumar a escrita',
@@ -691,11 +729,26 @@ const GenerateContent = () => {
                         <CopyIconButton value={c.cta} label="CTA" />
                       </div>
                     )}
-                    {c.script && (
-                      <details className="text-sm">
-                        <summary className="cursor-pointer text-muted-foreground">Ver roteiro</summary>
-                        <p className="whitespace-pre-wrap mt-2 text-foreground/90">{c.script}</p>
-                      </details>
+                    {c.script && c.script.trim() && (
+                      <div className="space-y-2">
+                        <details className="text-sm">
+                          <summary className="cursor-pointer text-muted-foreground">Ver roteiro</summary>
+                          <p className="whitespace-pre-wrap mt-2 text-foreground/90">{c.script}</p>
+                        </details>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full border-primary/40 hover:bg-primary/10"
+                          onClick={() => generateAiVideo(c)}
+                          disabled={generatingVideoId === c.id}
+                        >
+                          {generatingVideoId === c.id ? (
+                            <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Enviando para IA de vídeo...</>
+                          ) : (
+                            <><Clapperboard className="h-3.5 w-3.5 mr-1.5" /> Gerar vídeo automaticamente</>
+                          )}
+                        </Button>
+                      </div>
                     )}
                     {c.visual_idea && (
                       <details className="text-sm">

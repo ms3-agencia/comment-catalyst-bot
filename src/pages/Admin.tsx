@@ -15,9 +15,10 @@ import { VideoProvidersTab } from '@/components/admin/VideoProvidersTab';
 import { VideoStylePresetsTab } from '@/components/admin/VideoStylePresetsTab';
 import { IntegrationsTab } from '@/components/admin/IntegrationsTab';
 import { VideoAiIntegrationsTab } from '@/components/admin/VideoAiIntegrationsTab';
+import { VideoAiLogTab } from '@/components/admin/VideoAiLogTab';
 import { NotificationsTab } from '@/components/admin/NotificationsTab';
 import { CreditAuditTab } from '@/components/admin/CreditAuditTab';
-import { Plug } from 'lucide-react';
+import { Plug, ScrollText } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -88,7 +89,7 @@ const Admin = () => {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('users');
-  const [integrationsTab, setIntegrationsTab] = useState<'connectors' | 'payments' | 'settings' | 'youtube_settings' | 'video_ai_integrations' | 'ai_providers'>('connectors');
+  const [integrationsTab, setIntegrationsTab] = useState<'connectors' | 'payments' | 'settings' | 'youtube_settings' | 'video_ai_integrations' | 'video_ai_log' | 'ai_providers'>('connectors');
   const [editUser, setEditUser] = useState<UserProfile | null>(null);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
@@ -802,6 +803,7 @@ const Admin = () => {
             else if (v === 'youtube_settings') setIntegrationsTab('youtube_settings');
             else if (v === 'ai_providers') setIntegrationsTab('ai_providers');
             else if (v === 'video_ai_integrations') setIntegrationsTab('video_ai_integrations');
+            else if (v === 'video_ai_log') setIntegrationsTab('video_ai_log');
             else if (v === 'settings') setIntegrationsTab('settings');
             else setIntegrationsTab('connectors');
           }}
@@ -1522,6 +1524,9 @@ const Admin = () => {
                 <Button size="sm" variant={integrationsTab === 'video_ai_integrations' ? 'default' : 'ghost'} onClick={() => setActiveTab('video_ai_integrations')} className="gap-1.5">
                   <Clapperboard size={14} /> IA de Vídeos
                 </Button>
+                <Button size="sm" variant={integrationsTab === 'video_ai_log' ? 'default' : 'ghost'} onClick={() => setActiveTab('video_ai_log')} className="gap-1.5">
+                  <ScrollText size={14} /> Log
+                </Button>
                 <Button size="sm" variant={integrationsTab === 'payments' ? 'default' : 'ghost'} onClick={() => setActiveTab('payments')} className="gap-1.5">
                   <Wallet size={14} /> Mercado Pago
                 </Button>
@@ -1538,6 +1543,7 @@ const Admin = () => {
                 <Button size="sm" variant="default" className="gap-1.5"><Key size={14} /> YouTube</Button>
                 <Button size="sm" variant="ghost" onClick={() => setActiveTab('ai_providers')} className="gap-1.5"><Bot size={14} /> Provedores de IA</Button>
                 <Button size="sm" variant="ghost" onClick={() => setActiveTab('video_ai_integrations')} className="gap-1.5"><Clapperboard size={14} /> IA de Vídeos</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('video_ai_log')} className="gap-1.5"><ScrollText size={14} /> Log</Button>
                 <Button size="sm" variant="ghost" onClick={() => setActiveTab('payments')} className="gap-1.5"><Wallet size={14} /> Mercado Pago</Button>
               </div>
             </Card>
@@ -1593,14 +1599,29 @@ const Admin = () => {
                 <Button size="sm" variant="ghost" onClick={() => setActiveTab('youtube_settings')} className="gap-1.5"><Key size={14} /> YouTube</Button>
                 <Button size="sm" variant="ghost" onClick={() => setActiveTab('ai_providers')} className="gap-1.5"><Bot size={14} /> Provedores de IA</Button>
                 <Button size="sm" variant="default" className="gap-1.5"><Clapperboard size={14} /> IA de Vídeos</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('video_ai_log')} className="gap-1.5"><ScrollText size={14} /> Log</Button>
                 <Button size="sm" variant="ghost" onClick={() => setActiveTab('payments')} className="gap-1.5"><Wallet size={14} /> Mercado Pago</Button>
               </div>
             </Card>
             <VideoAiIntegrationsTab />
           </TabsContent>
 
+          {/* LOG DE VÍDEOS POR IA (sub-aba de Integrações) */}
+          <TabsContent value="video_ai_log" className="mt-4 space-y-4">
+            <Card className="glass p-2">
+              <div className="flex flex-wrap gap-1">
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('integrations')} className="gap-1.5"><Plug size={14} /> Conectores</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('youtube_settings')} className="gap-1.5"><Key size={14} /> YouTube</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('ai_providers')} className="gap-1.5"><Bot size={14} /> Provedores de IA</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('video_ai_integrations')} className="gap-1.5"><Clapperboard size={14} /> IA de Vídeos</Button>
+                <Button size="sm" variant="default" className="gap-1.5"><ScrollText size={14} /> Log</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('payments')} className="gap-1.5"><Wallet size={14} /> Mercado Pago</Button>
+              </div>
+            </Card>
+            <VideoAiLogTab />
+          </TabsContent>
 
-          {/* MERCADO PAGO (sub-aba de Integrações) */}
+
           <TabsContent value="payments" className="mt-4 space-y-4">
             <Card className="glass p-2">
               <div className="flex flex-wrap gap-1">
@@ -1608,7 +1629,7 @@ const Admin = () => {
                 <Button size="sm" variant="ghost" onClick={() => setActiveTab('youtube_settings')} className="gap-1.5"><Key size={14} /> YouTube</Button>
                 <Button size="sm" variant="ghost" onClick={() => setActiveTab('ai_providers')} className="gap-1.5"><Bot size={14} /> Provedores de IA</Button>
                 <Button size="sm" variant="ghost" onClick={() => setActiveTab('video_ai_integrations')} className="gap-1.5"><Clapperboard size={14} /> IA de Vídeos</Button>
-                <Button size="sm" variant="default" className="gap-1.5"><Wallet size={14} /> Mercado Pago</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('video_ai_log')} className="gap-1.5"><ScrollText size={14} /> Log</Button>
               </div>
             </Card>
             <Card className="glass p-6 space-y-5">
@@ -1666,6 +1687,7 @@ const Admin = () => {
                 <Button size="sm" variant="ghost" onClick={() => setActiveTab('youtube_settings')} className="gap-1.5"><Key size={14} /> YouTube</Button>
                 <Button size="sm" variant="default" className="gap-1.5"><Bot size={14} /> Provedores de IA</Button>
                 <Button size="sm" variant="ghost" onClick={() => setActiveTab('video_ai_integrations')} className="gap-1.5"><Clapperboard size={14} /> IA de Vídeos</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('video_ai_log')} className="gap-1.5"><ScrollText size={14} /> Log</Button>
                 <Button size="sm" variant="ghost" onClick={() => setActiveTab('payments')} className="gap-1.5"><Wallet size={14} /> Mercado Pago</Button>
               </div>
             </Card>
