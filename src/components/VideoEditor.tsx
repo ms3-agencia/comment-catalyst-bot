@@ -178,7 +178,13 @@ function splitScriptIntoScenes(c: SourceContent): string[] {
     }
   }
   if (c.cta) out.push(c.cta.trim());
-  return out.slice(0, 6); // padrão: máximo 6 cenas
+  // Padrão: sempre 6 cenas. Se houver mais, corta; se houver menos, repete a última para preencher.
+  const TARGET = 6;
+  if (out.length === 0) out.push(c.title?.trim() || c.caption?.trim() || 'Cena 1');
+  while (out.length < TARGET) {
+    out.push(out[out.length - 1]);
+  }
+  return out.slice(0, TARGET);
 }
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
