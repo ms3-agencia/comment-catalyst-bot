@@ -79,15 +79,11 @@ export default function EbooksPage() {
     setSavingPref(true);
     try {
       const { error } = await supabase.from('profiles')
-        .update({
-          preferred_ebook_config_id: selectedConfig.id,
-          ebook_overrides: overrides as any,
-        } as any)
+        .update({ preferred_ebook_config_id: selectedConfig.id } as any)
         .eq('user_id', user.id);
       if (error) throw error;
       setSavedConfigId(selectedConfig.id);
-      setSavedOverrides(overrides);
-      toast({ title: 'Preferências salvas!', description: `Template "${selectedConfig.name}" e ajustes guardados.` });
+      toast({ title: 'Padrão definido!', description: `Template "${selectedConfig.name}" será usado em novos eBooks.` });
     } catch (e: any) {
       toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
     } finally {
@@ -104,17 +100,12 @@ export default function EbooksPage() {
     if (!topic.trim()) { toast({ title: 'Informe o tema', variant: 'destructive' }); return; }
     setGenerating(true);
     try {
-      // Filtra overrides vazios para não sobrescrever campos do template sem necessidade
-      const cleanOverrides = Object.fromEntries(
-        Object.entries(overrides).filter(([, v]) => typeof v === 'string' && v.trim() !== '')
-      );
       const { data, error } = await supabase.functions.invoke('ebook-generate-outline', {
         body: {
           topic,
           project_id: projectId && projectId !== 'none' ? projectId : null,
           config_id: selectedConfig?.id || null,
           premium_product_mode: selectedConfig?.premium_product_mode,
-          overrides: cleanOverrides,
         },
       });
       if (error) {
