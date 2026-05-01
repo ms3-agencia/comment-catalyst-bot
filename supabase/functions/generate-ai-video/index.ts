@@ -7,9 +7,26 @@ const corsHeaders = {
 
 type Body = { content_id?: string; script?: string; preferred_provider?: string };
 
+const normalizeVideoPrompt = (rawScript: string) => {
+  const cleaned = rawScript
+    .replace(/\r/g, '\n')
+    .replace(/^\s*(cena\s*\d+|scene\s*\d+|ato\s*\d+)\s*:?\s*$/gim, '')
+    .replace(/^\s*\[[^\]]*\]\s*$/gim, '')
+    .replace(/^\s*(imagem|texto na tela|apresentador|narra(?:ç|c)ão|voz over|locu(?:ç|c)ão|trilha sonora|sfx)\s*:\s*/gim, '')
+    .replace(/^\s*[A-ZÀ-Ú][A-ZÀ-Ú\s]{1,20}:\s*/gm, '')
+    .replace(/\b(cut to|corte para|split[- ]screen|tela dividida|transi(?:ç|c)ão|zoom in|zoom out)\b/gi, 'then')
+    .replace(/["“”]/g, '')
+    .replace(/\n+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const basePrompt = cleaned || rawScript.trim();
+  return `Single continuous cinematic shot, no cuts, no split-screen. ${basePrompt}`.slice(0, 900);
+};
+
 // Provider order of preference and metadata
 const PROVIDERS: { id: string; name: string; settingKey: string; model: string }[] = [
-  { id: 'runway', name: 'Runway ML', settingKey: 'video_ai_runway_key', model: 'gen3a_turbo' },
+  { id: 'runway', name: 'Runway ML', settingKey: 'video_ai_runway_key', model: 'gen4.5' },
   { id: 'replicate', name: 'Replicate', settingKey: 'video_ai_replicate_key', model: 'stability-ai/stable-video-diffusion' },
   { id: 'stability', name: 'Stability AI', settingKey: 'video_ai_stability_key', model: 'stable-video-diffusion' },
   { id: 'freesoragenerator', name: 'Free Sora Generator', settingKey: 'video_ai_freesoragenerator_key', model: 'sora-1' },
@@ -146,13 +163,26 @@ Deno.serve(async (req) => {
         videoUrl = Array.isArray(j.output) ? j.output[0] : (j.output || null);
         finalStatus = videoUrl ? 'completed' : 'queued';
       } else if (chosen.id === 'runway') {
+        const promptText = normalizeVideoPrompt(script);
         const r = await fetch('https://api.dev.runwayml.com/v1/image_to_video', {
           method: 'POST',
           headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'X-Runway-Version': '2024-11-06' },
-          body: JSON.stringify({ promptText: script.slice(0, 1000), model: 'gen3a_turbo' }),
+          body: JSON.stringify({
+            promptText,
+            model: chosen.model,
+            ratio: '1280:720',
+            duration: 5,
+          }),
         });
-        const j = await r.json();
-        if (!r.ok) throw new Error(j?.error || 'Runway request failed');
+        const txt = await r.text();
+        let j: any = {};
+        try { j = JSON.parse(txt); } catch { j = { raw: txt }; }
+        if (!r.ok) {
+          const issues = Array.isArray(j?.issues)
+            ? j.issues.map((issue: any) => `${Array.isArray(issue?.path) ? issue.path.join('.') : 'body'}: ${issue?.message || 'inválido'}`).join('; ')
+            : null;
+          throw new Error(issues || j?.error || j?.message || j?.raw || 'Runway request failed');
+        }
         externalJobId = j.id || null;
         finalStatus = 'queued';
       } else if (chosen.id === 'stability') {
