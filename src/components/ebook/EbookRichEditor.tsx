@@ -77,7 +77,7 @@ export function EbookRichEditor({ value, onChange, ebookId, contextHint }: Ebook
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
       attributes: {
-        class: 'ebook-prose prose prose-invert max-w-none min-h-[500px] px-8 py-6 focus:outline-none',
+        class: 'ebook-prose prose prose-invert max-w-none min-h-[500px] px-10 py-10 focus:outline-none',
       },
     },
   });
