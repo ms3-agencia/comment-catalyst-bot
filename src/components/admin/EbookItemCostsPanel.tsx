@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Save, Coins } from 'lucide-react';
+import { Loader2, Save, Coins, RefreshCw } from 'lucide-react';
 
 type ItemCost = {
   id: string;
@@ -32,6 +32,19 @@ export function EbookItemCostsPanel() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savingPlan, setSavingPlan] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
+
+  const reseed = async () => {
+    setSeeding(true);
+    const { data, error } = await supabase.rpc('admin_seed_ebook_item_costs' as any);
+    if (error) toast({ title: 'Erro ao ressincronizar', description: error.message, variant: 'destructive' });
+    else {
+      const r: any = data;
+      toast({ title: 'Itens ressincronizados', description: `Inseridos: ${r?.inserted ?? 0} • Atualizados: ${r?.updated ?? 0}` });
+      await load();
+    }
+    setSeeding(false);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -101,11 +114,19 @@ export function EbookItemCostsPanel() {
       </Card>
 
       <Card className="p-5">
-        <h3 className="font-semibold mb-1">Custo por item (créditos / capítulo)</h3>
-        <p className="text-xs text-muted-foreground mb-4">
-          Esses créditos são somados ao custo base do capítulo (8) quando o item está ativo no template, multiplicado pelo plano do usuário.
-        </p>
-        <div className="space-y-2">
+        <div className="flex items-start justify-between gap-4 mb-1">
+          <div>
+            <h3 className="font-semibold">Custo por item (créditos / capítulo)</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Esses créditos são somados ao custo base do capítulo (8) quando o item está ativo no template, multiplicado pelo plano do usuário.
+            </p>
+          </div>
+          <Button size="sm" variant="outline" onClick={reseed} disabled={seeding}>
+            {seeding ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+            Ressincronizar padrões
+          </Button>
+        </div>
+        <div className="space-y-2 mt-4">
           {items.map(it => (
             <div key={it.id} className="grid grid-cols-12 gap-2 items-center p-2 rounded-md border hover:bg-accent/30">
               <div className="col-span-5">

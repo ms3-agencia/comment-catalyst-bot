@@ -1966,6 +1966,7 @@ export type Database = {
       }
       admin_delete_user: { Args: { _user_id: string }; Returns: undefined }
       admin_run_draft_cleanup: { Args: never; Returns: Json }
+      admin_seed_ebook_item_costs: { Args: never; Returns: Json }
       admin_update_user_email: {
         Args: { _new_email: string; _user_id: string }
         Returns: undefined
@@ -2009,6 +2010,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      seed_ebook_item_costs: { Args: never; Returns: Json }
       user_has_addon: {
         Args: { _addon_slug: string; _user_id: string }
         Returns: boolean
