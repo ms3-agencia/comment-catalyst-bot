@@ -152,8 +152,11 @@ export function NotificationsTab() {
             </div>
             <Alert>
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="text-xs">
-                Para Gmail use Host: <b>smtp.gmail.com</b>, Porta: <b>587</b>, criptografia <b>tls</b>, e gere uma <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-primary underline">senha de app</a> (a senha normal do Gmail não funciona).
+              <AlertDescription className="text-xs space-y-2">
+                <p>
+                  Para Gmail use Host: <b>smtp.gmail.com</b>, Porta: <b>587</b>, criptografia <b>tls</b>, e gere uma <b>senha de app</b> (a senha normal do Gmail não funciona).
+                </p>
+                <GmailAppPasswordTutorial />
               </AlertDescription>
             </Alert>
             <div className="grid gap-3 md:grid-cols-2">
