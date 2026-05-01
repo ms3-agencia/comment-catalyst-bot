@@ -302,9 +302,9 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
         </div>
 
         <div className="flex justify-end gap-2 border-t pt-4">
-          <Button onClick={save} disabled={saving}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Salvar template
+          <Button onClick={save} disabled={saving || !canEdit}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : !canEdit ? <Lock className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+            {canEdit ? 'Salvar template' : 'Bloqueado'}
           </Button>
         </div>
       </Card>
