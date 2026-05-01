@@ -203,29 +203,43 @@ export default function EbooksPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Template de configuração</Label>
-                <Select
-                  value={selectedConfig?.id || ''}
-                  onValueChange={(v) => {
-                    const cfg = availableConfigs.find(c => c.id === v);
-                    if (cfg) setSelectedConfig(cfg);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um template" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableConfigs.length === 0 && (
-                      <SelectItem value="__none__" disabled>Nenhum template disponível</SelectItem>
-                    )}
-                    {availableConfigs.map(c => (
-                      <SelectItem key={c.id} value={c.id!}>
-                        {c.name}
-                        {c.user_id && user && c.user_id === user.id ? ' (meu)' : ' (equipe)'}
-                        {c.is_default ? ' · padrão' : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select
+                    value={selectedConfig?.id || ''}
+                    onValueChange={(v) => {
+                      const cfg = availableConfigs.find(c => c.id === v);
+                      if (cfg) setSelectedConfig(cfg);
+                    }}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Selecione um template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableConfigs.length === 0 && (
+                        <SelectItem value="__none__" disabled>Nenhum template disponível</SelectItem>
+                      )}
+                      {availableConfigs.map(c => (
+                        <SelectItem key={c.id} value={c.id!}>
+                          {c.name}
+                          {c.user_id && user && c.user_id === user.id ? ' (meu)' : ' (equipe)'}
+                          {c.is_default ? ' · padrão' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={savePreference}
+                    disabled={savingPref || !selectedConfig?.id || savedConfigId === selectedConfig?.id}
+                    title="Salvar como meu template padrão"
+                  >
+                    {savingPref ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : savedConfigId === selectedConfig?.id ? <Check className="h-4 w-4" />
+                      : <Save className="h-4 w-4" />}
+                    <span className="ml-1">{savedConfigId === selectedConfig?.id ? 'Salvo' : 'Salvar'}</span>
+                  </Button>
+                </div>
                 {selectedConfig && (
                   <p className="text-xs text-muted-foreground">
                     {selectedConfig.num_chapters || 8} capítulos · {selectedConfig.depth_level || 'intermediario'}
