@@ -27,6 +27,7 @@ export default function EbooksPage() {
 
   const hasBasic = hasAddon('ebook-generator');
   const hasPremium = hasAddon('ebook-premium');
+  const hasCustomization = hasPremium || hasAddon('ebook-template-customization');
   const anyAccess = hasBasic || hasPremium;
 
   const [projects, setProjects] = useState<Project[]>([]);
