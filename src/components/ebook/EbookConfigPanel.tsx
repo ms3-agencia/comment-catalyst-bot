@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Plus, Trash2, Save, Star, Lock, Gem } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useUserAddons } from '@/hooks/useUserAddons';
 
 export type EbookConfig = {
   id?: string;
