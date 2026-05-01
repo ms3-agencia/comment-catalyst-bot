@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { CheckCircle2, AlertCircle, ExternalLink, Save, Loader2, BookOpen, Copy, Film, Wand2, Image as ImageIcon, Video } from 'lucide-react';
+import { CheckCircle2, AlertCircle, ExternalLink, Save, Loader2, BookOpen, Copy, Film, Wand2, Image as ImageIcon, Video, Power } from 'lucide-react';
 
 type IntegrationStatus = 'connected' | 'disconnected';
 
@@ -114,20 +115,36 @@ export function VideoAiIntegrationsTab() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [enabled, setEnabled] = useState<Record<string, boolean>>({});
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const enabledKeyFor = (id: string) => `video_ai_${id}_enabled`;
 
   useEffect(() => {
     (async () => {
-      const allKeys = VIDEO_AI_PROVIDERS.map((p) => p.apiKeyField.key);
+      const allKeys = [
+        ...VIDEO_AI_PROVIDERS.map((p) => p.apiKeyField.key),
+        ...VIDEO_AI_PROVIDERS.map((p) => enabledKeyFor(p.id)),
+      ];
       const { data } = await supabase.from('app_settings').select('key, value').in('key', allKeys);
       const v: Record<string, string> = {};
       const s: Record<string, boolean> = {};
+      const en: Record<string, boolean> = {};
+      // default: enabled when value not set
+      VIDEO_AI_PROVIDERS.forEach((p) => { en[p.id] = true; });
       (data || []).forEach((row) => {
-        v[row.key] = row.value;
-        s[row.key] = !!row.value;
+        if (row.key.endsWith('_enabled')) {
+          const id = row.key.replace('video_ai_', '').replace('_enabled', '');
+          en[id] = row.value === 'true';
+        } else {
+          v[row.key] = row.value;
+          s[row.key] = !!row.value;
+        }
       });
       setValues(v);
       setSaved(s);
+      setEnabled(en);
       setLoading(false);
     })();
   }, []);
@@ -153,6 +170,18 @@ export function VideoAiIntegrationsTab() {
     }
     setSaved((p) => ({ ...p, [provider.apiKeyField.key]: true }));
     toast({ title: `${provider.name} salvo com sucesso` });
+  };
+
+  const toggleEnabled = async (provider: VideoProviderConfig, next: boolean) => {
+    setTogglingId(provider.id);
+    const result = await upsert(enabledKeyFor(provider.id), next ? 'true' : 'false');
+    setTogglingId(null);
+    if ((result as any)?.error) {
+      toast({ title: 'Erro ao atualizar', description: (result as any).error.message, variant: 'destructive' });
+      return;
+    }
+    setEnabled((p) => ({ ...p, [provider.id]: next }));
+    toast({ title: `${provider.name} ${next ? 'ativada' : 'desativada'}` });
   };
 
   const statusBadge = (key: string) => {
@@ -203,18 +232,40 @@ export function VideoAiIntegrationsTab() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-base">{provider.name}</h3>
                     {statusBadge(fieldKey)}
+                    {enabled[provider.id] ? (
+                      <Badge className="bg-primary/15 text-primary border-primary/30">
+                        <Power size={12} className="mr-1" />Ativa
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        <Power size={12} className="mr-1" />Desativada
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{provider.description}</p>
                 </div>
               </div>
-              <a
-                href={provider.websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary hover:underline flex items-center gap-1 shrink-0"
-              >
-                Site oficial <ExternalLink size={12} />
-              </a>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor={`enabled-${provider.id}`} className="text-xs text-muted-foreground">
+                    {enabled[provider.id] ? 'Ativada' : 'Desativada'}
+                  </Label>
+                  <Switch
+                    id={`enabled-${provider.id}`}
+                    checked={!!enabled[provider.id]}
+                    onCheckedChange={(v) => toggleEnabled(provider, v)}
+                    disabled={togglingId === provider.id}
+                  />
+                </div>
+                <a
+                  href={provider.websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                >
+                  Site oficial <ExternalLink size={12} />
+                </a>
+              </div>
             </div>
 
             <div className="space-y-1.5 mb-4">

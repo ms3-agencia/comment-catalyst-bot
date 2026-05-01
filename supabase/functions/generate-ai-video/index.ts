@@ -86,17 +86,30 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Determine which providers have keys configured
+    // Determine which providers have keys configured AND are enabled
+    const enabledKeys = PROVIDERS.map(p => `video_ai_${p.id}_enabled`);
     const { data: settings } = await admin
       .from('app_settings')
       .select('key, value')
-      .in('key', PROVIDERS.map(p => p.settingKey));
+      .in('key', [...PROVIDERS.map(p => p.settingKey), ...enabledKeys]);
     const keyMap = new Map<string, string>();
-    (settings || []).forEach(s => { if (s.value) keyMap.set(s.key, s.value); });
+    const enabledMap = new Map<string, boolean>();
+    // default enabled = true when no row exists
+    PROVIDERS.forEach(p => enabledMap.set(p.id, true));
+    (settings || []).forEach(s => {
+      if (s.key.endsWith('_enabled')) {
+        const id = s.key.replace('video_ai_', '').replace('_enabled', '');
+        enabledMap.set(id, s.value === 'true');
+      } else if (s.value) {
+        keyMap.set(s.key, s.value);
+      }
+    });
 
-    const available = getProviderPriority(body.preferred_provider).filter(p => keyMap.get(p.settingKey));
+    const available = getProviderPriority(body.preferred_provider).filter(p =>
+      keyMap.get(p.settingKey) && enabledMap.get(p.id) !== false
+    );
     if (available.length === 0) {
-      return new Response(JSON.stringify({ error: 'Nenhum provedor de IA de vídeo configurado. Configure em Admin → Integrações → IA de Vídeos.' }), {
+      return new Response(JSON.stringify({ error: 'Nenhuma IA de vídeo ativa. Ative ao menos uma em Admin → Integrações → IA de Vídeos.' }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
