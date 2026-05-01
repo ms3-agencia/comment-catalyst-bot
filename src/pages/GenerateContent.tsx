@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import JSZip from 'jszip';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { CopyIconButton } from '@/components/CopyIconButton';
