@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     const user = userData.user;
 
     const body = await req.json();
-    const { topic, config_id, project_id, premium_product_mode, overrides } = body || {};
+    const { topic, config_id, project_id, premium_product_mode } = body || {};
     if (!topic || typeof topic !== "string" || topic.length < 3) {
       return new Response(JSON.stringify({ error: "topic_required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -73,25 +73,6 @@ Deno.serve(async (req) => {
       };
     }
     if (premium_product_mode != null) config.premium_product_mode = !!premium_product_mode;
-
-    // Aplica overrides do usuário (preferências salvas em profiles.ebook_overrides)
-    if (overrides && typeof overrides === "object") {
-      if (typeof overrides.writing_style === "string" && overrides.writing_style.trim()) {
-        config.writing_style = overrides.writing_style.trim();
-      }
-      if (typeof overrides.custom_style === "string" && overrides.custom_style.trim()) {
-        config.custom_style = overrides.custom_style.trim();
-      }
-      if (typeof overrides.depth_level === "string" && overrides.depth_level.trim()) {
-        config.depth_level = overrides.depth_level.trim();
-      }
-      if (typeof overrides.target_audience === "string" && overrides.target_audience.trim()) {
-        config.target_audience = overrides.target_audience.trim();
-      }
-      if (typeof overrides.extra_notes === "string" && overrides.extra_notes.trim()) {
-        config.extra_notes = overrides.extra_notes.trim();
-      }
-    }
 
     // Avatar do projeto
     let avatar = "";

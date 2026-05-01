@@ -43,26 +43,6 @@ export default function EbooksPage() {
   const [savedConfigId, setSavedConfigId] = useState<string | null>(null);
   const [savingPref, setSavingPref] = useState(false);
 
-  // Ajustes opcionais do usuário (preservados junto com o template)
-  type Overrides = {
-    writing_style?: string;
-    custom_style?: string;
-    depth_level?: string;
-    target_audience?: string;
-    extra_notes?: string;
-  };
-  const [overrides, setOverrides] = useState<Overrides>({});
-  const [savedOverrides, setSavedOverrides] = useState<Overrides>({});
-
-  const overridesEqual = (a: Overrides, b: Overrides) =>
-    (a.writing_style || '') === (b.writing_style || '') &&
-    (a.custom_style || '') === (b.custom_style || '') &&
-    (a.depth_level || '') === (b.depth_level || '') &&
-    (a.target_audience || '') === (b.target_audience || '') &&
-    (a.extra_notes || '') === (b.extra_notes || '');
-
-  const setOv = <K extends keyof Overrides>(k: K, v: Overrides[K]) =>
-    setOverrides(prev => ({ ...prev, [k]: v }));
 
   const loadConfigs = async (preferredId?: string | null) => {
     // RLS permite ler templates globais (admin) + do próprio usuário
@@ -85,14 +65,11 @@ export default function EbooksPage() {
       .then(({ data }) => setProjects((data || []) as any));
     supabase.from('ebooks').select('id, title, subtitle, status, created_at').eq('user_id', user.id).order('created_at', { ascending: false })
       .then(({ data }) => setEbooks(data || []));
-    // Carrega preferência salva do usuário (template + overrides) e templates
-    supabase.from('profiles').select('preferred_ebook_config_id, ebook_overrides').eq('user_id', user.id).maybeSingle()
+    // Carrega preferência salva do usuário (template padrão)
+    supabase.from('profiles').select('preferred_ebook_config_id').eq('user_id', user.id).maybeSingle()
       .then(({ data }) => {
         const pref = (data as any)?.preferred_ebook_config_id || null;
-        const ov = ((data as any)?.ebook_overrides || {}) as Overrides;
         setSavedConfigId(pref);
-        setOverrides(ov);
-        setSavedOverrides(ov);
         loadConfigs(pref);
       });
   }, [user]);
@@ -102,15 +79,11 @@ export default function EbooksPage() {
     setSavingPref(true);
     try {
       const { error } = await supabase.from('profiles')
-        .update({
-          preferred_ebook_config_id: selectedConfig.id,
-          ebook_overrides: overrides as any,
-        } as any)
+        .update({ preferred_ebook_config_id: selectedConfig.id } as any)
         .eq('user_id', user.id);
       if (error) throw error;
       setSavedConfigId(selectedConfig.id);
-      setSavedOverrides(overrides);
-      toast({ title: 'Preferências salvas!', description: `Template "${selectedConfig.name}" e ajustes guardados.` });
+      toast({ title: 'Padrão definido!', description: `Template "${selectedConfig.name}" será usado em novos eBooks.` });
     } catch (e: any) {
       toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
     } finally {
@@ -127,17 +100,12 @@ export default function EbooksPage() {
     if (!topic.trim()) { toast({ title: 'Informe o tema', variant: 'destructive' }); return; }
     setGenerating(true);
     try {
-      // Filtra overrides vazios para não sobrescrever campos do template sem necessidade
-      const cleanOverrides = Object.fromEntries(
-        Object.entries(overrides).filter(([, v]) => typeof v === 'string' && v.trim() !== '')
-      );
       const { data, error } = await supabase.functions.invoke('ebook-generate-outline', {
         body: {
           topic,
           project_id: projectId && projectId !== 'none' ? projectId : null,
           config_id: selectedConfig?.id || null,
           premium_product_mode: selectedConfig?.premium_product_mode,
-          overrides: cleanOverrides,
         },
       });
       if (error) {
@@ -276,27 +244,22 @@ export default function EbooksPage() {
                     disabled={
                       savingPref ||
                       !selectedConfig?.id ||
-                      (savedConfigId === selectedConfig?.id && overridesEqual(overrides, savedOverrides))
+                      savedConfigId === selectedConfig?.id
                     }
-                    title="Definir como padrão para novos eBooks (salva template + ajustes)"
+                    title="Definir como padrão para novos eBooks"
                   >
-                    {(() => {
-                      const isSaved = savedConfigId === selectedConfig?.id && overridesEqual(overrides, savedOverrides);
-                      return savingPref ? <Loader2 className="h-4 w-4 animate-spin" />
-                        : isSaved ? <Check className="h-4 w-4" />
-                        : <Save className="h-4 w-4" />;
-                    })()}
+                    {savingPref ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : savedConfigId === selectedConfig?.id ? <Check className="h-4 w-4" />
+                      : <Save className="h-4 w-4" />}
                     <span className="ml-1">
-                      {savedConfigId === selectedConfig?.id && overridesEqual(overrides, savedOverrides)
-                        ? 'Padrão definido'
-                        : 'Definir como padrão'}
+                      {savedConfigId === selectedConfig?.id ? 'Padrão definido' : 'Definir como padrão'}
                     </span>
                   </Button>
                 </div>
                 {selectedConfig && (
                   <p className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
                     <span>
-                      {selectedConfig.num_chapters || 8} capítulos · {overrides.depth_level || selectedConfig.depth_level || 'intermediario'}
+                      {selectedConfig.num_chapters || 8} capítulos · {selectedConfig.depth_level || 'intermediario'}
                       {selectedConfig.premium_product_mode && ' · 💎 Modo Produto'}
                     </span>
                     {savedConfigId === selectedConfig.id && (
