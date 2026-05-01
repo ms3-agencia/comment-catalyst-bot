@@ -133,16 +133,17 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
     }
   };
 
-  const duplicateCurrent = async () => {
+  const duplicateTemplate = async (source?: EbookConfig) => {
     if (!canEdit) {
       toast({ title: 'Add-on necessário', description: 'Ative o add-on Personalizar Template ou eBooks Premium para duplicar templates.', variant: 'destructive' });
       return;
     }
+    const src = source || current;
     setSaving(true);
     try {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error('Não autenticado');
-      const payload: any = { ...current, name: `${current.name} (cópia)`, is_default: false, user_id: u.user.id };
+      const payload: any = { ...src, name: `${src.name} (cópia)`, is_default: false, user_id: u.user.id };
       delete payload.id;
       delete payload.created_at;
       delete payload.updated_at;
@@ -158,6 +159,7 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
       setSaving(false);
     }
   };
+  const duplicateCurrent = () => duplicateTemplate(current);
 
   const newTemplate = async () => {
     if (!canEdit) {
