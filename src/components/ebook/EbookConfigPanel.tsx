@@ -66,12 +66,18 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
   const canSeePremiumMode = isAdminMode || hasAddon('ebook-premium'); // Modo Produto Premium exige add-on premium
   const [configs, setConfigs] = useState<EbookConfig[]>([]);
   const [current, setCurrent] = useState<EbookConfig>(DEFAULT_CFG);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Em modo user, templates globais (criados por admin) NÃO podem ser editados aqui.
+  const isGlobalTemplate = !!current.id && !!current.user_id && !!currentUserId && current.user_id !== currentUserId;
+  const editingLocked = !canEdit || (mode === 'user' && isGlobalTemplate);
 
   const load = async () => {
     setLoading(true);
     const { data: u } = await supabase.auth.getUser();
+    setCurrentUserId(u.user?.id || null);
     let query = supabase.from('ebook_configs').select('*').order('created_at', { ascending: false });
     if (mode === 'user' && u.user) {
       // Em modo user, lista os templates dele + globais (admins). RLS permite ler ambos.
@@ -80,7 +86,9 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
     const { data } = await query;
     const list = (data || []) as EbookConfig[];
     setConfigs(list);
-    const def = list.find(c => c.is_default) || list[0];
+    // Preferência: padrão do próprio usuário > primeiro próprio > qualquer padrão > primeiro
+    const own = u.user ? list.filter(c => c.user_id === u.user!.id) : [];
+    const def = own.find(c => c.is_default) || own[0] || list.find(c => c.is_default) || list[0];
     if (def) {
       setCurrent(def);
       onSelect?.(def);
@@ -92,6 +100,10 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
   const save = async () => {
     if (!canEdit) {
       toast({ title: 'Add-on necessário', description: 'Ative o add-on Personalizar Template ou eBooks Premium para criar/editar templates.', variant: 'destructive' });
+      return;
+    }
+    if (mode === 'user' && isGlobalTemplate) {
+      toast({ title: 'Template da equipe', description: 'Templates globais não podem ser editados. Use "Duplicar" para criar uma cópia editável.', variant: 'destructive' });
       return;
     }
     setSaving(true);
@@ -116,6 +128,32 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
       await load();
     } catch (e: any) {
       toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const duplicateCurrent = async () => {
+    if (!canEdit) {
+      toast({ title: 'Add-on necessário', description: 'Ative o add-on Personalizar Template ou eBooks Premium para duplicar templates.', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error('Não autenticado');
+      const payload: any = { ...current, name: `${current.name} (cópia)`, is_default: false, user_id: u.user.id };
+      delete payload.id;
+      delete payload.created_at;
+      delete payload.updated_at;
+      const { data, error } = await supabase.from('ebook_configs').insert(payload).select().single();
+      if (error) throw error;
+      toast({ title: 'Template duplicado!', description: 'Agora você pode editar a sua cópia.' });
+      setCurrent(data as any);
+      onSelect?.(data as any);
+      await load();
+    } catch (e: any) {
+      toast({ title: 'Erro ao duplicar', description: e.message, variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -149,10 +187,18 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
     }
   };
 
-  const remove = async (id?: string) => {
+  const remove = async (id?: string, ownerId?: string | null) => {
     if (!id) return;
+    if (mode === 'user' && ownerId && currentUserId && ownerId !== currentUserId) {
+      toast({ title: 'Template da equipe', description: 'Você não pode excluir templates globais. Apenas administradores podem.', variant: 'destructive' });
+      return;
+    }
     if (!confirm('Excluir este template?')) return;
-    await supabase.from('ebook_configs').delete().eq('id', id);
+    const { error } = await supabase.from('ebook_configs').delete().eq('id', id);
+    if (error) {
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
+      return;
+    }
     if (current.id === id) setCurrent(DEFAULT_CFG);
     load();
   };
@@ -179,26 +225,59 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
           </div>
         )}
         {configs.length === 0 && <p className="text-xs text-muted-foreground p-2">Nenhum template ainda. Crie o primeiro.</p>}
-        {configs.map(c => (
-          <button
-            key={c.id}
-            onClick={() => { setCurrent(c); onSelect?.(c); }}
-            className={`w-full text-left px-2.5 py-2 rounded-md text-sm hover:bg-accent flex items-center justify-between gap-2 ${current.id === c.id ? 'bg-accent' : ''}`}
-          >
-            <span className="truncate flex items-center gap-1.5">
-              {c.is_default && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
-              {c.premium_product_mode && (
-                <Gem className="h-3 w-3 text-cyan-400" aria-label="Modo Premium ativo" />
+        {configs.map(c => {
+          const isGlobal = mode === 'user' && c.user_id && currentUserId && c.user_id !== currentUserId;
+          return (
+            <button
+              key={c.id}
+              onClick={() => { setCurrent(c); onSelect?.(c); }}
+              className={`w-full text-left px-2.5 py-2 rounded-md text-sm hover:bg-accent flex items-center justify-between gap-2 ${current.id === c.id ? 'bg-accent' : ''}`}
+            >
+              <span className="truncate flex items-center gap-1.5">
+                {c.is_default && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
+                {c.premium_product_mode && (
+                  <Gem className="h-3 w-3 text-cyan-400" aria-label="Modo Premium ativo" />
+                )}
+                <span className="truncate">{c.name}</span>
+                {isGlobal && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shrink-0">equipe</span>
+                )}
+              </span>
+              {!isGlobal ? (
+                <Trash2
+                  className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive shrink-0"
+                  onClick={(e) => { e.stopPropagation(); remove(c.id, c.user_id); }}
+                />
+              ) : (
+                <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-label="Template da equipe (somente leitura)" />
               )}
-              {c.name}
-            </span>
-            <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive shrink-0" onClick={(e) => { e.stopPropagation(); remove(c.id); }} />
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </Card>
 
       <Card className="p-5 space-y-5">
-        <fieldset disabled={!canEdit} className={!canEdit ? 'space-y-5 opacity-60' : 'space-y-5'}>
+        {mode === 'user' && isGlobalTemplate && (
+          <div className="text-xs rounded-md border border-cyan-500/30 bg-cyan-500/5 p-3 space-y-1.5">
+            <p className="font-medium text-cyan-300 flex items-center gap-1.5">
+              <Lock className="h-3.5 w-3.5" /> Template da equipe — somente leitura
+            </p>
+            <p className="text-muted-foreground">Este template foi criado pelos administradores. Você <strong>não pode editá-lo, renomeá-lo, defini-lo como padrão, marcá-lo como Premium nem excluí-lo</strong>.</p>
+            <p className="text-muted-foreground">O que você pode fazer:</p>
+            <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+              <li><strong>Visualizar</strong> os campos para entender a configuração.</li>
+              <li><strong>Duplicar</strong> para criar uma cópia editável vinculada à sua conta.</li>
+              <li><strong>Usá-lo como padrão</strong> de geração na aba <em>Gerar por Avatar</em>.</li>
+            </ul>
+            <div className="pt-1">
+              <Button size="sm" variant="outline" onClick={duplicateCurrent} disabled={saving || !canEdit}>
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                Duplicar para editar
+              </Button>
+            </div>
+          </div>
+        )}
+        <fieldset disabled={editingLocked} className={editingLocked ? 'space-y-5 opacity-60' : 'space-y-5'}>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Nome do template</Label>
@@ -321,9 +400,15 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
         </div>
 
         <div className="flex justify-end gap-2 border-t pt-4">
-          <Button onClick={save} disabled={saving || !canEdit}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : !canEdit ? <Lock className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-            {canEdit ? 'Salvar template' : 'Bloqueado'}
+          {mode === 'user' && isGlobalTemplate && canEdit && (
+            <Button variant="outline" onClick={duplicateCurrent} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              Duplicar para editar
+            </Button>
+          )}
+          <Button onClick={save} disabled={saving || editingLocked} title={editingLocked ? (isGlobalTemplate ? 'Templates da equipe são somente leitura — duplique para editar.' : 'Necessário add-on para editar.') : undefined}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingLocked ? <Lock className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+            {editingLocked ? (isGlobalTemplate ? 'Somente leitura' : 'Bloqueado') : 'Salvar template'}
           </Button>
         </div>
         </fieldset>
