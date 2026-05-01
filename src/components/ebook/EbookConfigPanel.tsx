@@ -209,7 +209,7 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
 
         <div className="border-t pt-4">
           <h4 className="font-semibold mb-3">📌 Estrutura</h4>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className={`grid gap-4 ${canSeeAiModel ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
             <div className="space-y-1.5">
               <Label>Nº de capítulos</Label>
               <Input type="number" min={3} max={30} value={current.num_chapters} onChange={e => setField('num_chapters', Number(e.target.value))} />
@@ -218,18 +218,20 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
               <Label>Mín. páginas/cap.</Label>
               <Input type="number" min={3} max={30} value={current.min_pages_per_chapter} onChange={e => setField('min_pages_per_chapter', Number(e.target.value))} />
             </div>
-            <div className="space-y-1.5">
-              <Label>Modelo de IA</Label>
-              <Select value={current.ai_model} onValueChange={v => setField('ai_model', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="google/gemini-2.5-pro">Lovable AI Pro (alta qualidade)</SelectItem>
-                  <SelectItem value="google/gemini-2.5-flash">Lovable AI Flash (rápido)</SelectItem>
-                  <SelectItem value="openai/gpt-5">GPT-5 (premium)</SelectItem>
-                  <SelectItem value="openai/gpt-5-mini">GPT-5 Mini</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {canSeeAiModel && (
+              <div className="space-y-1.5">
+                <Label>Modelo de IA</Label>
+                <Select value={current.ai_model} onValueChange={v => setField('ai_model', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="google/gemini-2.5-pro">Lovable AI Pro (alta qualidade)</SelectItem>
+                    <SelectItem value="google/gemini-2.5-flash">Lovable AI Flash (rápido)</SelectItem>
+                    <SelectItem value="openai/gpt-5">GPT-5 (premium)</SelectItem>
+                    <SelectItem value="openai/gpt-5-mini">GPT-5 Mini</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </div>
 
