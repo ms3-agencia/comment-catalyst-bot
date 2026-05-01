@@ -122,18 +122,29 @@ Deno.serve(async (req) => {
     try {
       const apiKey = keyMap.get(chosen.settingKey)!;
       if (chosen.id === 'replicate') {
-        const r = await fetch('https://api.replicate.com/v1/predictions', {
+        // Use model-based endpoint (no version hash needed). Default to a text-to-video model.
+        const modelSlug = 'minimax/video-01'; // text-to-video model on Replicate
+        const r = await fetch(`https://api.replicate.com/v1/models/${modelSlug}/predictions`, {
           method: 'POST',
-          headers: { Authorization: `Token ${apiKey}`, 'Content-Type': 'application/json' },
+          headers: {
+            Authorization: `Token ${apiKey}`,
+            'Content-Type': 'application/json',
+            Prefer: 'wait=5',
+          },
           body: JSON.stringify({
-            version: 'stability-ai/stable-video-diffusion',
             input: { prompt: script.slice(0, 2000) },
           }),
         });
-        const j = await r.json();
-        if (!r.ok) throw new Error(j?.detail || j?.error || 'Replicate request failed');
+        const txt = await r.text();
+        let j: any = {};
+        try { j = JSON.parse(txt); } catch { j = { raw: txt }; }
+        if (!r.ok) {
+          const detail = j?.detail || j?.error || j?.title || j?.raw || `HTTP ${r.status}`;
+          throw new Error(`Replicate: ${typeof detail === 'string' ? detail : JSON.stringify(detail)}`);
+        }
         externalJobId = j.id || null;
-        finalStatus = 'queued';
+        videoUrl = Array.isArray(j.output) ? j.output[0] : (j.output || null);
+        finalStatus = videoUrl ? 'completed' : 'queued';
       } else if (chosen.id === 'runway') {
         const r = await fetch('https://api.dev.runwayml.com/v1/image_to_video', {
           method: 'POST',
