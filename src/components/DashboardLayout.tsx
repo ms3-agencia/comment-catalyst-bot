@@ -183,6 +183,9 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                     ATIVO
                   </Badge>
                 )}
+                {ebookPremiumActive && (
+                  <Crown size={14} className="text-amber-400 fill-amber-400/30" aria-label="eBook Premium ativo" />
+                )}
               </Link>
             </div>
           </nav>
