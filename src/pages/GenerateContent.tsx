@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import JSZip from 'jszip';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { CopyIconButton } from '@/components/CopyIconButton';
 import { VideoEditor } from '@/components/VideoEditor';
@@ -133,8 +133,9 @@ type Step = 'project' | 'network' | 'type' | 'quantity' | 'results';
 
 const GenerateContent = () => {
   const { toast } = useToast();
-  const { refresh: refreshCredits } = useCredits();
-  const { checkAffordable } = usePlanUsage();
+  const navigate = useNavigate();
+  const { credits, refresh: refreshCredits } = useCredits();
+  const { usage, checkAffordable } = usePlanUsage();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -158,11 +159,44 @@ const GenerateContent = () => {
   const [videoEditorContent, setVideoEditorContent] = useState<GeneratedContent | null>(null);
   const [generatingVideoId, setGeneratingVideoId] = useState<string | null>(null);
 
+  // ----- Limit & credit guards (shared across flow) -----
+  const balance = credits?.balance ?? usage?.credits_balance ?? 0;
+  const projectsRemaining = usage?.projects_remaining; // null = unlimited
+  const noProjectsLeft =
+    projectsRemaining !== null &&
+    projectsRemaining !== undefined &&
+    projectsRemaining <= 0 &&
+    projects.length === 0;
+
+  /** Redirects user to the credits & plans page. */
+  const goToCredits = () => navigate('/dashboard/credits');
+
+  /** Shows an "insufficient credits" toast and redirects to the credits page. */
+  const notifyInsufficient = (cost?: number, current?: number) => {
+    toast({
+      title: 'Créditos insuficientes',
+      description: `Saldo atual: ${current ?? balance} créditos${cost ? ` · necessário: ${cost}` : ''}. Redirecionando para Créditos & Planos…`,
+      variant: 'destructive',
+    });
+    setTimeout(goToCredits, 1200);
+  };
+
+  /** Server-authoritative pre-check; returns true if the user can afford the action. */
+  const guardAffordable = async (actionKey: string) => {
+    const aff = await checkAffordable(actionKey);
+    if (!aff.affordable) {
+      notifyInsufficient(aff.cost, aff.balance);
+      return false;
+    }
+    return true;
+  };
+
   const generateAiVideo = async (content: GeneratedContent) => {
     if (!content.script || !content.script.trim()) {
       toast({ title: 'Sem roteiro', description: 'Este conteúdo não possui roteiro para gerar o vídeo.', variant: 'destructive' });
       return;
     }
+    if (!(await guardAffordable('generate_ai_video'))) return;
     setGeneratingVideoId(content.id);
     try {
       const { data, error } = await supabase.functions.invoke('generate-ai-video', {
@@ -171,11 +205,11 @@ const GenerateContent = () => {
       if (error) throw error;
       const res = data as any;
       if (res?.error) {
-        toast({
-          title: res.insufficient_credits ? 'Créditos insuficientes' : 'Erro ao gerar vídeo',
-          description: res.error,
-          variant: 'destructive',
-        });
+        if (res.insufficient_credits) {
+          notifyInsufficient();
+        } else {
+          toast({ title: 'Erro ao gerar vídeo', description: res.error, variant: 'destructive' });
+        }
         return;
       }
       refreshCredits();
@@ -206,6 +240,7 @@ const GenerateContent = () => {
 
   const editImage = async (content: GeneratedContent, prompt: string) => {
     if (!prompt.trim()) return;
+    if (!(await guardAffordable('edit_content_image'))) return;
     setEditLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('edit-content-image', {
@@ -213,8 +248,11 @@ const GenerateContent = () => {
       });
       if (error) throw error;
       if ((data as any)?.error) {
-        const isCredit = !!(data as any).insufficient_credits;
-        toast({ title: isCredit ? 'Créditos insuficientes' : 'Erro ao editar', description: (data as any).error, variant: 'destructive' });
+        if ((data as any).insufficient_credits) {
+          notifyInsufficient();
+        } else {
+          toast({ title: 'Erro ao editar', description: (data as any).error, variant: 'destructive' });
+        }
         return;
       }
       const updated = { image_url: (data as any).image_url, image_prompt: (data as any).image_prompt };
@@ -243,10 +281,18 @@ const GenerateContent = () => {
   };
 
   const generateImage = async (content: GeneratedContent, format?: ImgFormat) => {
+    const fmtPre = format || selectedFormat || getFormats(content.social_network, content.content_type)[0];
+    const isCarousel = content.content_type === 'carrossel' && Array.isArray(content.slides) && content.slides.length > 0;
+    const unitCost = imageCreditCost(fmtPre.w, fmtPre.h);
+    const totalEstimated = unitCost * (isCarousel ? (content.slides?.length || 1) : 1);
+    if (balance < totalEstimated) {
+      notifyInsufficient(totalEstimated, balance);
+      return;
+    }
+    if (!(await guardAffordable('generate_content_image'))) return;
     setImagingId(content.id);
     try {
-      const fmt = format || selectedFormat || getFormats(content.social_network, content.content_type)[0];
-      const isCarousel = content.content_type === 'carrossel' && Array.isArray(content.slides) && content.slides.length > 0;
+      const fmt = fmtPre;
 
       if (isCarousel) {
         const slides = content.slides!;
@@ -268,8 +314,11 @@ const GenerateContent = () => {
           });
           if (error) throw error;
           if ((data as any)?.error) {
-            const isCredit = !!(data as any).insufficient_credits;
-            toast({ title: isCredit ? 'Créditos insuficientes' : 'Erro ao gerar imagem', description: (data as any).error, variant: 'destructive' });
+            if ((data as any).insufficient_credits) {
+              notifyInsufficient();
+            } else {
+              toast({ title: 'Erro ao gerar imagem', description: (data as any).error, variant: 'destructive' });
+            }
             return;
           }
           const img = (data as any).image_url;
@@ -297,8 +346,11 @@ const GenerateContent = () => {
       });
       if (error) throw error;
       if ((data as any)?.error) {
-        const isCredit = !!(data as any).insufficient_credits;
-        toast({ title: isCredit ? 'Créditos insuficientes' : 'Erro ao gerar imagem', description: (data as any).error, variant: 'destructive' });
+        if ((data as any).insufficient_credits) {
+          notifyInsufficient();
+        } else {
+          toast({ title: 'Erro ao gerar imagem', description: (data as any).error, variant: 'destructive' });
+        }
         return;
       }
       const updated = { image_url: (data as any).image_url, image_prompt: (data as any).image_prompt };
@@ -341,14 +393,12 @@ const GenerateContent = () => {
   const handleGenerate = async () => {
     if (!project || !network || !contentType) return;
 
-    // Pre-check credits (server-authoritative): generate_content cost vs balance
+    // Estimated total cost = quantity × per-item cost (texto). Imagens são geradas sob demanda.
     const aff = await checkAffordable('generate_content');
-    if (!aff.affordable) {
-      toast({
-        title: 'Créditos insuficientes',
-        description: `Saldo atual: ${aff.balance} créditos. Esta ação requer ${aff.cost}.`,
-        variant: 'destructive',
-      });
+    const perItem = aff.cost || 2;
+    const totalEstimated = perItem * quantity;
+    if (!aff.affordable || aff.balance < totalEstimated) {
+      notifyInsufficient(totalEstimated, aff.balance);
       return;
     }
 
@@ -364,8 +414,11 @@ const GenerateContent = () => {
       });
       if (error) throw error;
       if ((data as any)?.error) {
-        const isCredit = !!(data as any).insufficient_credits;
-        toast({ title: isCredit ? 'Créditos insuficientes' : 'Erro ao gerar', description: (data as any).error, variant: 'destructive' });
+        if ((data as any).insufficient_credits) {
+          notifyInsufficient();
+        } else {
+          toast({ title: 'Erro ao gerar', description: (data as any).error, variant: 'destructive' });
+        }
         return;
       }
       setResults((data as any).contents || []);
@@ -497,6 +550,22 @@ const GenerateContent = () => {
         {step === 'project' && (
           <div className="space-y-4">
             <h2 className="font-heading text-xl font-semibold">1. Selecione um projeto</h2>
+            {usage && projectsRemaining !== null && projectsRemaining !== undefined && projectsRemaining <= 0 && (
+              <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 flex items-center justify-between gap-3">
+                <span className="text-xs">
+                  Você atingiu o limite de projetos do plano <strong>{usage.plan}</strong> ({usage.projects_used}/{usage.projects_limit}). Faça upgrade para criar mais.
+                </span>
+                <Button size="sm" variant="outline" onClick={goToCredits}>Ver planos</Button>
+              </div>
+            )}
+            {balance <= 0 && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 flex items-center justify-between gap-3">
+                <span className="text-xs text-destructive">
+                  Você está sem créditos para gerar conteúdo.
+                </span>
+                <Button size="sm" variant="outline" onClick={goToCredits}>Comprar créditos</Button>
+              </div>
+            )}
             {projects.length === 0 ? (
               <Card className="p-8 text-center">
                 <FolderOpen className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
@@ -645,35 +714,56 @@ const GenerateContent = () => {
                 const imgUnit = selectedFormat ? imageCreditCost(selectedFormat.w, selectedFormat.h) : 0;
                 const imgTotal = imgUnit * quantity;
                 const total = textCost + imgTotal;
+                const cantAffordText = balance < textCost;
                 return (
-                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Texto ({quantity} × 2c)</span>
-                      <span className="font-semibold">{textCost}c</span>
+                  <>
+                    <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Texto ({quantity} × 2c)</span>
+                        <span className="font-semibold">{textCost}c</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Imagens {selectedFormat ? `(${quantity} × ${imgUnit}c · ${selectedFormat.ratio})` : '(selecione um formato)'}
+                        </span>
+                        <span className="font-semibold">{selectedFormat ? `${imgTotal}c` : '—'}</span>
+                      </div>
+                      <div className="border-t border-primary/20 pt-2 flex justify-between items-baseline">
+                        <span className="text-sm font-semibold">Total estimado</span>
+                        <span className="font-heading text-2xl font-bold gradient-text">{total}c</span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-muted-foreground">
+                        <span>Seu saldo</span>
+                        <span className={cantAffordText ? 'text-destructive font-semibold' : 'font-semibold'}>{balance}c</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Texto é cobrado ao gerar. Imagens só cobram quando você clica em gerar imagem em cada conteúdo.
+                      </p>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        Imagens {selectedFormat ? `(${quantity} × ${imgUnit}c · ${selectedFormat.ratio})` : '(selecione um formato)'}
-                      </span>
-                      <span className="font-semibold">{selectedFormat ? `${imgTotal}c` : '—'}</span>
-                    </div>
-                    <div className="border-t border-primary/20 pt-2 flex justify-between items-baseline">
-                      <span className="text-sm font-semibold">Total estimado</span>
-                      <span className="font-heading text-2xl font-bold gradient-text">{total}c</span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">
-                      Texto é cobrado ao gerar. Imagens só cobram quando você clica em gerar imagem em cada conteúdo.
-                    </p>
-                  </div>
+                    {cantAffordText && (
+                      <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 flex items-center justify-between gap-3">
+                        <span className="text-xs text-destructive">
+                          Saldo insuficiente para gerar {quantity} conteúdo(s) ({textCost}c).
+                        </span>
+                        <Button size="sm" variant="outline" onClick={goToCredits}>Comprar créditos</Button>
+                      </div>
+                    )}
+                    <Button
+                      onClick={handleGenerate}
+                      disabled={generating || cantAffordText}
+                      className="w-full"
+                    >
+                      {generating ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gerando...</>
+                      ) : cantAffordText ? (
+                        <><Sparkles className="h-4 w-4 mr-2" /> Créditos insuficientes</>
+                      ) : (
+                        <><Sparkles className="h-4 w-4 mr-2" /> Gerar agora</>
+                      )}
+                    </Button>
+                  </>
                 );
               })()}
-              <Button onClick={handleGenerate} disabled={generating} className="w-full">
-                {generating ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gerando...</>
-                ) : (
-                  <><Sparkles className="h-4 w-4 mr-2" /> Gerar agora</>
-                )}
-              </Button>
             </Card>
           </div>
         )}
@@ -740,7 +830,8 @@ const GenerateContent = () => {
                           variant="outline"
                           className="w-full border-primary/40 hover:bg-primary/10"
                           onClick={() => generateAiVideo(c)}
-                          disabled={generatingVideoId === c.id}
+                          disabled={generatingVideoId === c.id || balance <= 0}
+                          title={balance <= 0 ? 'Saldo insuficiente — adicione créditos' : undefined}
                         >
                           {generatingVideoId === c.id ? (
                             <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Enviando para IA de vídeo...</>
