@@ -24,6 +24,8 @@ import ContentHistory from "./pages/ContentHistory";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 import ConfirmEmail from "./pages/ConfirmEmail";
+import Ebooks from "./pages/Ebooks";
+import EbookEditor from "./pages/EbookEditor";
 import { usePwaManifest } from "@/hooks/usePwaManifest";
 
 const queryClient = new QueryClient();
@@ -59,6 +61,8 @@ const App = () => (
             <Route path="/dashboard/pdf-customization" element={<ProtectedRoute><PdfCustomization /></ProtectedRoute>} />
             <Route path="/dashboard/logo-customization" element={<ProtectedRoute><LogoCustomization /></ProtectedRoute>} />
             <Route path="/dashboard/generate/history" element={<ProtectedRoute><ContentHistory /></ProtectedRoute>} />
+            <Route path="/dashboard/ebooks" element={<ProtectedRoute><Ebooks /></ProtectedRoute>} />
+            <Route path="/dashboard/ebooks/:id" element={<ProtectedRoute><EbookEditor /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>

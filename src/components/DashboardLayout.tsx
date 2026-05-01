@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins, UserCircle, Sparkles, History, FileText, Clapperboard, ImagePlus, Smartphone } from 'lucide-react';
+import { LayoutDashboard, Youtube, Shield, LogOut, Menu, X, ChevronDown, FolderOpen, Coins, UserCircle, Sparkles, History, FileText, Clapperboard, ImagePlus, Smartphone, BookOpen } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CreditsWidget } from '@/components/CreditsWidget';
 import { useUserAddons } from '@/hooks/useUserAddons';
@@ -14,6 +14,7 @@ const navItems = [
   { to: '/dashboard/projects', icon: FolderOpen, label: 'Meus Projetos' },
   { to: '/dashboard/generate', icon: Sparkles, label: 'Gerar Conteúdo' },
   { to: '/dashboard/drafts', icon: Clapperboard, label: 'Rascunhos do Editor' },
+  { to: '/dashboard/ebooks', icon: BookOpen, label: 'eBooks' },
   { to: '/dashboard/credits', icon: Coins, label: 'Créditos & Planos' },
 ];
 

@@ -385,6 +385,238 @@ export type Database = {
         }
         Relationships: []
       }
+      ebook_chapters: {
+        Row: {
+          cache_key: string | null
+          chapter_number: number
+          content_html: string
+          created_at: string
+          ebook_id: string
+          id: string
+          status: string
+          summary: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          word_count: number
+        }
+        Insert: {
+          cache_key?: string | null
+          chapter_number: number
+          content_html?: string
+          created_at?: string
+          ebook_id: string
+          id?: string
+          status?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+          word_count?: number
+        }
+        Update: {
+          cache_key?: string | null
+          chapter_number?: number
+          content_html?: string
+          created_at?: string
+          ebook_id?: string
+          id?: string
+          status?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          word_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ebook_chapters_ebook_id_fkey"
+            columns: ["ebook_id"]
+            isOneToOne: false
+            referencedRelation: "ebooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ebook_chat_sessions: {
+        Row: {
+          created_at: string
+          ebook_id: string | null
+          id: string
+          messages: Json
+          state: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          ebook_id?: string | null
+          id?: string
+          messages?: Json
+          state?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          ebook_id?: string | null
+          id?: string
+          messages?: Json
+          state?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ebook_chat_sessions_ebook_id_fkey"
+            columns: ["ebook_id"]
+            isOneToOne: false
+            referencedRelation: "ebooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ebook_configs: {
+        Row: {
+          ai_model: string
+          base_prompt: string | null
+          created_at: string
+          custom_style: string | null
+          depth_level: string
+          id: string
+          include_case_studies: boolean
+          include_checklist: boolean
+          include_examples: boolean
+          include_exercises: boolean
+          include_metaphors: boolean
+          include_summary: boolean
+          is_default: boolean
+          min_pages_per_chapter: number
+          name: string
+          num_chapters: number
+          premium_product_mode: boolean
+          structure: Json
+          target_audience: string | null
+          updated_at: string
+          user_id: string
+          writing_style: string
+        }
+        Insert: {
+          ai_model?: string
+          base_prompt?: string | null
+          created_at?: string
+          custom_style?: string | null
+          depth_level?: string
+          id?: string
+          include_case_studies?: boolean
+          include_checklist?: boolean
+          include_examples?: boolean
+          include_exercises?: boolean
+          include_metaphors?: boolean
+          include_summary?: boolean
+          is_default?: boolean
+          min_pages_per_chapter?: number
+          name?: string
+          num_chapters?: number
+          premium_product_mode?: boolean
+          structure?: Json
+          target_audience?: string | null
+          updated_at?: string
+          user_id: string
+          writing_style?: string
+        }
+        Update: {
+          ai_model?: string
+          base_prompt?: string | null
+          created_at?: string
+          custom_style?: string | null
+          depth_level?: string
+          id?: string
+          include_case_studies?: boolean
+          include_checklist?: boolean
+          include_examples?: boolean
+          include_exercises?: boolean
+          include_metaphors?: boolean
+          include_summary?: boolean
+          is_default?: boolean
+          min_pages_per_chapter?: number
+          name?: string
+          num_chapters?: number
+          premium_product_mode?: boolean
+          structure?: Json
+          target_audience?: string | null
+          updated_at?: string
+          user_id?: string
+          writing_style?: string
+        }
+        Relationships: []
+      }
+      ebooks: {
+        Row: {
+          conclusion: string | null
+          config_id: string | null
+          cover_url: string | null
+          created_at: string
+          cta: string | null
+          id: string
+          introduction: string | null
+          metadata: Json
+          method_name: string | null
+          outline: Json
+          project_id: string | null
+          promise: string | null
+          source: string
+          status: string
+          subtitle: string | null
+          title: string
+          topic: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conclusion?: string | null
+          config_id?: string | null
+          cover_url?: string | null
+          created_at?: string
+          cta?: string | null
+          id?: string
+          introduction?: string | null
+          metadata?: Json
+          method_name?: string | null
+          outline?: Json
+          project_id?: string | null
+          promise?: string | null
+          source?: string
+          status?: string
+          subtitle?: string | null
+          title?: string
+          topic?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conclusion?: string | null
+          config_id?: string | null
+          cover_url?: string | null
+          created_at?: string
+          cta?: string | null
+          id?: string
+          introduction?: string | null
+          metadata?: Json
+          method_name?: string | null
+          outline?: Json
+          project_id?: string | null
+          promise?: string | null
+          source?: string
+          status?: string
+          subtitle?: string | null
+          title?: string
+          topic?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_broadcasts: {
         Row: {
           audience: string
