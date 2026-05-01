@@ -14,6 +14,7 @@ import { VideoProvidersTab } from '@/components/admin/VideoProvidersTab';
 import { VideoStylePresetsTab } from '@/components/admin/VideoStylePresetsTab';
 import { IntegrationsTab } from '@/components/admin/IntegrationsTab';
 import { NotificationsTab } from '@/components/admin/NotificationsTab';
+import { CreditAuditTab } from '@/components/admin/CreditAuditTab';
 import { Plug } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
