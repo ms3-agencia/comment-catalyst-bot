@@ -846,8 +846,11 @@ const Admin = () => {
                                 <DropdownMenuItem onClick={() => { setPwdUser(u); setNewPassword(''); }}>
                                   <KeyRound className="mr-2 h-4 w-4" /> Mudar senha
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => { setCreditsUser(u); setCreditsAmount(100); setCreditsDescription('Ajuste manual'); }}>
+                                <DropdownMenuItem onClick={() => openCreditsDialog(u, 'add')}>
                                   <Coins className="mr-2 h-4 w-4" /> Adicionar créditos
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openCreditsDialog(u, 'remove')}>
+                                  <Coins className="mr-2 h-4 w-4" /> Remover créditos
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => openLogs(u)}>
                                   <FileText className="mr-2 h-4 w-4" /> Logs
