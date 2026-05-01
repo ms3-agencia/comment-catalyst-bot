@@ -6,7 +6,38 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Save, Coins, RefreshCw } from 'lucide-react';
+import { Loader2, Save, Coins, RefreshCw, ListChecks, Layers, Feather, Crown } from 'lucide-react';
+
+const GROUPS: { id: string; title: string; description: string; icon: any; keys: string[] }[] = [
+  {
+    id: 'elements',
+    title: 'Elementos opcionais',
+    description: 'Blocos extras adicionados ao capítulo (resumo, exemplos, exercícios, etc).',
+    icon: ListChecks,
+    keys: ['include_summary', 'include_examples', 'include_exercises', 'include_checklist', 'include_case_studies', 'include_metaphors'],
+  },
+  {
+    id: 'depth',
+    title: 'Profundidade',
+    description: 'Nível de profundidade do conteúdo gerado.',
+    icon: Layers,
+    keys: ['depth_intermediario', 'depth_avancado'],
+  },
+  {
+    id: 'style',
+    title: 'Estilo de escrita',
+    description: 'Tom e abordagem do texto do capítulo.',
+    icon: Feather,
+    keys: ['style_storytelling', 'style_tecnico', 'style_persuasivo', 'custom_style'],
+  },
+  {
+    id: 'premium',
+    title: 'Modo Premium',
+    description: 'Recursos avançados com estrutura premium.',
+    icon: Crown,
+    keys: ['premium_product_mode'],
+  },
+];
 
 type ItemCost = {
   id: string;
