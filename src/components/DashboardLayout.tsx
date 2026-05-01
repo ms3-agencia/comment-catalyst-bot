@@ -178,13 +178,13 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
               >
                 <BookOpen size={18} />
                 <span className="flex-1">eBooks</span>
+                {ebookPremiumActive && (
+                  <Crown size={14} className="text-amber-400 fill-amber-400/30" aria-label="eBook Premium ativo" />
+                )}
                 {ebookAddonActive && (
                   <Badge className="h-5 px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 hover:bg-emerald-500/20">
                     ATIVO
                   </Badge>
-                )}
-                {ebookPremiumActive && (
-                  <Crown size={14} className="text-amber-400 fill-amber-400/30" aria-label="eBook Premium ativo" />
                 )}
               </Link>
             </div>
