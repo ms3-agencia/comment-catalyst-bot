@@ -35,6 +35,7 @@ export type EbookConfig = {
   structure?: any;
   category?: string;
   tags?: string[];
+};
 
 const DEFAULT_CFG: EbookConfig = {
   name: 'Meu template',
