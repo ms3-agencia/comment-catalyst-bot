@@ -172,6 +172,18 @@ export function VideoAiIntegrationsTab() {
     toast({ title: `${provider.name} salvo com sucesso` });
   };
 
+  const toggleEnabled = async (provider: VideoProviderConfig, next: boolean) => {
+    setTogglingId(provider.id);
+    const result = await upsert(enabledKeyFor(provider.id), next ? 'true' : 'false');
+    setTogglingId(null);
+    if ((result as any)?.error) {
+      toast({ title: 'Erro ao atualizar', description: (result as any).error.message, variant: 'destructive' });
+      return;
+    }
+    setEnabled((p) => ({ ...p, [provider.id]: next }));
+    toast({ title: `${provider.name} ${next ? 'ativada' : 'desativada'}` });
+  };
+
   const statusBadge = (key: string) => {
     if (saved[key]) {
       return (
