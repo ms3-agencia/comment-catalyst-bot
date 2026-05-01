@@ -415,7 +415,15 @@ const Extract = () => {
                 ))}
                 <Button type="button" variant="outline" size="sm" onClick={addUrl}><Plus className="mr-1" size={14} /> Adicionar URL</Button>
               </div>
-              <Button type="submit" className="w-full glow-primary" disabled={loading}>
+              <Button
+                type="submit"
+                className="w-full glow-primary"
+                disabled={
+                  loading ||
+                  (usage?.projects_limit !== null && (usage?.projects_used ?? 0) >= (usage?.projects_limit ?? Infinity)) ||
+                  (usage !== null && usage.credits_balance <= 0)
+                }
+              >
                 {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Extraindo via YouTube API...</> : 'Extrair Comentários'}
               </Button>
             </form>
