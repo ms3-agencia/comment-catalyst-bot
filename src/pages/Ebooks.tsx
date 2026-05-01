@@ -133,8 +133,13 @@ export default function EbooksPage() {
             <TabsTrigger value="chat" disabled={!hasPremium}>
               <MessageSquare className="h-4 w-4 mr-1" />Chat IA {!hasPremium && <Lock className="h-3 w-3 ml-1" />}
             </TabsTrigger>
-            
             <TabsTrigger value="mine">Meus eBooks ({ebooks.length})</TabsTrigger>
+            {hasCustomization && (
+              <TabsTrigger value="templates">
+                <Crown className="h-4 w-4 mr-1 text-amber-400" />Personalizar Template
+                {!hasPremium && <Badge className="ml-2 bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-[10px]">Add-on</Badge>}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="avatar" className="mt-4">
@@ -164,7 +169,7 @@ export default function EbooksPage() {
                   {selectedConfig?.premium_product_mode && ' · 💎 Modo Produto'}
                 </p>
                 {hasCustomization ? (
-                  <p className="text-xs text-muted-foreground">Você pode escolher entre os templates da equipe ou criar os seus na seção abaixo.</p>
+                  <p className="text-xs text-muted-foreground">Você pode escolher entre os templates da equipe ou criar/editar os seus na aba <strong>Personalizar Template</strong>.</p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
                     Os templates são definidos pela equipe administrativa. Para personalizar nº de capítulos, estilo, profundidade, público e elementos opcionais, ative o add-on <Link to="/dashboard/addons" className="text-primary underline">Personalizar Template</Link> ou <Link to="/dashboard/addons" className="text-primary underline">eBooks Premium</Link>.
@@ -172,18 +177,6 @@ export default function EbooksPage() {
                 )}
               </div>
 
-              {hasCustomization && (
-                <details className="rounded-md border bg-muted/30">
-                  <summary className="cursor-pointer px-3 py-2 text-sm font-medium flex items-center gap-2">
-                    <Crown className="h-4 w-4 text-amber-400" />
-                    Personalizar template
-                    {!hasPremium && <Badge className="ml-1 bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-[10px]">Add-on</Badge>}
-                  </summary>
-                  <div className="p-3 border-t">
-                    <EbookConfigPanel mode="user" canEdit={true} onSelect={(c) => setSelectedConfig(c)} />
-                  </div>
-                </details>
-              )}
               <Button size="lg" onClick={generateFromAvatar} disabled={generating} className="w-full">
                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 Gerar estrutura do eBook (5 créditos)
@@ -201,7 +194,6 @@ export default function EbooksPage() {
               <Card className="p-8 text-center"><Crown className="h-10 w-10 mx-auto text-amber-400" /><p className="mt-2">Recurso exclusivo do add-on <strong>eBooks Premium</strong>.</p></Card>
             )}
           </TabsContent>
-
 
           <TabsContent value="mine" className="mt-4">
             {ebooks.length === 0 ? (
@@ -224,6 +216,20 @@ export default function EbooksPage() {
               </div>
             )}
           </TabsContent>
+
+          {hasCustomization && (
+            <TabsContent value="templates" className="mt-4">
+              <Card className="p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Crown className="h-5 w-5 text-amber-400" />
+                  <h2 className="font-semibold text-lg">Personalizar Template</h2>
+                  {!hasPremium && <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">Add-on</Badge>}
+                </div>
+                <p className="text-sm text-muted-foreground">Crie e edite templates personalizados para usar na geração dos seus eBooks.</p>
+                <EbookConfigPanel mode="user" canEdit={true} onSelect={(c) => setSelectedConfig(c)} />
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </DashboardLayout>
