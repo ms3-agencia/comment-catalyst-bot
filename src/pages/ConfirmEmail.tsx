@@ -59,7 +59,9 @@ const ConfirmEmail = () => {
           else setStatus('error');
           return;
         }
-        setStatus(data.alreadyUsed ? 'already' : 'success');
+        // Servidor não diferencia mais "já usado" de sucesso, por segurança:
+        // qualquer success=true significa que o email está confirmado agora.
+        setStatus('success');
       } catch {
         setStatus('error');
       }

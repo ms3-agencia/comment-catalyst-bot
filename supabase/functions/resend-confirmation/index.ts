@@ -87,9 +87,17 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Gera token em claro (só vai no email) e armazena apenas o hash SHA-256.
     const token = genToken();
+    const tokenHashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+    const tokenHash = Array.from(new Uint8Array(tokenHashBuf))
+      .map((b) => b.toString(16).padStart(2, "0")).join("");
+
     await admin.from("email_confirmation_tokens").insert({
-      user_id: profile.user_id, email, token,
+      user_id: profile.user_id,
+      email,
+      token: "", // não persistimos o token em claro
+      token_hash: tokenHash,
     });
 
     const { data: appUrlSetting } = await admin

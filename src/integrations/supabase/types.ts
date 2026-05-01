@@ -701,6 +701,7 @@ export type Database = {
           expires_at: string
           id: string
           token: string
+          token_hash: string
           used_at: string | null
           user_id: string
         }
@@ -710,6 +711,7 @@ export type Database = {
           expires_at?: string
           id?: string
           token: string
+          token_hash: string
           used_at?: string | null
           user_id: string
         }
@@ -719,6 +721,7 @@ export type Database = {
           expires_at?: string
           id?: string
           token?: string
+          token_hash?: string
           used_at?: string | null
           user_id?: string
         }
@@ -1943,7 +1946,9 @@ export type Database = {
         Returns: Json
       }
       cleanup_auth_rate_limits: { Args: never; Returns: number }
+      cleanup_email_confirmation_tokens: { Args: never; Returns: number }
       cleanup_video_editor_drafts: { Args: never; Returns: Json }
+      confirm_email_token_consume: { Args: { _token: string }; Returns: Json }
       consume_credits: {
         Args: {
           _action_key: string
