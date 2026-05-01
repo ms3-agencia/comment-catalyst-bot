@@ -177,18 +177,13 @@ export default function EbooksPage() {
                 )}
               </div>
 
-              {hasCustomization && (
-                <details className="rounded-md border bg-muted/30">
-                  <summary className="cursor-pointer px-3 py-2 text-sm font-medium flex items-center gap-2">
-                    <Crown className="h-4 w-4 text-amber-400" />
-                    Personalizar template
-                    {!hasPremium && <Badge className="ml-1 bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-[10px]">Add-on</Badge>}
-                  </summary>
-                  <div className="p-3 border-t">
-                    <EbookConfigPanel mode="user" canEdit={true} onSelect={(c) => setSelectedConfig(c)} />
-                  </div>
-                </details>
-              )}
+              <Button size="lg" onClick={generateFromAvatar} disabled={generating} className="w-full">
+                {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                Gerar estrutura do eBook (5 créditos)
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                A geração é em etapas: primeiro a estrutura, depois cada capítulo individualmente (8 créditos cada). Você pode pausar e retomar a qualquer momento.
+              </p>
               <Button size="lg" onClick={generateFromAvatar} disabled={generating} className="w-full">
                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 Gerar estrutura do eBook (5 créditos)
