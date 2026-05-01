@@ -15,6 +15,7 @@ import { VideoProvidersTab } from '@/components/admin/VideoProvidersTab';
 import { VideoStylePresetsTab } from '@/components/admin/VideoStylePresetsTab';
 import { IntegrationsTab } from '@/components/admin/IntegrationsTab';
 import { VideoAiIntegrationsTab } from '@/components/admin/VideoAiIntegrationsTab';
+import { VideoAiLogTab } from '@/components/admin/VideoAiLogTab';
 import { NotificationsTab } from '@/components/admin/NotificationsTab';
 import { CreditAuditTab } from '@/components/admin/CreditAuditTab';
 import { Plug } from 'lucide-react';
