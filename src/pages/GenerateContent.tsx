@@ -698,35 +698,56 @@ const GenerateContent = () => {
                 const imgUnit = selectedFormat ? imageCreditCost(selectedFormat.w, selectedFormat.h) : 0;
                 const imgTotal = imgUnit * quantity;
                 const total = textCost + imgTotal;
+                const cantAffordText = balance < textCost;
                 return (
-                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Texto ({quantity} × 2c)</span>
-                      <span className="font-semibold">{textCost}c</span>
+                  <>
+                    <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Texto ({quantity} × 2c)</span>
+                        <span className="font-semibold">{textCost}c</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          Imagens {selectedFormat ? `(${quantity} × ${imgUnit}c · ${selectedFormat.ratio})` : '(selecione um formato)'}
+                        </span>
+                        <span className="font-semibold">{selectedFormat ? `${imgTotal}c` : '—'}</span>
+                      </div>
+                      <div className="border-t border-primary/20 pt-2 flex justify-between items-baseline">
+                        <span className="text-sm font-semibold">Total estimado</span>
+                        <span className="font-heading text-2xl font-bold gradient-text">{total}c</span>
+                      </div>
+                      <div className="flex justify-between text-[11px] text-muted-foreground">
+                        <span>Seu saldo</span>
+                        <span className={cantAffordText ? 'text-destructive font-semibold' : 'font-semibold'}>{balance}c</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Texto é cobrado ao gerar. Imagens só cobram quando você clica em gerar imagem em cada conteúdo.
+                      </p>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        Imagens {selectedFormat ? `(${quantity} × ${imgUnit}c · ${selectedFormat.ratio})` : '(selecione um formato)'}
-                      </span>
-                      <span className="font-semibold">{selectedFormat ? `${imgTotal}c` : '—'}</span>
-                    </div>
-                    <div className="border-t border-primary/20 pt-2 flex justify-between items-baseline">
-                      <span className="text-sm font-semibold">Total estimado</span>
-                      <span className="font-heading text-2xl font-bold gradient-text">{total}c</span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground">
-                      Texto é cobrado ao gerar. Imagens só cobram quando você clica em gerar imagem em cada conteúdo.
-                    </p>
-                  </div>
+                    {cantAffordText && (
+                      <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 flex items-center justify-between gap-3">
+                        <span className="text-xs text-destructive">
+                          Saldo insuficiente para gerar {quantity} conteúdo(s) ({textCost}c).
+                        </span>
+                        <Button size="sm" variant="outline" onClick={goToCredits}>Comprar créditos</Button>
+                      </div>
+                    )}
+                    <Button
+                      onClick={handleGenerate}
+                      disabled={generating || cantAffordText}
+                      className="w-full"
+                    >
+                      {generating ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gerando...</>
+                      ) : cantAffordText ? (
+                        <><Sparkles className="h-4 w-4 mr-2" /> Créditos insuficientes</>
+                      ) : (
+                        <><Sparkles className="h-4 w-4 mr-2" /> Gerar agora</>
+                      )}
+                    </Button>
+                  </>
                 );
               })()}
-              <Button onClick={handleGenerate} disabled={generating} className="w-full">
-                {generating ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gerando...</>
-                ) : (
-                  <><Sparkles className="h-4 w-4 mr-2" /> Gerar agora</>
-                )}
-              </Button>
             </Card>
           </div>
         )}
