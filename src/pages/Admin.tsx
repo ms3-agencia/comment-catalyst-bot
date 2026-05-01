@@ -14,6 +14,7 @@ import { AddonsTab } from '@/components/admin/AddonsTab';
 import { VideoProvidersTab } from '@/components/admin/VideoProvidersTab';
 import { VideoStylePresetsTab } from '@/components/admin/VideoStylePresetsTab';
 import { IntegrationsTab } from '@/components/admin/IntegrationsTab';
+import { VideoAiIntegrationsTab } from '@/components/admin/VideoAiIntegrationsTab';
 import { NotificationsTab } from '@/components/admin/NotificationsTab';
 import { CreditAuditTab } from '@/components/admin/CreditAuditTab';
 import { Plug } from 'lucide-react';
@@ -87,7 +88,7 @@ const Admin = () => {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('users');
-  const [integrationsTab, setIntegrationsTab] = useState<'connectors' | 'payments' | 'settings'>('connectors');
+  const [integrationsTab, setIntegrationsTab] = useState<'connectors' | 'payments' | 'settings' | 'youtube_settings' | 'video_ai_integrations' | 'ai_providers'>('connectors');
   const [editUser, setEditUser] = useState<UserProfile | null>(null);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
@@ -798,6 +799,9 @@ const Admin = () => {
             setActiveTab(v);
             if (v === 'integrations') setIntegrationsTab('connectors');
             else if (v === 'payments') setIntegrationsTab('payments');
+            else if (v === 'youtube_settings') setIntegrationsTab('youtube_settings');
+            else if (v === 'ai_providers') setIntegrationsTab('ai_providers');
+            else if (v === 'video_ai_integrations') setIntegrationsTab('video_ai_integrations');
             else if (v === 'settings') setIntegrationsTab('settings');
             else setIntegrationsTab('connectors');
           }}
@@ -1506,48 +1510,105 @@ const Admin = () => {
           <TabsContent value="integrations" className="mt-4 space-y-4">
             <Card className="glass p-2">
               <div className="flex flex-wrap gap-1">
-                <Button
-                  size="sm"
-                  variant={integrationsTab === 'connectors' ? 'default' : 'ghost'}
-                  onClick={() => setActiveTab('integrations')}
-                  className="gap-1.5"
-                >
+                <Button size="sm" variant={integrationsTab === 'connectors' ? 'default' : 'ghost'} onClick={() => setActiveTab('integrations')} className="gap-1.5">
                   <Plug size={14} /> Conectores
                 </Button>
-                <Button
-                  size="sm"
-                  variant={integrationsTab === 'payments' ? 'default' : 'ghost'}
-                  onClick={() => setActiveTab('payments')}
-                  className="gap-1.5"
-                >
-                  <Wallet size={14} /> Mercado Pago
+                <Button size="sm" variant={integrationsTab === 'youtube_settings' ? 'default' : 'ghost'} onClick={() => setActiveTab('youtube_settings')} className="gap-1.5">
+                  <Key size={14} /> YouTube
                 </Button>
-                <Button
-                  size="sm"
-                  variant={integrationsTab === 'settings' ? 'default' : 'ghost'}
-                  onClick={() => setActiveTab('settings')}
-                  className="gap-1.5"
-                >
-                  <Key size={14} /> APIs & IA
+                <Button size="sm" variant={integrationsTab === 'ai_providers' ? 'default' : 'ghost'} onClick={() => setActiveTab('ai_providers')} className="gap-1.5">
+                  <Bot size={14} /> Provedores de IA
+                </Button>
+                <Button size="sm" variant={integrationsTab === 'video_ai_integrations' ? 'default' : 'ghost'} onClick={() => setActiveTab('video_ai_integrations')} className="gap-1.5">
+                  <Clapperboard size={14} /> IA de Vídeos
+                </Button>
+                <Button size="sm" variant={integrationsTab === 'payments' ? 'default' : 'ghost'} onClick={() => setActiveTab('payments')} className="gap-1.5">
+                  <Wallet size={14} /> Mercado Pago
                 </Button>
               </div>
             </Card>
             {integrationsTab === 'connectors' && <IntegrationsTab />}
           </TabsContent>
 
+          {/* YOUTUBE (sub-aba de Integrações) */}
+          <TabsContent value="youtube_settings" className="mt-4 space-y-4">
+            <Card className="glass p-2">
+              <div className="flex flex-wrap gap-1">
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('integrations')} className="gap-1.5"><Plug size={14} /> Conectores</Button>
+                <Button size="sm" variant="default" className="gap-1.5"><Key size={14} /> YouTube</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('ai_providers')} className="gap-1.5"><Bot size={14} /> Provedores de IA</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('video_ai_integrations')} className="gap-1.5"><Clapperboard size={14} /> IA de Vídeos</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('payments')} className="gap-1.5"><Wallet size={14} /> Mercado Pago</Button>
+              </div>
+            </Card>
+            <Card className="glass p-6 space-y-6">
+              <div>
+                <h3 className="font-heading text-lg font-bold flex items-center gap-2">
+                  <Key size={20} className="text-primary" /> YouTube Data API v3
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">Configure a chave de API para extração real de comentários do YouTube</p>
+              </div>
+              <Card className="bg-muted/30 border-primary/20 p-5 space-y-3">
+                <h4 className="font-semibold text-sm">📖 Como obter a chave da API do YouTube</h4>
+                <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
+                  <li>Acesse o <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Google Cloud Console <ExternalLink size={12} /></a></li>
+                  <li>Crie um novo projeto ou selecione um existente</li>
+                  <li>Vá em <strong>"APIs e Serviços" → "Biblioteca"</strong></li>
+                  <li>Pesquise por <strong>"YouTube Data API v3"</strong> e clique em <strong>"Ativar"</strong></li>
+                  <li>Vá em <strong>"APIs e Serviços" → "Credenciais"</strong></li>
+                  <li>Clique em <strong>"Criar credenciais" → "Chave de API"</strong></li>
+                  <li>Copie a chave gerada e cole no campo abaixo</li>
+                </ol>
+                <p className="text-xs text-muted-foreground/70">💡 Dica: Restrinja a chave apenas para a YouTube Data API v3 para maior segurança.</p>
+              </Card>
+              <div className="space-y-3">
+                <Label htmlFor="yt-api-key">Chave da API do YouTube</Label>
+                <div className="flex gap-3">
+                  <Input
+                    id="yt-api-key"
+                    type="password"
+                    placeholder="AIza..."
+                    value={youtubeApiKey}
+                    onChange={e => { setYoutubeApiKey(e.target.value); setApiKeySaved(false); }}
+                    className="flex-1"
+                  />
+                  <Button onClick={handleSaveApiKey} disabled={apiKeyLoading} className="glow-primary">
+                    {apiKeyLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : apiKeySaved ? (<><CheckCircle2 className="mr-2 h-4 w-4" /> Salvo</>) : (<><Save className="mr-2 h-4 w-4" /> Salvar</>)}
+                  </Button>
+                </div>
+                {apiKeySaved && (
+                  <p className="text-xs text-success flex items-center gap-1">
+                    <CheckCircle2 size={12} /> Chave da API configurada e ativa
+                  </p>
+                )}
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* IA DE VÍDEOS (sub-aba de Integrações) */}
+          <TabsContent value="video_ai_integrations" className="mt-4 space-y-4">
+            <Card className="glass p-2">
+              <div className="flex flex-wrap gap-1">
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('integrations')} className="gap-1.5"><Plug size={14} /> Conectores</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('youtube_settings')} className="gap-1.5"><Key size={14} /> YouTube</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('ai_providers')} className="gap-1.5"><Bot size={14} /> Provedores de IA</Button>
+                <Button size="sm" variant="default" className="gap-1.5"><Clapperboard size={14} /> IA de Vídeos</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('payments')} className="gap-1.5"><Wallet size={14} /> Mercado Pago</Button>
+              </div>
+            </Card>
+            <VideoAiIntegrationsTab />
+          </TabsContent>
+
+
           {/* MERCADO PAGO (sub-aba de Integrações) */}
           <TabsContent value="payments" className="mt-4 space-y-4">
             <Card className="glass p-2">
               <div className="flex flex-wrap gap-1">
-                <Button size="sm" variant="ghost" onClick={() => setActiveTab('integrations')} className="gap-1.5">
-                  <Plug size={14} /> Conectores
-                </Button>
-                <Button size="sm" variant="default" className="gap-1.5">
-                  <Wallet size={14} /> Mercado Pago
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setActiveTab('settings')} className="gap-1.5">
-                  <Key size={14} /> APIs & IA
-                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('integrations')} className="gap-1.5"><Plug size={14} /> Conectores</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('youtube_settings')} className="gap-1.5"><Key size={14} /> YouTube</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('ai_providers')} className="gap-1.5"><Bot size={14} /> Provedores de IA</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('video_ai_integrations')} className="gap-1.5"><Clapperboard size={14} /> IA de Vídeos</Button>
+                <Button size="sm" variant="default" className="gap-1.5"><Wallet size={14} /> Mercado Pago</Button>
               </div>
             </Card>
             <Card className="glass p-6 space-y-5">
@@ -1597,71 +1658,15 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          {/* APIs & IA (sub-aba de Integrações) */}
-          <TabsContent value="settings" className="mt-4 space-y-4">
+          {/* PROVEDORES DE IA (sub-aba de Integrações) */}
+          <TabsContent value="ai_providers" className="mt-4 space-y-4">
             <Card className="glass p-2">
               <div className="flex flex-wrap gap-1">
-                <Button size="sm" variant="ghost" onClick={() => setActiveTab('integrations')} className="gap-1.5">
-                  <Plug size={14} /> Conectores
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setActiveTab('payments')} className="gap-1.5">
-                  <Wallet size={14} /> Mercado Pago
-                </Button>
-                <Button size="sm" variant="default" className="gap-1.5">
-                  <Key size={14} /> APIs & IA
-                </Button>
-              </div>
-            </Card>
-            <Card className="glass p-6 space-y-6">
-              <div>
-                <h3 className="font-heading text-lg font-bold flex items-center gap-2">
-                  <Key size={20} className="text-primary" /> YouTube Data API v3
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">Configure a chave de API para extração real de comentários do YouTube</p>
-              </div>
-
-              {/* Tutorial */}
-              <Card className="bg-muted/30 border-primary/20 p-5 space-y-3">
-                <h4 className="font-semibold text-sm">📖 Como obter a chave da API do YouTube</h4>
-                <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                  <li>Acesse o <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Google Cloud Console <ExternalLink size={12} /></a></li>
-                  <li>Crie um novo projeto ou selecione um existente</li>
-                  <li>Vá em <strong>"APIs e Serviços" → "Biblioteca"</strong></li>
-                  <li>Pesquise por <strong>"YouTube Data API v3"</strong> e clique em <strong>"Ativar"</strong></li>
-                  <li>Vá em <strong>"APIs e Serviços" → "Credenciais"</strong></li>
-                  <li>Clique em <strong>"Criar credenciais" → "Chave de API"</strong></li>
-                  <li>Copie a chave gerada e cole no campo abaixo</li>
-                </ol>
-                <p className="text-xs text-muted-foreground/70">💡 Dica: Restrinja a chave apenas para a YouTube Data API v3 para maior segurança.</p>
-              </Card>
-
-              {/* API Key input */}
-              <div className="space-y-3">
-                <Label htmlFor="yt-api-key">Chave da API do YouTube</Label>
-                <div className="flex gap-3">
-                  <Input
-                    id="yt-api-key"
-                    type="password"
-                    placeholder="AIza..."
-                    value={youtubeApiKey}
-                    onChange={e => { setYoutubeApiKey(e.target.value); setApiKeySaved(false); }}
-                    className="flex-1"
-                  />
-                  <Button onClick={handleSaveApiKey} disabled={apiKeyLoading} className="glow-primary">
-                    {apiKeyLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : apiKeySaved ? (
-                      <><CheckCircle2 className="mr-2 h-4 w-4" /> Salvo</>
-                    ) : (
-                      <><Save className="mr-2 h-4 w-4" /> Salvar</>
-                    )}
-                  </Button>
-                </div>
-                {apiKeySaved && (
-                  <p className="text-xs text-success flex items-center gap-1">
-                    <CheckCircle2 size={12} /> Chave da API configurada e ativa
-                  </p>
-                )}
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('integrations')} className="gap-1.5"><Plug size={14} /> Conectores</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('youtube_settings')} className="gap-1.5"><Key size={14} /> YouTube</Button>
+                <Button size="sm" variant="default" className="gap-1.5"><Bot size={14} /> Provedores de IA</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('video_ai_integrations')} className="gap-1.5"><Clapperboard size={14} /> IA de Vídeos</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('payments')} className="gap-1.5"><Wallet size={14} /> Mercado Pago</Button>
               </div>
             </Card>
 
