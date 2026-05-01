@@ -66,8 +66,13 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
   const canSeePremiumMode = isAdminMode || hasAddon('ebook-premium'); // Modo Produto Premium exige add-on premium
   const [configs, setConfigs] = useState<EbookConfig[]>([]);
   const [current, setCurrent] = useState<EbookConfig>(DEFAULT_CFG);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Em modo user, templates globais (criados por admin) NÃO podem ser editados aqui.
+  const isGlobalTemplate = !!current.id && !!current.user_id && !!currentUserId && current.user_id !== currentUserId;
+  const editingLocked = !canEdit || (mode === 'user' && isGlobalTemplate);
 
   const load = async () => {
     setLoading(true);
