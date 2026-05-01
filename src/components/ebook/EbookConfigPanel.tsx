@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Plus, Trash2, Save, Star, Lock } from 'lucide-react';
+import { Loader2, Plus, Trash2, Save, Star, Lock, Gem } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export type EbookConfig = {
