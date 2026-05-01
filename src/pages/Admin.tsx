@@ -1099,6 +1099,28 @@ const Admin = () => {
                       placeholder="100"
                       autoFocus
                     />
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {[10, 50, 100, 500, 1000, 5000].map((preset) => {
+                        const disabled =
+                          creditsMode === 'remove' &&
+                          creditsCurrentBalance !== null &&
+                          preset > creditsCurrentBalance;
+                        const active = creditsAmount === preset;
+                        return (
+                          <Button
+                            key={preset}
+                            type="button"
+                            size="sm"
+                            variant={active ? 'default' : 'outline'}
+                            className={`h-7 px-2.5 text-xs ${active ? 'glow-primary' : ''}`}
+                            disabled={disabled}
+                            onClick={() => setCreditsAmount(preset)}
+                          >
+                            {preset >= 1000 ? `${preset / 1000}k` : preset}
+                          </Button>
+                        );
+                      })}
+                    </div>
                     {creditsMode === 'remove' && creditsCurrentBalance !== null && creditsAmount > creditsCurrentBalance && (
                       <p className="text-xs text-destructive">Valor maior que o saldo disponível ({creditsCurrentBalance}).</p>
                     )}
