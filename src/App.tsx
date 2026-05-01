@@ -67,11 +67,14 @@ const App = () => (
             <Route path="/dashboard/ebooks/:id" element={<ProtectedRoute><EbookEditor /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
+            <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
+  </AppErrorBoundary>
 );
 
 export default App;
