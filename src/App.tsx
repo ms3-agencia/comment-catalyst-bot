@@ -23,6 +23,7 @@ import LogoCustomization from "./pages/LogoCustomization";
 import ContentHistory from "./pages/ContentHistory";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
+import ConfirmEmail from "./pages/ConfirmEmail";
 
 const queryClient = new QueryClient();
 
