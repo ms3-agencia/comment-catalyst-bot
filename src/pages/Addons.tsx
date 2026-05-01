@@ -255,6 +255,11 @@ const AddonsPage = () => {
           <TabsList>
             <TabsTrigger value="all">Todos</TabsTrigger>
             <TabsTrigger value="mine">Meus Add-ons</TabsTrigger>
+            <TabsTrigger value="ebooks" disabled={!hasAddon('ebook-generator') && !hasAddon('ebook-premium')}>
+              <BookOpen className="h-4 w-4 mr-1" />
+              Ebooks
+              {!hasAddon('ebook-generator') && !hasAddon('ebook-premium') && <Lock className="h-3 w-3 ml-1" />}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="all" className="mt-4">
@@ -274,6 +279,28 @@ const AddonsPage = () => {
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {addons.filter(a => userAddons.some(u => u.addon_id === a.id && u.status === 'active')).map(renderAddon)}
               </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="ebooks" className="mt-4">
+            {(hasAddon('ebook-generator') || hasAddon('ebook-premium')) ? (
+              <div className="space-y-4">
+                <Card className="p-4 bg-primary/5 border-primary/20">
+                  <div className="flex items-start gap-3">
+                    <BookOpen className="h-5 w-5 text-primary mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold">Configurações do Gerador de eBooks</h3>
+                      <p className="text-sm text-muted-foreground">Crie e gerencie templates que serão usados ao gerar seus eBooks na página <strong>eBooks</strong>.</p>
+                    </div>
+                  </div>
+                </Card>
+                <EbookConfigPanel />
+              </div>
+            ) : (
+              <Card className="p-12 text-center space-y-3">
+                <Lock className="h-10 w-10 mx-auto text-muted-foreground" />
+                <p className="text-muted-foreground">Ative o add-on <strong>Gerador de eBooks</strong> para acessar as configurações.</p>
+              </Card>
             )}
           </TabsContent>
         </Tabs>
