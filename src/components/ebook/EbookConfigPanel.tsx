@@ -257,7 +257,27 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
       </Card>
 
       <Card className="p-5 space-y-5">
-        <fieldset disabled={!canEdit} className={!canEdit ? 'space-y-5 opacity-60' : 'space-y-5'}>
+        {mode === 'user' && isGlobalTemplate && (
+          <div className="text-xs rounded-md border border-cyan-500/30 bg-cyan-500/5 p-3 space-y-1.5">
+            <p className="font-medium text-cyan-300 flex items-center gap-1.5">
+              <Lock className="h-3.5 w-3.5" /> Template da equipe — somente leitura
+            </p>
+            <p className="text-muted-foreground">Este template foi criado pelos administradores. Você <strong>não pode editá-lo, renomeá-lo, defini-lo como padrão, marcá-lo como Premium nem excluí-lo</strong>.</p>
+            <p className="text-muted-foreground">O que você pode fazer:</p>
+            <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+              <li><strong>Visualizar</strong> os campos para entender a configuração.</li>
+              <li><strong>Duplicar</strong> para criar uma cópia editável vinculada à sua conta.</li>
+              <li><strong>Usá-lo como padrão</strong> de geração na aba <em>Gerar por Avatar</em>.</li>
+            </ul>
+            <div className="pt-1">
+              <Button size="sm" variant="outline" onClick={duplicateCurrent} disabled={saving || !canEdit}>
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                Duplicar para editar
+              </Button>
+            </div>
+          </div>
+        )}
+        <fieldset disabled={editingLocked} className={editingLocked ? 'space-y-5 opacity-60' : 'space-y-5'}>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Nome do template</Label>
