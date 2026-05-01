@@ -315,7 +315,9 @@ function EbookChatTab({ onCreated }: { onCreated: (ebookId: string) => void }) {
   };
 
   return (
-    <Card className="flex flex-col h-[600px]">
+    <>
+      <EbookGenerationOverlay visible={creating} stage="outline" title="Criando seu eBook a partir do chat" />
+      <Card className="flex flex-col h-[600px]">
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
