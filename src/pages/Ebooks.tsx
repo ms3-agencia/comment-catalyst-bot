@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, BookOpen, Sparkles, MessageSquare, Crown, Send, Lock, FileText, ArrowRight } from 'lucide-react';
+import { Loader2, BookOpen, Sparkles, MessageSquare, Crown, Send, Lock, FileText, ArrowRight, Save, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserAddons } from '@/hooks/useUserAddons';
 import { useAuth } from '@/hooks/useAuth';
