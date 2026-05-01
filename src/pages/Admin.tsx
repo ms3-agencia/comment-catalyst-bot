@@ -811,11 +811,12 @@ const Admin = () => {
           }}
         >
 
-          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-10 h-auto">
+          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-11 h-auto">
             <TabsTrigger value="users"><Users size={14} className="mr-1.5" />Usuários</TabsTrigger>
             <TabsTrigger value="plans"><ShieldCheck size={14} className="mr-1.5" />Planos</TabsTrigger>
             <TabsTrigger value="packages"><Package size={14} className="mr-1.5" />Pacotes</TabsTrigger>
             <TabsTrigger value="addons"><Sparkles size={14} className="mr-1.5" />Add-ons</TabsTrigger>
+            <TabsTrigger value="ebook_templates"><BookOpen size={14} className="mr-1.5" />eBook Templates</TabsTrigger>
             <TabsTrigger value="costs"><Coins size={14} className="mr-1.5" />Custos</TabsTrigger>
             <TabsTrigger value="audit"><FileText size={14} className="mr-1.5" />Auditoria</TabsTrigger>
             <TabsTrigger value="video"><Clapperboard size={14} className="mr-1.5" />Vídeo</TabsTrigger>
@@ -829,6 +830,10 @@ const Admin = () => {
             </TabsTrigger>
             <TabsTrigger value="branding"><Palette size={14} className="mr-1.5" />Personalização</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="ebook_templates" className="mt-4">
+            <AdminEbookTemplatesTab />
+          </TabsContent>
 
           <TabsContent value="video" className="mt-4 space-y-6">
             <VideoProvidersTab />
