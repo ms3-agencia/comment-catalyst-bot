@@ -37,6 +37,7 @@ export default function EbooksPage() {
   const [topic, setTopic] = useState('');
   const [projectId, setProjectId] = useState<string>('none');
   const [generating, setGenerating] = useState(false);
+  const [genDone, setGenDone] = useState(false);
 
   useEffect(() => {
     if (!user) return;
