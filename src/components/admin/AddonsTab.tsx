@@ -185,6 +185,30 @@ export const AddonsTab = () => {
         </Table>
       </Card>
 
+      {/* In-place add-on configuration panel */}
+      {configuringSlug && CONFIGURABLE[configuringSlug] && (
+        <Card className="p-6 space-y-4 border-primary/30">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-start gap-3">
+              {(() => {
+                const Icon = CONFIGURABLE[configuringSlug].icon;
+                return <Icon className="h-5 w-5 text-primary mt-0.5" />;
+              })()}
+              <div>
+                <h3 className="font-heading font-semibold">{CONFIGURABLE[configuringSlug].label}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Configurações do add-on <strong>{addons.find(a => a.slug === configuringSlug)?.name}</strong>. Templates globais disponíveis para todos os usuários com o add-on ativo.
+                </p>
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setConfiguringSlug(null)}>Fechar</Button>
+          </div>
+          <div className="pt-2 border-t">
+            {CONFIGURABLE[configuringSlug].render()}
+          </div>
+        </Card>
+      )}
+
       {/* Plan-Addon Linkage */}
       {addons.length > 0 && (
         <Card className="p-6 space-y-4">
