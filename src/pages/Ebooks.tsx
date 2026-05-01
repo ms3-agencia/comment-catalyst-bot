@@ -162,6 +162,9 @@ export default function EbooksPage() {
                   Usando: <strong>{selectedConfig?.name || 'Padrão'}</strong> · {selectedConfig?.num_chapters || 8} capítulos · {selectedConfig?.depth_level || 'intermediario'}
                   {selectedConfig?.premium_product_mode && ' · 💎 Modo Produto'}
                 </p>
+                <Link to="/dashboard/addons?tab=ebooks" className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+                  Editar templates em Add-ons → Ebooks <ArrowRight className="h-3 w-3" />
+                </Link>
               </div>
               <Button size="lg" onClick={generateFromAvatar} disabled={generating} className="w-full">
                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
