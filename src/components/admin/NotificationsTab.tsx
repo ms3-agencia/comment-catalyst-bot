@@ -60,11 +60,13 @@ export function NotificationsTab() {
   const [newTpl, setNewTpl] = useState({ key: '', name: '', category: 'general', trigger_type: 'manual' });
 
   const loadAll = async () => {
-    const [{ data: tpls }, { data: settings }] = await Promise.all([
+    const [{ data: tpls }, { data: settings }, { data: sigs }] = await Promise.all([
       supabase.from('email_templates').select('*').order('category').order('name'),
       supabase.from('app_settings').select('key, value').in('key', SMTP_KEYS),
+      supabase.from('email_signatures').select('id, name, is_default').order('is_default', { ascending: false }).order('name'),
     ]);
     setTemplates((tpls || []) as EmailTemplate[]);
+    setSignatures((sigs || []) as SignatureOption[]);
     const s: Record<string, string> = {};
     (settings || []).forEach(r => { s[r.key] = r.value; });
     setSmtp(s);
