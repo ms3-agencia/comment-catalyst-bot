@@ -400,9 +400,15 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
         </div>
 
         <div className="flex justify-end gap-2 border-t pt-4">
-          <Button onClick={save} disabled={saving || !canEdit}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : !canEdit ? <Lock className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-            {canEdit ? 'Salvar template' : 'Bloqueado'}
+          {mode === 'user' && isGlobalTemplate && canEdit && (
+            <Button variant="outline" onClick={duplicateCurrent} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              Duplicar para editar
+            </Button>
+          )}
+          <Button onClick={save} disabled={saving || editingLocked} title={editingLocked ? (isGlobalTemplate ? 'Templates da equipe são somente leitura — duplique para editar.' : 'Necessário add-on para editar.') : undefined}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editingLocked ? <Lock className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+            {editingLocked ? (isGlobalTemplate ? 'Somente leitura' : 'Bloqueado') : 'Salvar template'}
           </Button>
         </div>
         </fieldset>
