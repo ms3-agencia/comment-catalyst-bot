@@ -164,6 +164,30 @@ export type Database = {
         }
         Relationships: []
       }
+      auth_rate_limits: {
+        Row: {
+          action: string
+          attempted_at: string
+          id: string
+          identifier: string
+          metadata: Json | null
+        }
+        Insert: {
+          action: string
+          attempted_at?: string
+          id?: string
+          identifier: string
+          metadata?: Json | null
+        }
+        Update: {
+          action?: string
+          attempted_at?: string
+          id?: string
+          identifier?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       branding_settings: {
         Row: {
           context: string
@@ -1909,6 +1933,16 @@ export type Database = {
         Returns: undefined
       }
       check_action_affordable: { Args: { _action_key: string }; Returns: Json }
+      check_auth_rate_limit: {
+        Args: {
+          _action: string
+          _identifier: string
+          _max_attempts: number
+          _window_seconds: number
+        }
+        Returns: Json
+      }
+      cleanup_auth_rate_limits: { Args: never; Returns: number }
       cleanup_video_editor_drafts: { Args: never; Returns: Json }
       consume_credits: {
         Args: {
