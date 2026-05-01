@@ -978,19 +978,23 @@ const Admin = () => {
             </Dialog>
 
             {/* Add credits dialog */}
-            <Dialog open={!!creditsUser} onOpenChange={(open) => !open && setCreditsUser(null)}>
+            <Dialog open={!!creditsUser} onOpenChange={(open) => { if (!open) { setCreditsUser(null); setCreditsCurrentBalance(null); } }}>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Adicionar créditos</DialogTitle>
+                  <DialogTitle>{creditsMode === 'add' ? 'Adicionar créditos' : 'Remover créditos'}</DialogTitle>
                   <DialogDescription>
-                    Ajuste o saldo de <strong>{creditsUser?.email}</strong>. Use valor negativo para remover créditos.
+                    {creditsMode === 'add' ? 'Creditar' : 'Debitar'} saldo de <strong>{creditsUser?.email}</strong>.
+                    {creditsCurrentBalance !== null && (
+                      <> Saldo atual: <strong>{creditsCurrentBalance.toLocaleString('pt-BR')}</strong> créditos.</>
+                    )}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 pt-2">
                   <div className="space-y-2">
-                    <Label>Quantidade de créditos</Label>
+                    <Label>Quantidade {creditsMode === 'add' ? 'a adicionar' : 'a remover'}</Label>
                     <Input
                       type="number"
+                      min={1}
                       value={creditsAmount}
                       onChange={e => setCreditsAmount(Number(e.target.value))}
                       placeholder="100"
@@ -1008,8 +1012,14 @@ const Admin = () => {
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setCreditsUser(null)}>Cancelar</Button>
-                  <Button onClick={handleAddCredits} disabled={creditsSaving} className="glow-primary">
-                    {creditsSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Coins className="mr-2 h-4 w-4" />} Confirmar
+                  <Button
+                    onClick={handleAddCredits}
+                    disabled={creditsSaving}
+                    variant={creditsMode === 'remove' ? 'destructive' : 'default'}
+                    className={creditsMode === 'add' ? 'glow-primary' : ''}
+                  >
+                    {creditsSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Coins className="mr-2 h-4 w-4" />}
+                    {creditsMode === 'add' ? 'Adicionar' : 'Remover'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
