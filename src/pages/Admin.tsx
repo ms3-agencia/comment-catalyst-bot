@@ -14,6 +14,7 @@ import { VideoProvidersTab } from '@/components/admin/VideoProvidersTab';
 import { VideoStylePresetsTab } from '@/components/admin/VideoStylePresetsTab';
 import { IntegrationsTab } from '@/components/admin/IntegrationsTab';
 import { NotificationsTab } from '@/components/admin/NotificationsTab';
+import { CreditAuditTab } from '@/components/admin/CreditAuditTab';
 import { Plug } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -787,12 +788,13 @@ const Admin = () => {
         </div>
 
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-11 h-auto">
+          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-12 h-auto">
             <TabsTrigger value="users"><Users size={14} className="mr-1.5" />Usuários</TabsTrigger>
             <TabsTrigger value="plans"><ShieldCheck size={14} className="mr-1.5" />Planos</TabsTrigger>
             <TabsTrigger value="packages"><Package size={14} className="mr-1.5" />Pacotes</TabsTrigger>
             <TabsTrigger value="addons"><Sparkles size={14} className="mr-1.5" />Add-ons</TabsTrigger>
             <TabsTrigger value="costs"><Coins size={14} className="mr-1.5" />Custos</TabsTrigger>
+            <TabsTrigger value="audit"><FileText size={14} className="mr-1.5" />Auditoria</TabsTrigger>
             <TabsTrigger value="video"><Clapperboard size={14} className="mr-1.5" />Vídeo</TabsTrigger>
             <TabsTrigger value="payments"><Wallet size={14} className="mr-1.5" />Mercado Pago</TabsTrigger>
             <TabsTrigger value="notifications"><Bot size={14} className="mr-1.5" />Avisos & Emails</TabsTrigger>
@@ -815,6 +817,11 @@ const Admin = () => {
           <TabsContent value="notifications" className="mt-4">
             <NotificationsTab />
           </TabsContent>
+
+          <TabsContent value="audit" className="mt-4">
+            <CreditAuditTab />
+          </TabsContent>
+
 
 
           <TabsContent value="users" className="mt-4">

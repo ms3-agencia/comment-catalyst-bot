@@ -274,6 +274,48 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_audit_log: {
+        Row: {
+          actor_email: string | null
+          actor_user_id: string | null
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at: string
+          id: string
+          operation: string
+          reason: string | null
+          target_email: string | null
+          target_user_id: string
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_user_id?: string | null
+          amount: number
+          balance_after: number
+          balance_before: number
+          created_at?: string
+          id?: string
+          operation: string
+          reason?: string | null
+          target_email?: string | null
+          target_user_id: string
+        }
+        Update: {
+          actor_email?: string | null
+          actor_user_id?: string | null
+          amount?: number
+          balance_after?: number
+          balance_before?: number
+          created_at?: string
+          id?: string
+          operation?: string
+          reason?: string | null
+          target_email?: string | null
+          target_user_id?: string
+        }
+        Relationships: []
+      }
       credit_packages: {
         Row: {
           created_at: string
