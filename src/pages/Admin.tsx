@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2, CreditCard, Package, Coins, Wallet, Plus, Pencil, Palette, Clapperboard, FileText, Clock, Sparkles } from 'lucide-react';
+import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, ArrowUpCircle, ArrowDownCircle, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2, CreditCard, Package, Coins, Wallet, Plus, Pencil, Palette, Clapperboard, FileText, Clock, Sparkles } from 'lucide-react';
 import { BrandingTab } from '@/components/admin/BrandingTab';
 import { AddonsTab } from '@/components/admin/AddonsTab';
 import { VideoProvidersTab } from '@/components/admin/VideoProvidersTab';
@@ -641,16 +641,29 @@ const Admin = () => {
       toast({ title: 'Informe um valor maior que zero', variant: 'destructive' });
       return;
     }
-    const delta = creditsMode === 'add' ? Math.trunc(raw) : -Math.trunc(raw);
-    if (creditsMode === 'remove' && creditsCurrentBalance !== null && raw > creditsCurrentBalance) {
-      toast({
-        title: 'Saldo insuficiente',
-        description: `Usuário tem apenas ${creditsCurrentBalance} créditos.`,
-        variant: 'destructive',
-      });
-      return;
-    }
     setCreditsSaving(true);
+
+    // Para remoção, recarrega o saldo atual do servidor para evitar negativar (CHECK constraint)
+    if (creditsMode === 'remove') {
+      const { data: latest } = await supabase
+        .from('user_credits')
+        .select('balance')
+        .eq('user_id', creditsUser.user_id)
+        .maybeSingle();
+      const currentBalance = latest?.balance ?? 0;
+      setCreditsCurrentBalance(currentBalance);
+      if (raw > currentBalance) {
+        setCreditsSaving(false);
+        toast({
+          title: 'Saldo insuficiente',
+          description: `Usuário tem apenas ${currentBalance} créditos. Não é possível deixar o saldo negativo.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
+    const delta = creditsMode === 'add' ? Math.trunc(raw) : -Math.trunc(raw);
     const { error } = await supabase.rpc('admin_add_credits', {
       _user_id: creditsUser.user_id,
       _amount: delta,
@@ -658,7 +671,14 @@ const Admin = () => {
     });
     setCreditsSaving(false);
     if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      const isCheck = /balance_check|check constraint/i.test(error.message || '');
+      toast({
+        title: isCheck ? 'Saldo insuficiente' : 'Erro',
+        description: isCheck
+          ? 'Não é possível remover mais créditos do que o usuário possui.'
+          : error.message,
+        variant: 'destructive',
+      });
     } else {
       toast({ title: creditsMode === 'add' ? `+${raw} créditos adicionados` : `-${raw} créditos removidos` });
       setCreditsUser(null);
@@ -868,10 +888,7 @@ const Admin = () => {
                                   <KeyRound className="mr-2 h-4 w-4" /> Mudar senha
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => openCreditsDialog(u, 'add')}>
-                                  <Coins className="mr-2 h-4 w-4" /> Adicionar créditos
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => openCreditsDialog(u, 'remove')}>
-                                  <Coins className="mr-2 h-4 w-4" /> Remover créditos
+                                  <Coins className="mr-2 h-4 w-4" /> Créditos
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => openLogs(u)}>
                                   <FileText className="mr-2 h-4 w-4" /> Logs
@@ -981,9 +998,9 @@ const Admin = () => {
             <Dialog open={!!creditsUser} onOpenChange={(open) => { if (!open) { setCreditsUser(null); setCreditsCurrentBalance(null); } }}>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{creditsMode === 'add' ? 'Adicionar créditos' : 'Remover créditos'}</DialogTitle>
+                  <DialogTitle className="flex items-center gap-2"><Coins className="h-5 w-5 text-primary" /> Créditos</DialogTitle>
                   <DialogDescription>
-                    {creditsMode === 'add' ? 'Creditar' : 'Debitar'} saldo de <strong>{creditsUser?.email}</strong>.
+                    Ajustar saldo de <strong>{creditsUser?.email}</strong>.
                     {creditsCurrentBalance !== null && (
                       <> Saldo atual: <strong>{creditsCurrentBalance.toLocaleString('pt-BR')}</strong> créditos.</>
                     )}
@@ -991,15 +1008,39 @@ const Admin = () => {
                 </DialogHeader>
                 <div className="space-y-4 pt-2">
                   <div className="space-y-2">
-                    <Label>Quantidade {creditsMode === 'add' ? 'a adicionar' : 'a remover'}</Label>
+                    <Label>Ação</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant={creditsMode === 'add' ? 'default' : 'outline'}
+                        className={creditsMode === 'add' ? 'glow-primary' : ''}
+                        onClick={() => setCreditsMode('add')}
+                      >
+                        <ArrowUpCircle className="mr-2 h-4 w-4" /> Adicionar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={creditsMode === 'remove' ? 'destructive' : 'outline'}
+                        onClick={() => setCreditsMode('remove')}
+                      >
+                        <ArrowDownCircle className="mr-2 h-4 w-4" /> Remover
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Quantidade</Label>
                     <Input
                       type="number"
                       min={1}
+                      max={creditsMode === 'remove' && creditsCurrentBalance !== null ? creditsCurrentBalance : undefined}
                       value={creditsAmount}
                       onChange={e => setCreditsAmount(Number(e.target.value))}
                       placeholder="100"
                       autoFocus
                     />
+                    {creditsMode === 'remove' && creditsCurrentBalance !== null && creditsAmount > creditsCurrentBalance && (
+                      <p className="text-xs text-destructive">Valor maior que o saldo disponível ({creditsCurrentBalance}).</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Descrição</Label>
@@ -1014,12 +1055,17 @@ const Admin = () => {
                   <Button variant="outline" onClick={() => setCreditsUser(null)}>Cancelar</Button>
                   <Button
                     onClick={handleAddCredits}
-                    disabled={creditsSaving}
+                    disabled={
+                      creditsSaving ||
+                      !creditsAmount ||
+                      creditsAmount <= 0 ||
+                      (creditsMode === 'remove' && creditsCurrentBalance !== null && creditsAmount > creditsCurrentBalance)
+                    }
                     variant={creditsMode === 'remove' ? 'destructive' : 'default'}
                     className={creditsMode === 'add' ? 'glow-primary' : ''}
                   >
                     {creditsSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Coins className="mr-2 h-4 w-4" />}
-                    {creditsMode === 'add' ? 'Adicionar' : 'Remover'}
+                    Confirmar {creditsMode === 'add' ? 'adição' : 'remoção'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
