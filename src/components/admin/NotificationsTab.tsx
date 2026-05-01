@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, Mail, Bell, Send, Server, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { GmailAppPasswordTutorial } from './GmailAppPasswordTutorial';
 
 type EmailTemplate = {
   id: string;
