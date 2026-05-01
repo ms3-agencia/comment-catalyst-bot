@@ -85,6 +85,8 @@ const Admin = () => {
   const [stats, setStats] = useState({ users: 0, projects: 0, comments: 0 });
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<string>('users');
+  const [integrationsTab, setIntegrationsTab] = useState<'connectors' | 'payments' | 'settings'>('connectors');
   const [editUser, setEditUser] = useState<UserProfile | null>(null);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
@@ -787,8 +789,19 @@ const Admin = () => {
           </Card>
         </div>
 
-        <Tabs defaultValue="users" className="w-full">
-          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-12 h-auto">
+        <Tabs
+          value={activeTab}
+          className="w-full"
+          onValueChange={(v) => {
+            setActiveTab(v);
+            if (v === 'integrations') setIntegrationsTab('connectors');
+            else if (v === 'payments') setIntegrationsTab('payments');
+            else if (v === 'settings') setIntegrationsTab('settings');
+            else setIntegrationsTab('connectors');
+          }}
+        >
+
+          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-10 h-auto">
             <TabsTrigger value="users"><Users size={14} className="mr-1.5" />Usuários</TabsTrigger>
             <TabsTrigger value="plans"><ShieldCheck size={14} className="mr-1.5" />Planos</TabsTrigger>
             <TabsTrigger value="packages"><Package size={14} className="mr-1.5" />Pacotes</TabsTrigger>
@@ -796,11 +809,15 @@ const Admin = () => {
             <TabsTrigger value="costs"><Coins size={14} className="mr-1.5" />Custos</TabsTrigger>
             <TabsTrigger value="audit"><FileText size={14} className="mr-1.5" />Auditoria</TabsTrigger>
             <TabsTrigger value="video"><Clapperboard size={14} className="mr-1.5" />Vídeo</TabsTrigger>
-            <TabsTrigger value="payments"><Wallet size={14} className="mr-1.5" />Mercado Pago</TabsTrigger>
             <TabsTrigger value="notifications"><Bot size={14} className="mr-1.5" />Avisos & Emails</TabsTrigger>
-            <TabsTrigger value="integrations"><Plug size={14} className="mr-1.5" />Integrações</TabsTrigger>
+            <TabsTrigger
+              value="integrations"
+              data-active-sub={integrationsTab !== 'connectors' ? 'true' : undefined}
+              className="data-[active-sub=true]:bg-primary/10 data-[active-sub=true]:text-primary"
+            >
+              <Plug size={14} className="mr-1.5" />Integrações
+            </TabsTrigger>
             <TabsTrigger value="branding"><Palette size={14} className="mr-1.5" />Personalização</TabsTrigger>
-            <TabsTrigger value="settings"><Key size={14} className="mr-1.5" />APIs & IA</TabsTrigger>
           </TabsList>
 
           <TabsContent value="video" className="mt-4 space-y-6">
@@ -810,9 +827,7 @@ const Admin = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="integrations" className="mt-4">
-            <IntegrationsTab />
-          </TabsContent>
+          {/* Sub-abas de Integrações são renderizadas dentro do TabsContent value="integrations" abaixo */}
 
           <TabsContent value="notifications" className="mt-4">
             <NotificationsTab />
@@ -1430,8 +1445,54 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          {/* MERCADO PAGO */}
+          {/* INTEGRAÇÕES (com sub-abas: Conectores, Mercado Pago, APIs & IA) */}
+          <TabsContent value="integrations" className="mt-4 space-y-4">
+            <Card className="glass p-2">
+              <div className="flex flex-wrap gap-1">
+                <Button
+                  size="sm"
+                  variant={integrationsTab === 'connectors' ? 'default' : 'ghost'}
+                  onClick={() => setActiveTab('integrations')}
+                  className="gap-1.5"
+                >
+                  <Plug size={14} /> Conectores
+                </Button>
+                <Button
+                  size="sm"
+                  variant={integrationsTab === 'payments' ? 'default' : 'ghost'}
+                  onClick={() => setActiveTab('payments')}
+                  className="gap-1.5"
+                >
+                  <Wallet size={14} /> Mercado Pago
+                </Button>
+                <Button
+                  size="sm"
+                  variant={integrationsTab === 'settings' ? 'default' : 'ghost'}
+                  onClick={() => setActiveTab('settings')}
+                  className="gap-1.5"
+                >
+                  <Key size={14} /> APIs & IA
+                </Button>
+              </div>
+            </Card>
+            {integrationsTab === 'connectors' && <IntegrationsTab />}
+          </TabsContent>
+
+          {/* MERCADO PAGO (sub-aba de Integrações) */}
           <TabsContent value="payments" className="mt-4 space-y-4">
+            <Card className="glass p-2">
+              <div className="flex flex-wrap gap-1">
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('integrations')} className="gap-1.5">
+                  <Plug size={14} /> Conectores
+                </Button>
+                <Button size="sm" variant="default" className="gap-1.5">
+                  <Wallet size={14} /> Mercado Pago
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('settings')} className="gap-1.5">
+                  <Key size={14} /> APIs & IA
+                </Button>
+              </div>
+            </Card>
             <Card className="glass p-6 space-y-5">
               <div>
                 <h3 className="font-heading text-lg font-bold flex items-center gap-2"><Wallet size={20} className="text-primary" /> Integração Mercado Pago</h3>
@@ -1479,7 +1540,21 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="settings" className="mt-4">
+          {/* APIs & IA (sub-aba de Integrações) */}
+          <TabsContent value="settings" className="mt-4 space-y-4">
+            <Card className="glass p-2">
+              <div className="flex flex-wrap gap-1">
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('integrations')} className="gap-1.5">
+                  <Plug size={14} /> Conectores
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('payments')} className="gap-1.5">
+                  <Wallet size={14} /> Mercado Pago
+                </Button>
+                <Button size="sm" variant="default" className="gap-1.5">
+                  <Key size={14} /> APIs & IA
+                </Button>
+              </div>
+            </Card>
             <Card className="glass p-6 space-y-6">
               <div>
                 <h3 className="font-heading text-lg font-bold flex items-center gap-2">
