@@ -53,9 +53,14 @@ export default function EbookEditor() {
       if ((data as any)?.error) throw new Error((data as any).error);
       toast({ title: section === 'introduction' ? 'Introdução gerada!' : 'Conclusão gerada!' });
       await load();
+      if (!silent) {
+        setOverlay({ stage: 'done', title: 'Pronto!', subtitle: ebook?.title, progress: 100 });
+        setTimeout(() => setOverlay(null), 700);
+      }
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
-    } finally { setBusy(null); if (!silent) setOverlay(null); }
+      if (!silent) setOverlay(null);
+    } finally { setBusy(null); }
   };
 
   const generateChapter = async (n: number, silent = false) => {
@@ -71,34 +76,41 @@ export default function EbookEditor() {
       toast({ title: `Capítulo ${n} gerado!` });
       await load();
       setActiveChapter(n);
+      if (!silent) {
+        setOverlay({ stage: 'done', title: `Capítulo ${n} pronto!`, subtitle: ch?.title, progress: 100 });
+        setTimeout(() => setOverlay(null), 700);
+      }
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
-    } finally { setBusy(null); if (!silent) setOverlay(null); }
+      if (!silent) setOverlay(null);
+    } finally { setBusy(null); }
   };
 
   const generateAll = async () => {
     const pendingChapters = chapters.filter(c => c.status !== 'completed');
     const sectionsPending = (ebook?.introduction ? 0 : 1) + (ebook?.conclusion ? 0 : 1);
     const total = pendingChapters.length + sectionsPending;
+    if (total === 0) return;
     let done = 0;
-    setOverlay({ stage: 'batch', title: 'Gerando tudo que falta', subtitle: ebook?.title, current: 0, total });
+    const pct = () => Math.round((done / total) * 100);
+    setOverlay({ stage: 'batch', title: 'Gerando tudo que falta', subtitle: ebook?.title, current: done, total, progress: pct() });
     try {
       for (const c of pendingChapters) {
-        setOverlay({ stage: 'batch', title: `Capítulo ${c.chapter_number}`, subtitle: c.title, current: done, total });
+        setOverlay({ stage: 'batch', title: `Capítulo ${c.chapter_number}`, subtitle: c.title, current: done, total, progress: pct() });
         await generateChapter(c.chapter_number, true);
         done++;
       }
       if (!ebook?.introduction) {
-        setOverlay({ stage: 'batch', title: 'Introdução', subtitle: ebook?.title, current: done, total });
+        setOverlay({ stage: 'batch', title: 'Introdução', subtitle: ebook?.title, current: done, total, progress: pct() });
         await generateSection('introduction', true);
         done++;
       }
       if (!ebook?.conclusion) {
-        setOverlay({ stage: 'batch', title: 'Conclusão', subtitle: ebook?.title, current: done, total });
+        setOverlay({ stage: 'batch', title: 'Conclusão', subtitle: ebook?.title, current: done, total, progress: pct() });
         await generateSection('conclusion', true);
         done++;
       }
-      setOverlay({ stage: 'done', title: 'eBook completo!', current: total, total });
+      setOverlay({ stage: 'done', title: 'eBook completo!', current: total, total, progress: 100 });
       setTimeout(() => setOverlay(null), 1200);
     } catch {
       setOverlay(null);
