@@ -27,6 +27,12 @@ const ConfirmEmail = () => {
         });
         if (error || !data?.success) {
           const err = (data?.error || '').toString();
+          if (err === 'rate_limit_exceeded') {
+            const secs = Number((data as any)?.retry_after_seconds || 0);
+            toast.error((data as any)?.message || 'Muitas tentativas. Aguarde alguns minutos.');
+            setStatus('error');
+            return;
+          }
           if (err === 'expired_token') setStatus('expired');
           else if (err === 'invalid_token' || err === 'missing_token') setStatus('invalid');
           else setStatus('error');
