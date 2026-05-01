@@ -107,3 +107,94 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { scrollbar-width: none; }
 }
+
+/* ===================== Editor de eBook (TipTap) ===================== */
+.ebook-prose {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  color: hsl(var(--foreground));
+}
+.ebook-prose h1,
+.ebook-prose h2,
+.ebook-prose h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  color: hsl(var(--foreground));
+  letter-spacing: -0.02em;
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+  line-height: 1.25;
+}
+.ebook-prose h1 { font-size: 2rem; font-weight: 700; }
+.ebook-prose h2 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid hsl(var(--border));
+}
+.ebook-prose h3 { font-size: 1.25rem; font-weight: 600; color: hsl(var(--primary)); }
+.ebook-prose p { margin: 0.85em 0; }
+.ebook-prose strong { color: hsl(var(--foreground)); font-weight: 700; }
+.ebook-prose em { font-style: italic; }
+.ebook-prose a { color: hsl(var(--primary)); text-decoration: underline; text-underline-offset: 3px; }
+.ebook-prose ul,
+.ebook-prose ol { margin: 0.8em 0; padding-left: 1.6em; }
+.ebook-prose ul { list-style: disc; }
+.ebook-prose ol { list-style: decimal; }
+.ebook-prose ul li::marker { color: hsl(var(--primary)); }
+.ebook-prose ol li::marker { color: hsl(var(--primary)); font-weight: 600; }
+.ebook-prose li { margin: 0.35em 0; }
+.ebook-prose li > p { margin: 0.2em 0; }
+.ebook-prose blockquote {
+  border-left: 3px solid hsl(var(--primary));
+  background: hsl(var(--primary) / 0.06);
+  padding: 0.8em 1.1em;
+  margin: 1.2em 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  font-style: italic;
+  color: hsl(var(--foreground) / 0.9);
+}
+.ebook-prose code {
+  background: hsl(var(--muted));
+  padding: 0.15em 0.4em;
+  border-radius: 0.3rem;
+  font-size: 0.9em;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  color: hsl(var(--primary));
+}
+.ebook-prose pre {
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  padding: 1em;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1.2em 0;
+}
+.ebook-prose pre code { background: transparent; padding: 0; color: inherit; }
+.ebook-prose hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(to right, transparent, hsl(var(--border)), transparent);
+  margin: 2em 0;
+}
+.ebook-prose img {
+  border-radius: 0.5rem;
+  margin: 1.5em auto;
+  display: block;
+  box-shadow: 0 8px 24px -8px hsl(0 0% 0% / 0.5);
+  border: 1px solid hsl(var(--border));
+}
+.ebook-prose mark {
+  padding: 0.05em 0.25em;
+  border-radius: 0.25rem;
+  color: hsl(220 20% 4%);
+}
+/* Placeholder ProseMirror */
+.ebook-prose.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: hsl(var(--muted-foreground));
+  float: left;
+  pointer-events: none;
+  height: 0;
+}
+
