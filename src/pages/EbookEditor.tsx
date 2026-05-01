@@ -169,6 +169,7 @@ export default function EbookEditor() {
         subtitle={overlay?.subtitle}
         current={overlay?.current}
         total={overlay?.total}
+        progress={overlay?.progress}
       />
       <div className="max-w-7xl mx-auto space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
