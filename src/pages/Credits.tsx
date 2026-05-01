@@ -79,11 +79,45 @@ const Credits = () => {
     }
   };
 
-  const handleUpgrade = (plan: Plan) => {
-    toast({
-      title: 'Upgrade de plano',
-      description: `Para fazer upgrade ao plano ${plan.display_name}, contate o administrador. Em breve o upgrade será automático.`,
-    });
+  const handleUpgrade = async (plan: Plan) => {
+    setBuying(`plan:${plan.plan}`);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-mp-preference', {
+        body: { plan: plan.plan },
+      });
+
+      let serverError: string | null = null;
+      if (error) {
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx && typeof ctx.json === 'function') {
+            const body = await ctx.json();
+            serverError = body?.error || body?.message || null;
+          }
+        } catch { /* ignore */ }
+        throw new Error(serverError || error.message || 'Falha ao iniciar pagamento');
+      }
+
+      if (data?.init_point) {
+        window.location.href = data.init_point;
+      } else if (data?.error) {
+        throw new Error(data.error);
+      } else {
+        throw new Error('Resposta inválida do servidor');
+      }
+    } catch (err: any) {
+      const msg = err.message || '';
+      const isNotConfigured = /mercado\s*pago.*n[ãa]o\s*configurado/i.test(msg);
+      toast({
+        title: 'Pagamento por cartão indisponível',
+        description: isNotConfigured
+          ? 'O Mercado Pago ainda não foi configurado pelo administrador. Por favor, contate o suporte.'
+          : msg || 'Tente novamente em instantes.',
+        variant: 'destructive',
+      });
+    } finally {
+      setBuying(null);
+    }
   };
 
   const balance = credits?.balance ?? 0;
@@ -147,10 +181,14 @@ const Credits = () => {
                   <Button
                     className="w-full mt-5"
                     variant={current ? 'outline' : popular ? 'default' : 'outline'}
-                    disabled={current}
+                    disabled={current || buying === `plan:${p.plan}`}
                     onClick={() => !current && handleUpgrade(p)}
                   >
-                    {current ? 'Plano ativo' : 'Fazer upgrade'}
+                    {current
+                      ? 'Plano ativo'
+                      : buying === `plan:${p.plan}`
+                        ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando</>
+                        : 'Fazer upgrade'}
                   </Button>
                 </Card>
               );

@@ -29,9 +29,10 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const packageId = body?.package_id as string | undefined;
     const addonId = body?.addon_id as string | undefined;
+    const targetPlan = body?.plan as "free" | "pro" | "enterprise" | undefined;
 
-    if (!packageId && !addonId) {
-      return new Response(JSON.stringify({ error: "package_id or addon_id is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!packageId && !addonId && !targetPlan) {
+      return new Response(JSON.stringify({ error: "package_id, addon_id or plan is required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const { data: tokenSetting } = await admin.from("app_settings").select("value").eq("key", "mercadopago_access_token").maybeSingle();
@@ -48,7 +49,43 @@ Deno.serve(async (req) => {
     let itemPrice = 0;
     let backPath = "/dashboard/credits";
 
-    if (addonId) {
+    if (targetPlan) {
+      const { data: profile } = await admin.from("profiles").select("plan").eq("user_id", user.id).maybeSingle();
+      if (profile?.plan === targetPlan) {
+        return new Response(JSON.stringify({ error: "Você já está neste plano" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { data: planConfig, error: planErr } = await admin
+        .from("plan_configs")
+        .select("plan, display_name, price_brl, monthly_credits")
+        .eq("plan", targetPlan)
+        .maybeSingle();
+
+      if (planErr || !planConfig) {
+        return new Response(JSON.stringify({ error: "Plano não encontrado" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      if (Number(planConfig.price_brl) <= 0) {
+        return new Response(JSON.stringify({ error: "Este plano não possui pagamento online" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      const { data: o, error: orderErr } = await admin.from("payment_orders").insert({
+        user_id: user.id,
+        order_type: "plan",
+        target_plan: targetPlan,
+        amount_brl: planConfig.price_brl,
+        credits: 0,
+        status: "pending",
+      }).select().single();
+
+      if (orderErr || !o) {
+        return new Response(JSON.stringify({ error: orderErr?.message || "Falha ao criar ordem" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      order = o;
+      itemTitle = `Upgrade de plano: ${planConfig.display_name}`;
+      itemPrice = Number(planConfig.price_brl);
+    } else if (addonId) {
       const { data: addon, error: addonErr } = await admin.from("addons").select("*").eq("id", addonId).eq("is_active", true).maybeSingle();
       if (addonErr || !addon) {
         return new Response(JSON.stringify({ error: "Add-on não encontrado" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
