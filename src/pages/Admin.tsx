@@ -799,6 +799,9 @@ const Admin = () => {
             setActiveTab(v);
             if (v === 'integrations') setIntegrationsTab('connectors');
             else if (v === 'payments') setIntegrationsTab('payments');
+            else if (v === 'youtube_settings') setIntegrationsTab('youtube_settings');
+            else if (v === 'ai_providers') setIntegrationsTab('ai_providers');
+            else if (v === 'video_ai_integrations') setIntegrationsTab('video_ai_integrations');
             else if (v === 'settings') setIntegrationsTab('settings');
             else setIntegrationsTab('connectors');
           }}
