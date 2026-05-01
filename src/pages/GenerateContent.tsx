@@ -393,14 +393,12 @@ const GenerateContent = () => {
   const handleGenerate = async () => {
     if (!project || !network || !contentType) return;
 
-    // Pre-check credits (server-authoritative): generate_content cost vs balance
+    // Estimated total cost = quantity × per-item cost (texto). Imagens são geradas sob demanda.
     const aff = await checkAffordable('generate_content');
-    if (!aff.affordable) {
-      toast({
-        title: 'Créditos insuficientes',
-        description: `Saldo atual: ${aff.balance} créditos. Esta ação requer ${aff.cost}.`,
-        variant: 'destructive',
-      });
+    const perItem = aff.cost || 2;
+    const totalEstimated = perItem * quantity;
+    if (!aff.affordable || aff.balance < totalEstimated) {
+      notifyInsufficient(totalEstimated, aff.balance);
       return;
     }
 
@@ -416,8 +414,11 @@ const GenerateContent = () => {
       });
       if (error) throw error;
       if ((data as any)?.error) {
-        const isCredit = !!(data as any).insufficient_credits;
-        toast({ title: isCredit ? 'Créditos insuficientes' : 'Erro ao gerar', description: (data as any).error, variant: 'destructive' });
+        if ((data as any).insufficient_credits) {
+          notifyInsufficient();
+        } else {
+          toast({ title: 'Erro ao gerar', description: (data as any).error, variant: 'destructive' });
+        }
         return;
       }
       setResults((data as any).contents || []);
