@@ -37,6 +37,7 @@ export default function EbooksPage() {
   const [topic, setTopic] = useState('');
   const [projectId, setProjectId] = useState<string>('none');
   const [generating, setGenerating] = useState(false);
+  const [genDone, setGenDone] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -66,11 +67,13 @@ export default function EbooksPage() {
       if ((data as any)?.error) throw new Error((data as any).message || (data as any).error);
       toast({ title: 'Estrutura gerada!', description: 'Vamos ao editor.' });
       await refreshEbooks();
-      nav(`/dashboard/ebooks/${(data as any).ebook_id}`);
+      setGenDone(true);
+      const ebookId = (data as any).ebook_id;
+      setTimeout(() => nav(`/dashboard/ebooks/${ebookId}`), 700);
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
-    } finally {
       setGenerating(false);
+      setGenDone(false);
     }
   };
 
@@ -99,9 +102,11 @@ export default function EbooksPage() {
     <DashboardLayout>
       <EbookGenerationOverlay
         visible={generating}
-        stage="outline"
-        title="Estruturando seu eBook"
+        stage={genDone ? 'done' : 'outline'}
+        title={genDone ? 'Estrutura pronta!' : 'Estruturando seu eBook'}
         subtitle={topic}
+        progress={genDone ? 100 : undefined}
+        estimatedMs={30_000}
       />
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -216,6 +221,7 @@ function EbookChatTab({ onCreated }: { onCreated: (ebookId: string) => void }) {
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [creatingDone, setCreatingDone] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }, [messages]);
@@ -303,20 +309,29 @@ function EbookChatTab({ onCreated }: { onCreated: (ebookId: string) => void }) {
           });
           if (error) throw new Error(error.message);
           toast({ title: 'eBook criado!', description: 'Indo para o editor…' });
-          onCreated((outline as any).ebook_id);
+          setCreatingDone(true);
+          const ebookId = (outline as any).ebook_id;
+          setTimeout(() => onCreated(ebookId), 700);
         }
       }
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+      setCreating(false);
+      setCreatingDone(false);
     } finally {
       setStreaming(false);
-      setCreating(false);
     }
   };
 
   return (
     <>
-      <EbookGenerationOverlay visible={creating} stage="outline" title="Criando seu eBook a partir do chat" />
+      <EbookGenerationOverlay
+        visible={creating}
+        stage={creatingDone ? 'done' : 'outline'}
+        title={creatingDone ? 'Estrutura pronta!' : 'Criando seu eBook a partir do chat'}
+        progress={creatingDone ? 100 : undefined}
+        estimatedMs={30_000}
+      />
       <Card className="flex flex-col h-[600px]">
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.map((m, i) => (
