@@ -123,7 +123,10 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
     try {
       const { data: u } = await supabase.auth.getUser();
       if (!u.user) throw new Error('Não autenticado');
-      const payload: any = { ...DEFAULT_CFG, name: `Novo template ${configs.length + 1}`, is_default: false, user_id: u.user.id };
+      const customName = (current?.name || '').trim();
+      const isDefaultName = !customName || customName === 'Meu template' || /^Novo template \d+$/.test(customName);
+      const finalName = isDefaultName ? `Novo template ${configs.length + 1}` : customName;
+      const payload: any = { ...DEFAULT_CFG, ...(current || {}), name: finalName, is_default: false, user_id: u.user.id };
       delete payload.id;
       const { data, error } = await supabase.from('ebook_configs').insert(payload).select().single();
       if (error) throw error;
