@@ -456,6 +456,19 @@ export default function ContentHistory() {
                   <Wand2 className="h-4 w-4" /> Gerar imagem
                 </Button>
               )}
+              {activePost.content_type === 'carrossel' && Array.isArray(activePost.slides) && activePost.slides.some(s => s.image_url) && (
+                <Button
+                  variant="outline"
+                  className="border-primary/40 hover:bg-primary/10"
+                  onClick={() => downloadCarouselZip(activePost)}
+                  disabled={zipDownloadingId === activePost.id}
+                >
+                  {zipDownloadingId === activePost.id
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Download className="h-4 w-4 text-primary" />}
+                  Baixar todas as imagens (ZIP) — {activePost.slides.filter(s => s.image_url).length}/{activePost.slides.length}
+                </Button>
+              )}
               {activePost.script && activePost.script.trim() && (
                 <Button
                   variant="outline"
