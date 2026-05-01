@@ -29,6 +29,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const { hasAddon } = useUserAddons();
   const pdfAddonActive = hasAddon('pdf-customization');
   const logoAddonActive = hasAddon('custom-logo');
+  const ebookAddonActive = hasAddon('ebook-generator') || hasAddon('ebook-premium');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Fecha sidebar ao navegar (mobile)
