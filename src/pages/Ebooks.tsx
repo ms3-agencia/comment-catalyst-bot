@@ -33,6 +33,7 @@ export default function EbooksPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [ebooks, setEbooks] = useState<any[]>([]);
   const [selectedConfig, setSelectedConfig] = useState<EbookConfig | null>(null);
+  const [availableConfigs, setAvailableConfigs] = useState<EbookConfig[]>([]);
 
   // Avatar tab
   const [topic, setTopic] = useState('');
@@ -40,15 +41,23 @@ export default function EbooksPage() {
   const [generating, setGenerating] = useState(false);
   const [genDone, setGenDone] = useState(false);
 
+  const loadConfigs = async () => {
+    // RLS permite ler templates globais (admin) + do próprio usuário
+    const { data } = await supabase.from('ebook_configs').select('*')
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: false });
+    const list = (data || []) as EbookConfig[];
+    setAvailableConfigs(list);
+    setSelectedConfig(prev => prev || list.find(c => c.is_default) || list[0] || null);
+  };
+
   useEffect(() => {
     if (!user) return;
     supabase.from('projects').select('id, name, ai_profile').eq('user_id', user.id).order('created_at', { ascending: false })
       .then(({ data }) => setProjects((data || []) as any));
     supabase.from('ebooks').select('id, title, subtitle, status, created_at').eq('user_id', user.id).order('created_at', { ascending: false })
       .then(({ data }) => setEbooks(data || []));
-    // Carrega template padrão global (configurado pelo admin em /admin → Ebooks)
-    supabase.from('ebook_configs').select('*').order('is_default', { ascending: false }).order('created_at', { ascending: false }).limit(1).maybeSingle()
-      .then(({ data }) => { if (data) setSelectedConfig(data as any); });
+    loadConfigs();
   }, [user]);
 
   const refreshEbooks = async () => {
