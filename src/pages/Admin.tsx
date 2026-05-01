@@ -1177,7 +1177,7 @@ const Admin = () => {
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
-            </Dialog>
+            </AlertDialog>
 
 
             {/* Delete confirmation */}
