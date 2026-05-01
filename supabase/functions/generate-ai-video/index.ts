@@ -7,13 +7,43 @@ const corsHeaders = {
 
 type Body = { content_id?: string; script?: string; preferred_provider?: string };
 
+const normalizeVideoPrompt = (rawScript: string) => {
+  const cleaned = rawScript
+    .replace(/\r/g, '\n')
+    .replace(/^\s*(cena\s*\d+|scene\s*\d+|ato\s*\d+)\s*:?\s*$/gim, '')
+    .replace(/^\s*\[[^\]]*\]\s*$/gim, '')
+    .replace(/^\s*(imagem|texto na tela|apresentador|narra(?:ç|c)ão|voz over|locu(?:ç|c)ão|trilha sonora|sfx)\s*:\s*/gim, '')
+    .replace(/^\s*[A-ZÀ-Ú][A-ZÀ-Ú\s]{1,20}:\s*/gm, '')
+    .replace(/\b(cut to|corte para|split[- ]screen|tela dividida|transi(?:ç|c)ão|zoom in|zoom out)\b/gi, 'then')
+    .replace(/["“”]/g, '')
+    .replace(/\n+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const basePrompt = cleaned || rawScript.trim();
+  return `Single continuous cinematic shot, no cuts, no split-screen. ${basePrompt}`.slice(0, 900);
+};
+
 // Provider order of preference and metadata
 const PROVIDERS: { id: string; name: string; settingKey: string; model: string }[] = [
-  { id: 'runway', name: 'Runway ML', settingKey: 'video_ai_runway_key', model: 'gen3a_turbo' },
+  { id: 'runway', name: 'Runway ML', settingKey: 'video_ai_runway_key', model: 'gen4.5' },
   { id: 'replicate', name: 'Replicate', settingKey: 'video_ai_replicate_key', model: 'stability-ai/stable-video-diffusion' },
   { id: 'stability', name: 'Stability AI', settingKey: 'video_ai_stability_key', model: 'stable-video-diffusion' },
   { id: 'freesoragenerator', name: 'Free Sora Generator', settingKey: 'video_ai_freesoragenerator_key', model: 'sora-1' },
 ];
+
+const getProviderPriority = (preferredProvider?: string) => {
+  const scriptOnlyPriority = ['replicate', 'stability', 'runway', 'freesoragenerator'];
+  const byId = new Map(PROVIDERS.map((provider) => [provider.id, provider]));
+  const ordered = scriptOnlyPriority.map((id) => byId.get(id)).filter(Boolean) as typeof PROVIDERS;
+
+  if (!preferredProvider) return ordered;
+
+  const preferred = byId.get(preferredProvider);
+  if (!preferred) return ordered;
+
+  return [preferred, ...ordered.filter((provider) => provider.id !== preferred.id)];
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -64,15 +94,12 @@ Deno.serve(async (req) => {
     const keyMap = new Map<string, string>();
     (settings || []).forEach(s => { if (s.value) keyMap.set(s.key, s.value); });
 
-    const available = PROVIDERS.filter(p => keyMap.get(p.settingKey));
+    const available = getProviderPriority(body.preferred_provider).filter(p => keyMap.get(p.settingKey));
     if (available.length === 0) {
       return new Response(JSON.stringify({ error: 'Nenhum provedor de IA de vídeo configurado. Configure em Admin → Integrações → IA de Vídeos.' }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // Choose provider (preferred or first available)
-    const chosen = (body.preferred_provider && available.find(p => p.id === body.preferred_provider)) || available[0];
 
     // Consume credits
     const { data: costRow } = await admin
@@ -85,7 +112,7 @@ Deno.serve(async (req) => {
     const { data: consumeRes, error: consumeErr } = await userClient.rpc('consume_credits', {
       _amount: cost,
       _action_key: 'generate_ai_video',
-      _description: `Geração de vídeo via ${chosen.name}`,
+        _description: `Geração de vídeo via IA de vídeo`,
       _reference_id: contentId,
     });
     if (consumeErr) throw consumeErr;
@@ -95,33 +122,40 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Create log entry (pending)
-    const { data: logRow } = await admin
-      .from('video_generation_log')
-      .insert({
-        user_id: user.id,
-        user_email: user.email,
-        content_id: contentId,
-        provider: chosen.id,
-        model: chosen.model,
-        script,
-        status: 'pending',
-        credits_spent: cost,
-        metadata: { provider_name: chosen.name },
-      })
-      .select('id')
-      .single();
-    const logId = logRow?.id;
-
-    // Call provider — implementations are best-effort; on failure we record as failed
     let videoUrl: string | null = null;
     let externalJobId: string | null = null;
     let errorMessage: string | null = null;
     let finalStatus = 'queued';
+    let chosen = available[0];
+    let logId: string | null = null;
+    const attemptErrors: string[] = [];
 
-    try {
-      const apiKey = keyMap.get(chosen.settingKey)!;
-      if (chosen.id === 'replicate') {
+    for (const provider of available) {
+      chosen = provider;
+      videoUrl = null;
+      externalJobId = null;
+      errorMessage = null;
+      finalStatus = 'queued';
+      const { data: logRow } = await admin
+        .from('video_generation_log')
+        .insert({
+          user_id: user.id,
+          user_email: user.email,
+          content_id: contentId,
+          provider: provider.id,
+          model: provider.model,
+          script,
+          status: 'pending',
+          credits_spent: cost,
+          metadata: { provider_name: provider.name, attempt_order: attemptErrors.length + 1 },
+        })
+        .select('id')
+        .single();
+      logId = logRow?.id ?? null;
+
+      try {
+        const apiKey = keyMap.get(provider.settingKey)!;
+        if (provider.id === 'replicate') {
         // Use model-based endpoint (no version hash needed). Default to a text-to-video model.
         const modelSlug = 'minimax/video-01'; // text-to-video model on Replicate
         const r = await fetch(`https://api.replicate.com/v1/models/${modelSlug}/predictions`, {
@@ -145,21 +179,34 @@ Deno.serve(async (req) => {
         externalJobId = j.id || null;
         videoUrl = Array.isArray(j.output) ? j.output[0] : (j.output || null);
         finalStatus = videoUrl ? 'completed' : 'queued';
-      } else if (chosen.id === 'runway') {
+        } else if (provider.id === 'runway') {
+        const promptText = normalizeVideoPrompt(script);
         const r = await fetch('https://api.dev.runwayml.com/v1/image_to_video', {
           method: 'POST',
           headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'X-Runway-Version': '2024-11-06' },
-          body: JSON.stringify({ promptText: script.slice(0, 1000), model: 'gen3a_turbo' }),
+          body: JSON.stringify({
+            promptText,
+            model: provider.model,
+            ratio: '1280:720',
+            duration: 5,
+          }),
         });
-        const j = await r.json();
-        if (!r.ok) throw new Error(j?.error || 'Runway request failed');
+        const txt = await r.text();
+        let j: any = {};
+        try { j = JSON.parse(txt); } catch { j = { raw: txt }; }
+        if (!r.ok) {
+          const issues = Array.isArray(j?.issues)
+            ? j.issues.map((issue: any) => `${Array.isArray(issue?.path) ? issue.path.join('.') : 'body'}: ${issue?.message || 'inválido'}`).join('; ')
+            : null;
+          throw new Error(issues || j?.error || j?.message || j?.raw || 'Runway request failed');
+        }
         externalJobId = j.id || null;
         finalStatus = 'queued';
-      } else if (chosen.id === 'stability') {
+        } else if (provider.id === 'stability') {
         // Stability video endpoints require image input — we record as queued and return job placeholder
         finalStatus = 'queued';
         externalJobId = `stability_${Date.now()}`;
-      } else if (chosen.id === 'freesoragenerator') {
+        } else if (provider.id === 'freesoragenerator') {
         const r = await fetch('https://api.freesoragenerator.com/v1/videos/generations', {
           method: 'POST',
           headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
@@ -170,11 +217,30 @@ Deno.serve(async (req) => {
         externalJobId = j.id || j.job_id || null;
         videoUrl = j.video_url || j.url || null;
         finalStatus = videoUrl ? 'completed' : 'queued';
+        }
+      } catch (e: any) {
+        errorMessage = e?.message || String(e);
+        finalStatus = 'failed';
+        attemptErrors.push(`${provider.name}: ${errorMessage}`);
       }
-    } catch (e: any) {
-      errorMessage = e?.message || String(e);
-      finalStatus = 'failed';
-      // Refund credits on hard failure
+
+      if (logId) {
+        await admin
+          .from('video_generation_log')
+          .update({
+            status: finalStatus,
+            error_message: errorMessage,
+            video_url: videoUrl,
+            external_job_id: externalJobId,
+          })
+          .eq('id', logId);
+      }
+
+      if (finalStatus !== 'failed') break;
+    }
+
+    if (finalStatus === 'failed') {
+      errorMessage = attemptErrors.join(' | ') || 'Nenhum provedor conseguiu gerar o vídeo.';
       try {
         await admin.rpc('admin_add_credits', {
           _user_id: user.id,
@@ -182,18 +248,6 @@ Deno.serve(async (req) => {
           _description: `Estorno: falha ao gerar vídeo (${chosen.name})`,
         });
       } catch (_) { /* ignore refund errors */ }
-    }
-
-    if (logId) {
-      await admin
-        .from('video_generation_log')
-        .update({
-          status: finalStatus,
-          error_message: errorMessage,
-          video_url: videoUrl,
-          external_job_id: externalJobId,
-        })
-        .eq('id', logId);
     }
 
     return new Response(JSON.stringify({
