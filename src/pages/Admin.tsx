@@ -1279,6 +1279,19 @@ const Admin = () => {
                       <Input type="number" value={p.monthly_credits} onChange={e => updatePlan(p.id, { monthly_credits: Number(e.target.value) })} />
                     </div>
                     <div className="space-y-2">
+                      <Label className="text-xs">Limite de projetos (vazio = ilimitado)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder="Ilimitado"
+                        value={p.max_projects ?? ''}
+                        onChange={e => {
+                          const v = e.target.value.trim();
+                          updatePlan(p.id, { max_projects: v === '' ? null : Number(v) } as any);
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
                       <Label className="text-xs">Preço (R$)</Label>
                       <Input type="number" step="0.01" value={p.price_brl} onChange={e => updatePlan(p.id, { price_brl: Number(e.target.value) })} />
                     </div>
