@@ -9,13 +9,14 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, Mail, Bell, Send, Server, AlertCircle, CheckCircle2, Plus, Trash2, Megaphone, Lock, PenLine } from 'lucide-react';
+import { Loader2, Save, Mail, Bell, Send, Server, AlertCircle, CheckCircle2, Plus, Trash2, Megaphone, Lock, PenLine, ScrollText } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { GmailAppPasswordTutorial } from './GmailAppPasswordTutorial';
 import { RichTextEditor } from './RichTextEditor';
 import { TemplateRulesEditor } from './TemplateRulesEditor';
 import { BroadcastTab } from './BroadcastTab';
 import { SignaturesTab } from './SignaturesTab';
+import { EmailLogsTab } from './EmailLogsTab';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -221,6 +222,7 @@ export function NotificationsTab() {
       <Tabs defaultValue="templates" className="w-full">
         <TabsList>
           <TabsTrigger value="smtp"><Server size={14} className="mr-1.5" />SMTP</TabsTrigger>
+          <TabsTrigger value="logs"><ScrollText size={14} className="mr-1.5" />Logs de email</TabsTrigger>
           <TabsTrigger value="templates"><Mail size={14} className="mr-1.5" />Templates & regras</TabsTrigger>
           <TabsTrigger value="broadcast"><Megaphone size={14} className="mr-1.5" />Broadcasts</TabsTrigger>
           <TabsTrigger value="signatures"><PenLine size={14} className="mr-1.5" />Assinaturas</TabsTrigger>
@@ -263,6 +265,10 @@ export function NotificationsTab() {
               </Button>
             </div>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="logs" className="mt-4">
+          <EmailLogsTab />
         </TabsContent>
 
         <TabsContent value="templates" className="mt-4">
