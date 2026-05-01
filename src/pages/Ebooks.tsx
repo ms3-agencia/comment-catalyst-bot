@@ -67,11 +67,13 @@ export default function EbooksPage() {
       if ((data as any)?.error) throw new Error((data as any).message || (data as any).error);
       toast({ title: 'Estrutura gerada!', description: 'Vamos ao editor.' });
       await refreshEbooks();
-      nav(`/dashboard/ebooks/${(data as any).ebook_id}`);
+      setGenDone(true);
+      const ebookId = (data as any).ebook_id;
+      setTimeout(() => nav(`/dashboard/ebooks/${ebookId}`), 700);
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
-    } finally {
       setGenerating(false);
+      setGenDone(false);
     }
   };
 
