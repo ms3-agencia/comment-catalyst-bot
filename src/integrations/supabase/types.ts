@@ -539,6 +539,39 @@ export type Database = {
         }
         Relationships: []
       }
+      email_signatures: {
+        Row: {
+          body_html: string
+          created_at: string
+          enabled: boolean
+          id: string
+          is_default: boolean
+          logo_url: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          body_html?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          is_default?: boolean
+          logo_url?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          body_html?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          is_default?: boolean
+          logo_url?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       email_template_rules: {
         Row: {
           conditions: Json
@@ -599,6 +632,7 @@ export type Database = {
           name: string
           send_email: boolean
           send_inapp: boolean
+          signature_id: string | null
           subject: string
           trigger_type: string
           updated_at: string
@@ -616,6 +650,7 @@ export type Database = {
           name: string
           send_email?: boolean
           send_inapp?: boolean
+          signature_id?: string | null
           subject: string
           trigger_type?: string
           updated_at?: string
@@ -633,12 +668,21 @@ export type Database = {
           name?: string
           send_email?: boolean
           send_inapp?: boolean
+          signature_id?: string | null
           subject?: string
           trigger_type?: string
           updated_at?: string
           variables?: string[]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "email_templates_signature_id_fkey"
+            columns: ["signature_id"]
+            isOneToOne: false
+            referencedRelation: "email_signatures"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       generated_contents: {
         Row: {

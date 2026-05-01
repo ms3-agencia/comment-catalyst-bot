@@ -278,11 +278,28 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: branding } = await admin.from("branding_settings").select("site_name").maybeSingle();
+    const { data: branding } = await admin.from("branding_settings").select("site_name, logo_url").maybeSingle();
     const { data: appUrlSetting } = await admin.from("app_settings").select("value").eq("key", "app_base_url").maybeSingle();
+
+    // Carrega assinatura: a do template, ou a default
+    let signature: { body_html: string; logo_url: string | null } | null = null;
+    if (tpl.signature_id) {
+      const { data: sig } = await admin.from("email_signatures")
+        .select("body_html, logo_url, enabled").eq("id", tpl.signature_id).maybeSingle();
+      if (sig?.enabled) signature = { body_html: sig.body_html, logo_url: sig.logo_url };
+    }
+    if (!signature) {
+      const { data: defSig } = await admin.from("email_signatures")
+        .select("body_html, logo_url").eq("is_default", true).eq("enabled", true).maybeSingle();
+      if (defSig) signature = { body_html: defSig.body_html, logo_url: defSig.logo_url };
+    }
+
+    const logoUrl = signature?.logo_url || branding?.logo_url || "";
+
     const allVars: Record<string, any> = {
       site_name: branding?.site_name || "YCaptura",
       app_url: appUrlSetting?.value || "",
+      logo_url: logoUrl,
       ...variables,
     };
 
@@ -295,7 +312,19 @@ Deno.serve(async (req) => {
     }
 
     const subject = render(tpl.subject, allVars);
-    const html = render(tpl.body_html, allVars);
+    let bodyHtml = render(tpl.body_html, allVars);
+
+    // Anexa assinatura ao final, se houver
+    if (signature?.body_html) {
+      const sigHtml = render(signature.body_html, allVars);
+      bodyHtml = `${bodyHtml}<div style="margin-top:32px;padding-top:16px;border-top:1px solid #e2e8f0;">${sigHtml}</div>`;
+    }
+
+    // Wrapper com logo no topo (se disponível e não já incluído pelo template)
+    const html = logoUrl && !tpl.body_html.includes("{{logo_url}}")
+      ? `<div style="text-align:center;padding:24px 0;"><img src="${logoUrl}" alt="${allVars.site_name}" style="max-height:48px;max-width:200px;" /></div>${bodyHtml}`
+      : bodyHtml;
+
     const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
     if (tpl.send_inapp && resolvedUserId) {

@@ -9,12 +9,13 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, Mail, Bell, Send, Server, AlertCircle, CheckCircle2, Plus, Trash2, Megaphone, Lock } from 'lucide-react';
+import { Loader2, Save, Mail, Bell, Send, Server, AlertCircle, CheckCircle2, Plus, Trash2, Megaphone, Lock, PenLine } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { GmailAppPasswordTutorial } from './GmailAppPasswordTutorial';
 import { RichTextEditor } from './RichTextEditor';
 import { TemplateRulesEditor } from './TemplateRulesEditor';
 import { BroadcastTab } from './BroadcastTab';
+import { SignaturesTab } from './SignaturesTab';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -32,17 +33,21 @@ type EmailTemplate = {
   trigger_type: string;
   is_system: boolean;
   description?: string;
+  signature_id?: string | null;
 };
+
+type SignatureOption = { id: string; name: string; is_default: boolean };
 
 const SMTP_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_from_email', 'smtp_from_name', 'smtp_secure'];
 
-const COMMON_VARS = ['user_name', 'user_email', 'site_name', 'app_url', 'plans_url', 'payment_link', 'credits_balance', 'plan_name', 'days_left', 'renewal_date'];
+const COMMON_VARS = ['user_name', 'user_email', 'site_name', 'logo_url', 'app_url', 'plans_url', 'payment_link', 'credits_balance', 'plan_name', 'days_left', 'renewal_date'];
 
 export function NotificationsTab() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [signatures, setSignatures] = useState<SignatureOption[]>([]);
   const [smtp, setSmtp] = useState<Record<string, string>>({});
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [testEmail, setTestEmail] = useState('');
@@ -55,11 +60,13 @@ export function NotificationsTab() {
   const [newTpl, setNewTpl] = useState({ key: '', name: '', category: 'general', trigger_type: 'manual' });
 
   const loadAll = async () => {
-    const [{ data: tpls }, { data: settings }] = await Promise.all([
+    const [{ data: tpls }, { data: settings }, { data: sigs }] = await Promise.all([
       supabase.from('email_templates').select('*').order('category').order('name'),
       supabase.from('app_settings').select('key, value').in('key', SMTP_KEYS),
+      supabase.from('email_signatures').select('id, name, is_default').order('is_default', { ascending: false }).order('name'),
     ]);
     setTemplates((tpls || []) as EmailTemplate[]);
+    setSignatures((sigs || []) as SignatureOption[]);
     const s: Record<string, string> = {};
     (settings || []).forEach(r => { s[r.key] = r.value; });
     setSmtp(s);
@@ -102,6 +109,7 @@ export function NotificationsTab() {
       trigger_type: tpl.trigger_type,
       description: tpl.description,
       variables: tpl.variables,
+      signature_id: tpl.signature_id ?? null,
     }).eq('id', tpl.id);
     setSaving(false);
     if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' });
@@ -215,6 +223,7 @@ export function NotificationsTab() {
           <TabsTrigger value="smtp"><Server size={14} className="mr-1.5" />SMTP</TabsTrigger>
           <TabsTrigger value="templates"><Mail size={14} className="mr-1.5" />Templates & regras</TabsTrigger>
           <TabsTrigger value="broadcast"><Megaphone size={14} className="mr-1.5" />Broadcasts</TabsTrigger>
+          <TabsTrigger value="signatures"><PenLine size={14} className="mr-1.5" />Assinaturas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="smtp" className="mt-4">
@@ -368,6 +377,27 @@ export function NotificationsTab() {
                   </div>
 
                   <div className="space-y-1.5">
+                    <Label className="text-xs flex items-center gap-1"><PenLine size={12} /> Assinatura</Label>
+                    <Select
+                      value={active.signature_id || '__default__'}
+                      onValueChange={v => updateTemplate(active.key, { signature_id: v === '__default__' ? null : v === '__none__' ? null : v })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Usar assinatura padrão" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__default__">Usar padrão do sistema</SelectItem>
+                        {signatures.map(s => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name} {s.is_default ? '(padrão)' : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] text-muted-foreground">
+                      A assinatura é anexada ao final do email. Crie e edite na aba <strong>Assinaturas</strong>.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
                     <Label className="text-xs">Assunto</Label>
                     <Input value={active.subject} onChange={e => updateTemplate(active.key, { subject: e.target.value })} />
                   </div>
@@ -429,6 +459,10 @@ export function NotificationsTab() {
 
         <TabsContent value="broadcast" className="mt-4">
           <BroadcastTab />
+        </TabsContent>
+
+        <TabsContent value="signatures" className="mt-4">
+          <SignaturesTab />
         </TabsContent>
       </Tabs>
     </div>
