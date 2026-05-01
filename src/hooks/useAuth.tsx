@@ -90,12 +90,55 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (user) await fetchProfile(user.id);
   };
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // If token refresh failed or user signed out, clear local state to avoid sending expired JWTs
-      if (event === 'TOKEN_REFRESHED' && !session) {
-        await supabase.auth.signOut();
+  // Force a clean logout: clear local Supabase auth storage + state, then redirect to /login.
+  // Used when refresh fails or session becomes invalid mid-app.
+  const forceSignOutAndRedirect = async () => {
+    try { await closeSessionLog(); } catch { /* noop */ }
+    try { await supabase.auth.signOut({ scope: 'local' } as any); } catch { /* noop */ }
+    // Belt-and-suspenders: nuke any stale supabase auth keys from storage
+    try {
+      Object.keys(localStorage).forEach((k) => {
+        if (k.startsWith('sb-') && k.endsWith('-auth-token')) localStorage.removeItem(k);
+      });
+    } catch { /* noop */ }
+    setSession(null);
+    setUser(null);
+    setProfile(null);
+    setIsAdmin(false);
+    setLoading(false);
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      // Only redirect if user is on a protected area
+      const isPublic =
+        path === '/' ||
+        path.startsWith('/login') ||
+        path.startsWith('/register') ||
+        path.startsWith('/auth/') ||
+        path === '/install';
+      if (!isPublic) {
+        window.location.replace('/login');
       }
+    }
+  };
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Token refresh failure → kick to login
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        forceSignOutAndRedirect();
+        return;
+      }
+      if (event === 'SIGNED_OUT') {
+        // Fire-and-forget; do not await inside the callback
+        setTimeout(() => { closeSessionLog(); }, 0);
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setIsAdmin(false);
+        setLoading(false);
+        return;
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -104,9 +147,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setTimeout(() => startSessionLog(session.user.id), 0);
         }
       } else {
-        if (event === 'SIGNED_OUT') {
-          await closeSessionLog();
-        }
         setProfile(null);
         setIsAdmin(false);
       }
@@ -114,33 +154,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     (async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      // If session exists but is already expired, sign out so future requests use anon key
-      if (session?.expires_at && session.expires_at * 1000 < Date.now()) {
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-        if (refreshError || !refreshData.session) {
-          await supabase.auth.signOut();
-          setSession(null);
-          setUser(null);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (error) {
+          await forceSignOutAndRedirect();
+          return;
+        }
+
+        // No session at all — just finish loading (public pages can render)
+        if (!session) {
           setLoading(false);
           return;
         }
-        setSession(refreshData.session);
-        setUser(refreshData.session.user);
-        if (refreshData.session.user) {
+
+        // Session expired → try refresh, fall back to forced logout
+        if (session.expires_at && session.expires_at * 1000 < Date.now()) {
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError || !refreshData.session) {
+            await forceSignOutAndRedirect();
+            return;
+          }
+          setSession(refreshData.session);
+          setUser(refreshData.session.user);
           fetchProfile(refreshData.session.user.id);
           startSessionLog(refreshData.session.user.id);
+          setLoading(false);
+          return;
         }
-        setLoading(false);
-        return;
-      }
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
+
+        setSession(session);
+        setUser(session.user);
         fetchProfile(session.user.id);
         startSessionLog(session.user.id);
+        setLoading(false);
+      } catch {
+        await forceSignOutAndRedirect();
       }
-      setLoading(false);
     })();
 
     // Close session log when the tab is closed / navigated away
