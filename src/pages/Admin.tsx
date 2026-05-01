@@ -85,6 +85,7 @@ const Admin = () => {
   const [stats, setStats] = useState({ users: 0, projects: 0, comments: 0 });
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<string>('users');
   const [integrationsTab, setIntegrationsTab] = useState<'connectors' | 'payments' | 'settings'>('connectors');
   const [editUser, setEditUser] = useState<UserProfile | null>(null);
   const [editName, setEditName] = useState('');
