@@ -1524,6 +1524,9 @@ const Admin = () => {
                 <Button size="sm" variant={integrationsTab === 'video_ai_integrations' ? 'default' : 'ghost'} onClick={() => setActiveTab('video_ai_integrations')} className="gap-1.5">
                   <Clapperboard size={14} /> IA de Vídeos
                 </Button>
+                <Button size="sm" variant={integrationsTab === 'video_ai_log' ? 'default' : 'ghost'} onClick={() => setActiveTab('video_ai_log')} className="gap-1.5">
+                  <ScrollText size={14} /> Log
+                </Button>
                 <Button size="sm" variant={integrationsTab === 'payments' ? 'default' : 'ghost'} onClick={() => setActiveTab('payments')} className="gap-1.5">
                   <Wallet size={14} /> Mercado Pago
                 </Button>
