@@ -292,8 +292,7 @@ const GenerateContent = () => {
     if (!(await guardAffordable('generate_content_image'))) return;
     setImagingId(content.id);
     try {
-      const fmt = format || selectedFormat || getFormats(content.social_network, content.content_type)[0];
-      const isCarousel = content.content_type === 'carrossel' && Array.isArray(content.slides) && content.slides.length > 0;
+      const fmt = fmtPre;
 
       if (isCarousel) {
         const slides = content.slides!;
