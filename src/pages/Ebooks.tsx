@@ -309,14 +309,17 @@ function EbookChatTab({ onCreated }: { onCreated: (ebookId: string) => void }) {
           });
           if (error) throw new Error(error.message);
           toast({ title: 'eBook criado!', description: 'Indo para o editor…' });
-          onCreated((outline as any).ebook_id);
+          setCreatingDone(true);
+          const ebookId = (outline as any).ebook_id;
+          setTimeout(() => onCreated(ebookId), 700);
         }
       }
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+      setCreating(false);
+      setCreatingDone(false);
     } finally {
       setStreaming(false);
-      setCreating(false);
     }
   };
 
