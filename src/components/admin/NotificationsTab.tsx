@@ -223,6 +223,7 @@ export function NotificationsTab() {
           <TabsTrigger value="smtp"><Server size={14} className="mr-1.5" />SMTP</TabsTrigger>
           <TabsTrigger value="templates"><Mail size={14} className="mr-1.5" />Templates & regras</TabsTrigger>
           <TabsTrigger value="broadcast"><Megaphone size={14} className="mr-1.5" />Broadcasts</TabsTrigger>
+          <TabsTrigger value="signatures"><PenLine size={14} className="mr-1.5" />Assinaturas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="smtp" className="mt-4">
