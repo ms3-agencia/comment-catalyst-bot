@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Youtube, Plus, X, Loader2, MessageSquare, ThumbsUp, Sparkles, AlertTriangle } from 'lucide-react';
 import { AiProfileCard } from '@/components/AiProfileCard';
 import { useCredits } from '@/hooks/useCredits';
+import { usePlanUsage } from '@/hooks/usePlanUsage';
 
 // Translates HTTP status / known error codes into user-friendly Portuguese messages.
 const friendlyMessage = (raw: string | undefined, status?: number): string => {
