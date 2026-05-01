@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Pencil, Trash2, Loader2, Sparkles } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Sparkles, Settings, BookOpen } from 'lucide-react';
+import { EbookConfigPanel } from '@/components/ebook/EbookConfigPanel';
 import { Badge } from '@/components/ui/badge';
 
 type Addon = {
@@ -40,6 +41,21 @@ export const AddonsTab = () => {
   const [editing, setEditing] = useState<Partial<Addon> | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [configuringSlug, setConfiguringSlug] = useState<string | null>(null);
+
+  // Slugs that have a custom in-place configuration panel
+  const CONFIGURABLE: Record<string, { label: string; icon: any; render: () => JSX.Element }> = {
+    'ebook-generator': {
+      label: 'Configurar templates de eBooks',
+      icon: BookOpen,
+      render: () => <EbookConfigPanel />,
+    },
+    'ebook-premium': {
+      label: 'Configurar templates de eBooks',
+      icon: BookOpen,
+      render: () => <EbookConfigPanel />,
+    },
+  };
 
   const refresh = async () => {
     setLoading(true);
@@ -140,26 +156,58 @@ export const AddonsTab = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {addons.map(a => (
-              <TableRow key={a.id}>
-                <TableCell className="font-medium">{a.name}</TableCell>
-                <TableCell className="text-muted-foreground text-xs">{a.slug}</TableCell>
-                <TableCell><Badge variant={a.billing_type === 'monthly' ? 'default' : 'secondary'}>{a.billing_type === 'monthly' ? 'Mensal' : 'Taxa única'}</Badge></TableCell>
-                <TableCell>R$ {Number(a.price_brl).toFixed(2)}</TableCell>
-                <TableCell>{a.credits_cost || '—'}</TableCell>
-                <TableCell>{a.is_active ? <Badge className="bg-green-600">Ativo</Badge> : <Badge variant="outline">Inativo</Badge>}</TableCell>
-                <TableCell>
-                  <div className="flex gap-1">
-                    <Button size="icon" variant="ghost" onClick={() => setEditing(a)}><Pencil className="h-4 w-4" /></Button>
-                    <Button size="icon" variant="ghost" onClick={() => setDeleteId(a.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+            {addons.map(a => {
+              const cfg = CONFIGURABLE[a.slug];
+              return (
+                <TableRow key={a.id}>
+                  <TableCell className="font-medium">{a.name}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs">{a.slug}</TableCell>
+                  <TableCell><Badge variant={a.billing_type === 'monthly' ? 'default' : 'secondary'}>{a.billing_type === 'monthly' ? 'Mensal' : 'Taxa única'}</Badge></TableCell>
+                  <TableCell>R$ {Number(a.price_brl).toFixed(2)}</TableCell>
+                  <TableCell>{a.credits_cost || '—'}</TableCell>
+                  <TableCell>{a.is_active ? <Badge className="bg-green-600">Ativo</Badge> : <Badge variant="outline">Inativo</Badge>}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-1">
+                      {cfg && (
+                        <Button size="sm" variant="outline" onClick={() => setConfiguringSlug(a.slug)} className="gap-1">
+                          <cfg.icon className="h-3.5 w-3.5" /> Configurações
+                        </Button>
+                      )}
+                      <Button size="icon" variant="ghost" onClick={() => setEditing(a)}><Pencil className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" onClick={() => setDeleteId(a.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
             {addons.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum add-on criado.</TableCell></TableRow>}
           </TableBody>
         </Table>
       </Card>
+
+      {/* In-place add-on configuration panel */}
+      {configuringSlug && CONFIGURABLE[configuringSlug] && (
+        <Card className="p-6 space-y-4 border-primary/30">
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-start gap-3">
+              {(() => {
+                const Icon = CONFIGURABLE[configuringSlug].icon;
+                return <Icon className="h-5 w-5 text-primary mt-0.5" />;
+              })()}
+              <div>
+                <h3 className="font-heading font-semibold">{CONFIGURABLE[configuringSlug].label}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Configurações do add-on <strong>{addons.find(a => a.slug === configuringSlug)?.name}</strong>. Templates globais disponíveis para todos os usuários com o add-on ativo.
+                </p>
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setConfiguringSlug(null)}>Fechar</Button>
+          </div>
+          <div className="pt-2 border-t">
+            {CONFIGURABLE[configuringSlug].render()}
+          </div>
+        </Card>
+      )}
 
       {/* Plan-Addon Linkage */}
       {addons.length > 0 && (
