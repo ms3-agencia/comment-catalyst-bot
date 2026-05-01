@@ -97,6 +97,12 @@ export default function EbooksPage() {
 
   return (
     <DashboardLayout>
+      <EbookGenerationOverlay
+        visible={generating}
+        stage="outline"
+        title="Estruturando seu eBook"
+        subtitle={topic}
+      />
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
