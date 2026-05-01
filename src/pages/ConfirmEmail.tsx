@@ -59,6 +59,12 @@ const ConfirmEmail = () => {
         body: { email: value },
       });
       if (error) throw error;
+      if ((data as any)?.error === 'rate_limit_exceeded') {
+        const secs = Number((data as any)?.retry_after_seconds || 0);
+        const mins = Math.ceil(secs / 60);
+        toast.error((data as any)?.message || `Muitas tentativas. Aguarde ${mins} min.`);
+        return;
+      }
       if ((data as any)?.alreadyConfirmed) {
         toast.success('Este email já está confirmado. Faça login normalmente.');
       } else {
