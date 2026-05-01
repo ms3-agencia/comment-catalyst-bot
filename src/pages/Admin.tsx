@@ -641,16 +641,29 @@ const Admin = () => {
       toast({ title: 'Informe um valor maior que zero', variant: 'destructive' });
       return;
     }
-    const delta = creditsMode === 'add' ? Math.trunc(raw) : -Math.trunc(raw);
-    if (creditsMode === 'remove' && creditsCurrentBalance !== null && raw > creditsCurrentBalance) {
-      toast({
-        title: 'Saldo insuficiente',
-        description: `Usuário tem apenas ${creditsCurrentBalance} créditos.`,
-        variant: 'destructive',
-      });
-      return;
-    }
     setCreditsSaving(true);
+
+    // Para remoção, recarrega o saldo atual do servidor para evitar negativar (CHECK constraint)
+    if (creditsMode === 'remove') {
+      const { data: latest } = await supabase
+        .from('user_credits')
+        .select('balance')
+        .eq('user_id', creditsUser.user_id)
+        .maybeSingle();
+      const currentBalance = latest?.balance ?? 0;
+      setCreditsCurrentBalance(currentBalance);
+      if (raw > currentBalance) {
+        setCreditsSaving(false);
+        toast({
+          title: 'Saldo insuficiente',
+          description: `Usuário tem apenas ${currentBalance} créditos. Não é possível deixar o saldo negativo.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
+    const delta = creditsMode === 'add' ? Math.trunc(raw) : -Math.trunc(raw);
     const { error } = await supabase.rpc('admin_add_credits', {
       _user_id: creditsUser.user_id,
       _amount: delta,
@@ -658,7 +671,14 @@ const Admin = () => {
     });
     setCreditsSaving(false);
     if (error) {
-      toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+      const isCheck = /balance_check|check constraint/i.test(error.message || '');
+      toast({
+        title: isCheck ? 'Saldo insuficiente' : 'Erro',
+        description: isCheck
+          ? 'Não é possível remover mais créditos do que o usuário possui.'
+          : error.message,
+        variant: 'destructive',
+      });
     } else {
       toast({ title: creditsMode === 'add' ? `+${raw} créditos adicionados` : `-${raw} créditos removidos` });
       setCreditsUser(null);
