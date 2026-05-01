@@ -36,6 +36,9 @@ export function NotificationsTab() {
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [testEmail, setTestEmail] = useState('');
   const [sendingTest, setSendingTest] = useState(false);
+  const [smtpTestEmail, setSmtpTestEmail] = useState('');
+  const [testingConn, setTestingConn] = useState(false);
+  const [testingSend, setTestingSend] = useState(false);
 
   useEffect(() => {
     (async () => {
