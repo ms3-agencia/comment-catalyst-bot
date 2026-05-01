@@ -73,18 +73,43 @@ const AddonsPage = () => {
     setBusy(addonId);
     try {
       const { data, error } = await supabase.functions.invoke('create-mp-preference', { body: { addon_id: addonId } });
-      if (error) throw error;
+      // Quando a edge retorna 4xx, supabase-js coloca o body em error.context (Response).
+      // Precisamos extrair manualmente para evitar mensagem "Edge function returned 400" genérica.
+      let serverError: string | null = null;
+      if (error) {
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx && typeof ctx.json === 'function') {
+            const body = await ctx.json();
+            serverError = body?.error || body?.message || null;
+          }
+        } catch { /* ignore */ }
+        throw new Error(serverError || error.message || 'Falha ao iniciar pagamento');
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       if ((data as any)?.free) {
         toast({ title: 'Add-on ativado!', description: 'Incluído no seu plano.' });
-        await refresh();
+        await Promise.allSettled([refresh(), refreshCredits()]);
       } else if ((data as any)?.init_point) {
         window.location.href = (data as any).init_point;
+      } else {
+        throw new Error('Resposta inválida do servidor');
       }
     } catch (e: any) {
-      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+      console.error('[Addons] buyWithMP failed:', e);
+      const msg = String(e?.message || 'Tente novamente.');
+      const friendly = msg.includes('Mercado Pago não configurado')
+        ? 'Pagamento por cartão indisponível. Use "Créditos" ou contate o administrador.'
+        : msg;
+      toast({ title: 'Erro ao iniciar pagamento', description: friendly, variant: 'destructive' });
     } finally {
       setBusy(null);
+      requestAnimationFrame(() => {
+        if (document.body.style.pointerEvents === 'none') {
+          document.body.style.pointerEvents = '';
+        }
+        document.body.removeAttribute('data-scroll-locked');
+      });
     }
   };
 
