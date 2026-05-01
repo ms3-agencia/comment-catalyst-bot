@@ -16,6 +16,7 @@ import { RichTextEditor } from './RichTextEditor';
 import { TemplateRulesEditor } from './TemplateRulesEditor';
 import { BroadcastTab } from './BroadcastTab';
 import { SignaturesTab } from './SignaturesTab';
+import { EmailLogsTab } from './EmailLogsTab';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
