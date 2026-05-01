@@ -1028,7 +1028,20 @@ const Admin = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Quantidade</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Quantidade</Label>
+                      {creditsMode === 'remove' && creditsCurrentBalance !== null && creditsCurrentBalance > 0 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => setCreditsAmount(creditsCurrentBalance)}
+                        >
+                          Usar saldo total ({creditsCurrentBalance})
+                        </Button>
+                      )}
+                    </div>
                     <Input
                       type="number"
                       min={1}
