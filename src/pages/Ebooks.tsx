@@ -42,6 +42,8 @@ export default function EbooksPage() {
   const [genDone, setGenDone] = useState(false);
   const [savedConfigId, setSavedConfigId] = useState<string | null>(null);
   const [savingPref, setSavingPref] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [tagFilter, setTagFilter] = useState<string>('all');
 
 
   const loadConfigs = async (preferredId?: string | null) => {
