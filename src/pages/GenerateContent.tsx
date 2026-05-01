@@ -133,6 +133,7 @@ type Step = 'project' | 'network' | 'type' | 'quantity' | 'results';
 const GenerateContent = () => {
   const { toast } = useToast();
   const { refresh: refreshCredits } = useCredits();
+  const { checkAffordable } = usePlanUsage();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
