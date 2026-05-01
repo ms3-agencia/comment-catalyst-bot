@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Plus, Pencil, Trash2, Loader2, Sparkles, Settings, BookOpen } from 'lucide-react';
 import { EbookConfigPanel } from '@/components/ebook/EbookConfigPanel';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type Addon = {
   id: string;
