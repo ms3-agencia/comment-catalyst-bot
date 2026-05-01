@@ -47,6 +47,7 @@ export function NotificationsTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [signatures, setSignatures] = useState<SignatureOption[]>([]);
   const [smtp, setSmtp] = useState<Record<string, string>>({});
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [testEmail, setTestEmail] = useState('');
