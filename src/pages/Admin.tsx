@@ -666,12 +666,28 @@ const Admin = () => {
     }
 
     const delta = creditsMode === 'add' ? Math.trunc(raw) : -Math.trunc(raw);
-    const { error } = await supabase.rpc('admin_add_credits', {
+    const { data, error } = await supabase.rpc('admin_add_credits', {
       _user_id: creditsUser.user_id,
       _amount: delta,
       _description: creditsDescription || (creditsMode === 'add' ? 'Ajuste manual (crédito)' : 'Ajuste manual (débito)'),
     });
     setCreditsSaving(false);
+
+    // Padronized server response: { success: false, error, message } or { success: true, balance }
+    const result: any = data;
+    if (!error && result && result.success === false) {
+      const msg = result.message || 'Não foi possível concluir a operação.';
+      const isInsufficient = result.error === 'insufficient_balance';
+      toast({
+        title: isInsufficient ? 'Saldo insuficiente' : 'Operação bloqueada',
+        description: msg,
+        variant: 'destructive',
+      });
+      // Refresh displayed balance if returned
+      if (typeof result.balance === 'number') setCreditsCurrentBalance(result.balance);
+      return;
+    }
+
     if (error) {
       const isCheck = /balance_check|check constraint/i.test(error.message || '');
       toast({
