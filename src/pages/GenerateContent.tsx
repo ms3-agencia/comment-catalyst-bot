@@ -154,6 +154,7 @@ const GenerateContent = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPrompt, setEditPrompt] = useState('');
   const [editLoading, setEditLoading] = useState(false);
+  const [zipDownloadingId, setZipDownloadingId] = useState<string | null>(null);
   const [videoEditorContent, setVideoEditorContent] = useState<GeneratedContent | null>(null);
 
   const EDIT_SUGGESTIONS = [
