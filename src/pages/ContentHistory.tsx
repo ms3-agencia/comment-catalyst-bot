@@ -21,6 +21,7 @@ import {
   Calendar as CalendarIcon, Search, CheckSquare, Square,
 } from 'lucide-react';
 import { useLogoCustomization, applyLogoOverlay, LogoFormatKey } from '@/hooks/useLogoCustomization';
+import { DeleteOverlay } from '@/components/DeleteOverlay';
 
 // Mapeia network + ratio para a chave de formato do logo (best-effort)
 const pickLogoFormatKey = (network: string, ratio?: string): LogoFormatKey => {
