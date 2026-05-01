@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import JSZip from 'jszip';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { DashboardLayout } from '@/components/DashboardLayout';
@@ -95,6 +96,14 @@ const imageCreditCost = (w: number, h: number): number => {
   return 5;
 };
 
+type Slide = {
+  index: number;
+  text: string;
+  visual?: string | null;
+  image_url?: string | null;
+  image_prompt?: string | null;
+};
+
 type HistoryItem = {
   id: string;
   title: string | null;
@@ -108,6 +117,7 @@ type HistoryItem = {
   content_type: string;
   image_url?: string | null;
   image_prompt?: string | null;
+  slides?: Slide[] | null;
   created_at?: string;
 };
 
@@ -128,6 +138,7 @@ export default function ContentHistory() {
   const [genResults, setGenResults] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [zipDownloadingId, setZipDownloadingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
@@ -186,7 +197,7 @@ export default function ContentHistory() {
       try {
         const { data } = await supabase
           .from('generated_contents')
-          .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type, image_url, image_prompt, created_at')
+          .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type, image_url, image_prompt, slides, created_at')
           .order('created_at', { ascending: false })
           .limit(500);
         setAllHistory((data as HistoryItem[]) || []);
@@ -292,6 +303,69 @@ export default function ContentHistory() {
     }
   };
 
+  const slugify = (s: string) =>
+    (s || 'carrossel')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase().slice(0, 40) || 'carrossel';
+
+  const downloadCarouselZip = async (c: HistoryItem) => {
+    if (!c.slides?.length) return;
+    const slidesWithImg = c.slides.filter(s => s.image_url);
+    if (slidesWithImg.length === 0) {
+      toast({ title: 'Nenhuma imagem disponível', description: 'Este carrossel não tem imagens geradas para baixar.', variant: 'destructive' });
+      return;
+    }
+    setZipDownloadingId(c.id);
+    try {
+      const zip = new JSZip();
+      const baseName = slugify(c.title || 'carrossel');
+      const folder = zip.folder(baseName) || zip;
+
+      const fetched = await Promise.all(
+        slidesWithImg.map(async (s, idx) => {
+          try {
+            const res = await fetch(s.image_url!);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const blob = await res.blob();
+            const ext = (blob.type.split('/')[1] || 'png').split(';')[0].replace('jpeg', 'jpg');
+            const num = String(s.index ?? idx + 1).padStart(2, '0');
+            return { name: `slide-${num}.${ext}`, blob };
+          } catch (err) {
+            console.error('Falha ao baixar slide', idx, err);
+            return null;
+          }
+        })
+      );
+
+      const ok = fetched.filter((x): x is { name: string; blob: Blob } => !!x);
+      if (ok.length === 0) throw new Error('Nenhuma imagem pôde ser baixada');
+
+      ok.forEach(({ name, blob }) => folder.file(name, blob));
+
+      const roteiro = c.slides
+        .map((s, i) => `Slide ${s.index ?? i + 1}\n${s.text || ''}${s.visual ? `\n\nVisual: ${s.visual}` : ''}`)
+        .join('\n\n---\n\n');
+      folder.file('roteiro.txt', `${c.title || 'Carrossel'}\n\n${roteiro}`);
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${baseName}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      toast({ title: 'Download iniciado', description: `${ok.length} imagens compactadas em ${baseName}.zip` });
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: 'Erro ao gerar ZIP', description: err?.message || 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setZipDownloadingId(null);
+    }
+  };
+
   const openGenPanel = (c: HistoryItem) => {
     const fmts = getFormats(c.social_network, c.content_type);
     setGenFormat(fmts[0]);
@@ -380,6 +454,19 @@ export default function ContentHistory() {
               {!activePost.image_url && !genPanelOpen && (
                 <Button variant="default" onClick={() => openGenPanel(activePost)}>
                   <Wand2 className="h-4 w-4" /> Gerar imagem
+                </Button>
+              )}
+              {activePost.content_type === 'carrossel' && Array.isArray(activePost.slides) && activePost.slides.some(s => s.image_url) && (
+                <Button
+                  variant="outline"
+                  className="border-primary/40 hover:bg-primary/10"
+                  onClick={() => downloadCarouselZip(activePost)}
+                  disabled={zipDownloadingId === activePost.id}
+                >
+                  {zipDownloadingId === activePost.id
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Download className="h-4 w-4 text-primary" />}
+                  Baixar todas as imagens (ZIP) — {activePost.slides.filter(s => s.image_url).length}/{activePost.slides.length}
                 </Button>
               )}
               {activePost.script && activePost.script.trim() && (
@@ -703,6 +790,20 @@ export default function ContentHistory() {
                         ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         : <Trash2 className="h-3.5 w-3.5" />}
                     </button>
+                    {h.content_type === 'carrossel' && Array.isArray(h.slides) && h.slides.some(s => s.image_url) && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); downloadCarouselZip(h); }}
+                        disabled={zipDownloadingId === h.id}
+                        title="Baixar imagens do carrossel (ZIP)"
+                        aria-label="Baixar imagens do carrossel"
+                        className="absolute top-2 right-10 z-10 p-1.5 rounded-lg bg-background/90 hover:bg-primary hover:text-primary-foreground text-primary border border-primary/40 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
+                      >
+                        {zipDownloadingId === h.id
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <Download className="h-3.5 w-3.5" />}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setActivePost(h)}
