@@ -102,6 +102,10 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
       toast({ title: 'Add-on necessário', description: 'Ative o add-on Personalizar Template ou eBooks Premium para criar/editar templates.', variant: 'destructive' });
       return;
     }
+    if (mode === 'user' && isGlobalTemplate) {
+      toast({ title: 'Template da equipe', description: 'Templates globais não podem ser editados. Use "Duplicar" para criar uma cópia editável.', variant: 'destructive' });
+      return;
+    }
     setSaving(true);
     try {
       const { data: u } = await supabase.auth.getUser();
@@ -124,6 +128,32 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
       await load();
     } catch (e: any) {
       toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const duplicateCurrent = async () => {
+    if (!canEdit) {
+      toast({ title: 'Add-on necessário', description: 'Ative o add-on Personalizar Template ou eBooks Premium para duplicar templates.', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error('Não autenticado');
+      const payload: any = { ...current, name: `${current.name} (cópia)`, is_default: false, user_id: u.user.id };
+      delete payload.id;
+      delete payload.created_at;
+      delete payload.updated_at;
+      const { data, error } = await supabase.from('ebook_configs').insert(payload).select().single();
+      if (error) throw error;
+      toast({ title: 'Template duplicado!', description: 'Agora você pode editar a sua cópia.' });
+      setCurrent(data as any);
+      onSelect?.(data as any);
+      await load();
+    } catch (e: any) {
+      toast({ title: 'Erro ao duplicar', description: e.message, variant: 'destructive' });
     } finally {
       setSaving(false);
     }
