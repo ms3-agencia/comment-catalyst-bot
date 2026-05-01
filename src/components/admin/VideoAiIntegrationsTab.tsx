@@ -232,18 +232,40 @@ export function VideoAiIntegrationsTab() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="font-semibold text-base">{provider.name}</h3>
                     {statusBadge(fieldKey)}
+                    {enabled[provider.id] ? (
+                      <Badge className="bg-primary/15 text-primary border-primary/30">
+                        <Power size={12} className="mr-1" />Ativa
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        <Power size={12} className="mr-1" />Desativada
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{provider.description}</p>
                 </div>
               </div>
-              <a
-                href={provider.websiteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary hover:underline flex items-center gap-1 shrink-0"
-              >
-                Site oficial <ExternalLink size={12} />
-              </a>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor={`enabled-${provider.id}`} className="text-xs text-muted-foreground">
+                    {enabled[provider.id] ? 'Ativada' : 'Desativada'}
+                  </Label>
+                  <Switch
+                    id={`enabled-${provider.id}`}
+                    checked={!!enabled[provider.id]}
+                    onCheckedChange={(v) => toggleEnabled(provider, v)}
+                    disabled={togglingId === provider.id}
+                  />
+                </div>
+                <a
+                  href={provider.websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                >
+                  Site oficial <ExternalLink size={12} />
+                </a>
+              </div>
             </div>
 
             <div className="space-y-1.5 mb-4">
