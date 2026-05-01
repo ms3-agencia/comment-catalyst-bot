@@ -184,7 +184,7 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
       </Card>
 
       <Card className="p-5 space-y-5">
-        <fieldset disabled={!canEdit} className={!canEdit ? 'opacity-60 pointer-events-none space-y-5 contents' : 'contents'}>
+        <fieldset disabled={!canEdit} className={!canEdit ? 'space-y-5 opacity-60' : 'space-y-5'}>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Nome do template</Label>
