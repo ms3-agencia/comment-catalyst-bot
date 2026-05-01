@@ -439,6 +439,10 @@ export function NotificationsTab() {
         <TabsContent value="broadcast" className="mt-4">
           <BroadcastTab />
         </TabsContent>
+
+        <TabsContent value="signatures" className="mt-4">
+          <SignaturesTab />
+        </TabsContent>
       </Tabs>
     </div>
   );
