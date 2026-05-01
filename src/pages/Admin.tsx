@@ -89,7 +89,7 @@ const Admin = () => {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('users');
-  const [integrationsTab, setIntegrationsTab] = useState<'connectors' | 'payments' | 'settings' | 'youtube_settings' | 'video_ai_integrations' | 'ai_providers'>('connectors');
+  const [integrationsTab, setIntegrationsTab] = useState<'connectors' | 'payments' | 'settings' | 'youtube_settings' | 'video_ai_integrations' | 'video_ai_log' | 'ai_providers'>('connectors');
   const [editUser, setEditUser] = useState<UserProfile | null>(null);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
