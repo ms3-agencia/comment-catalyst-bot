@@ -181,8 +181,16 @@ const Extract = () => {
       }).select().single();
 
       if (error) {
-        toast({ title: 'Erro ao criar projeto', description: error.message, variant: 'destructive' });
+        const isLimit = /plan_project_limit_reached/i.test(error.message || '');
+        toast({
+          title: isLimit ? 'Limite de projetos atingido' : 'Erro ao criar projeto',
+          description: isLimit
+            ? (error.message.split(':').slice(1).join(':').trim() || 'Faça upgrade para criar mais projetos.')
+            : error.message,
+          variant: 'destructive',
+        });
         setLoading(false);
+        if (isLimit) setTimeout(() => navigate('/dashboard/credits'), 1500);
         return;
       }
 
