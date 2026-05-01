@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, ArrowUpCircle, ArrowDownCircle, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2, CreditCard, Package, Coins, Wallet, Plus, Pencil, Palette, Clapperboard, FileText, Clock, Sparkles } from 'lucide-react';
 import { BrandingTab } from '@/components/admin/BrandingTab';
+import { PwaTab } from '@/components/admin/PwaTab';
 import { AddonsTab } from '@/components/admin/AddonsTab';
 import { VideoProvidersTab } from '@/components/admin/VideoProvidersTab';
 import { VideoStylePresetsTab } from '@/components/admin/VideoStylePresetsTab';
@@ -1802,7 +1803,18 @@ const Admin = () => {
 
           {/* PERSONALIZAÇÃO */}
           <TabsContent value="branding" className="mt-4">
-            <BrandingTab />
+            <Tabs defaultValue="brand" className="w-full">
+              <TabsList>
+                <TabsTrigger value="brand"><Palette size={14} className="mr-1.5" />Marca & PDF</TabsTrigger>
+                <TabsTrigger value="pwa"><Sparkles size={14} className="mr-1.5" />PWA / App instalável</TabsTrigger>
+              </TabsList>
+              <TabsContent value="brand" className="mt-4">
+                <BrandingTab />
+              </TabsContent>
+              <TabsContent value="pwa" className="mt-4">
+                <PwaTab />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
         </Tabs>
       </div>
