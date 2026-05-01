@@ -330,7 +330,7 @@ function SectionEditor({ title, subtitle, html, onChange, onGenerate, generating
         </Button>
       </div>
       {premiumLocked ? (
-        <div className="ebook-prose px-8 py-6 border border-border rounded-lg bg-card" dangerouslySetInnerHTML={{ __html: html }} />
+        <div className="ebook-page"><div className="ebook-prose px-10 py-10" dangerouslySetInnerHTML={{ __html: html }} /></div>
       ) : hasContent ? (
         <EbookRichEditor value={html} onChange={onChange} ebookId={ebookId} contextHint={contextHint} />
       ) : (
