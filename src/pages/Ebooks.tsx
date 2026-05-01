@@ -42,6 +42,8 @@ export default function EbooksPage() {
   const [genDone, setGenDone] = useState(false);
   const [savedConfigId, setSavedConfigId] = useState<string | null>(null);
   const [savingPref, setSavingPref] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [tagFilter, setTagFilter] = useState<string>('all');
 
 
   const loadConfigs = async (preferredId?: string | null) => {
@@ -209,34 +211,84 @@ export default function EbooksPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Template de configuração</Label>
-                <div className="flex gap-2">
-                  <Select
-                    value={selectedConfig?.id || ''}
-                    onValueChange={(v) => {
-                      const cfg = availableConfigs.find(c => c.id === v);
-                      if (cfg) setSelectedConfig(cfg);
-                    }}
-                  >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Selecione um template" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableConfigs.length === 0 && (
-                        <SelectItem value="__none__" disabled>Nenhum template disponível</SelectItem>
+                {(() => {
+                  const categories = Array.from(new Set(availableConfigs.map(c => c.category || 'geral'))).sort();
+                  const tags = Array.from(new Set(availableConfigs.flatMap(c => c.tags || []))).sort();
+                  const filtered = availableConfigs.filter(c => {
+                    const cat = c.category || 'geral';
+                    if (categoryFilter !== 'all' && cat !== categoryFilter) return false;
+                    if (tagFilter !== 'all' && !(c.tags || []).includes(tagFilter)) return false;
+                    return true;
+                  });
+                  return (
+                    <>
+                      {(categories.length > 1 || tags.length > 0) && (
+                        <div className="flex flex-wrap gap-2">
+                          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                            <SelectTrigger className="h-8 text-xs w-auto min-w-[140px]">
+                              <SelectValue placeholder="Categoria" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todas categorias</SelectItem>
+                              {categories.map(cat => (
+                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {tags.length > 0 && (
+                            <Select value={tagFilter} onValueChange={setTagFilter}>
+                              <SelectTrigger className="h-8 text-xs w-auto min-w-[140px]">
+                                <SelectValue placeholder="Tag" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Todas tags</SelectItem>
+                                {tags.map(t => (
+                                  <SelectItem key={t} value={t}>#{t}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                          {(categoryFilter !== 'all' || tagFilter !== 'all') && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 text-xs"
+                              onClick={() => { setCategoryFilter('all'); setTagFilter('all'); }}
+                            >
+                              Limpar
+                            </Button>
+                          )}
+                        </div>
                       )}
-                      {availableConfigs.map(c => {
-                        const mine = c.user_id && user && c.user_id === user.id;
-                        const isUserDefault = savedConfigId === c.id;
-                        return (
-                          <SelectItem key={c.id} value={c.id!}>
-                            {c.name}
-                            {mine ? ' (meu)' : ' (equipe)'}
-                            {isUserDefault ? ' · ⭐ meu padrão' : (c.is_default ? ' · padrão' : '')}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
+                      <div className="flex gap-2">
+                        <Select
+                          value={selectedConfig?.id || ''}
+                          onValueChange={(v) => {
+                            const cfg = availableConfigs.find(c => c.id === v);
+                            if (cfg) setSelectedConfig(cfg);
+                          }}
+                        >
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Selecione um template" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filtered.length === 0 && (
+                              <SelectItem value="__none__" disabled>Nenhum template encontrado</SelectItem>
+                            )}
+                            {filtered.map(c => {
+                              const mine = c.user_id && user && c.user_id === user.id;
+                              const isUserDefault = savedConfigId === c.id;
+                              return (
+                                <SelectItem key={c.id} value={c.id!}>
+                                  {c.name}
+                                  {mine ? ' (meu)' : ' (equipe)'}
+                                  {isUserDefault ? ' · ⭐ meu padrão' : (c.is_default ? ' · padrão' : '')}
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
                   <Button
                     type="button"
                     variant="outline"
@@ -256,6 +308,9 @@ export default function EbooksPage() {
                     </span>
                   </Button>
                 </div>
+                    </>
+                  );
+                })()}
                 {selectedConfig && (
                   <p className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
                     <span>
