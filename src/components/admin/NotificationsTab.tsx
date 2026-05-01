@@ -90,6 +90,32 @@ export function NotificationsTab() {
     else toast({ title: 'Template salvo' });
   };
 
+  const testSmtpConnection = async () => {
+    setTestingConn(true);
+    const { data, error } = await supabase.functions.invoke('send-system-email', {
+      body: { action: 'test_connection' },
+    });
+    setTestingConn(false);
+    if (error) toast({ title: 'Falha ao testar', description: error.message, variant: 'destructive' });
+    else if ((data as any)?.ok) toast({ title: 'Conexão OK', description: (data as any).message });
+    else toast({ title: 'Conexão falhou', description: (data as any)?.error || 'Erro desconhecido', variant: 'destructive' });
+  };
+
+  const sendSmtpTestEmail = async () => {
+    if (!smtpTestEmail) {
+      toast({ title: 'Informe um email para teste', variant: 'destructive' });
+      return;
+    }
+    setTestingSend(true);
+    const { data, error } = await supabase.functions.invoke('send-system-email', {
+      body: { action: 'test_send', recipientEmail: smtpTestEmail },
+    });
+    setTestingSend(false);
+    if (error) toast({ title: 'Falha no envio', description: error.message, variant: 'destructive' });
+    else if ((data as any)?.ok) toast({ title: 'Email enviado', description: (data as any).message });
+    else toast({ title: 'Envio falhou', description: (data as any)?.error || 'Erro desconhecido', variant: 'destructive' });
+  };
+
   const sendTestEmail = async (tpl: EmailTemplate) => {
     if (!testEmail) {
       toast({ title: 'Informe um email para teste', variant: 'destructive' });
