@@ -129,7 +129,7 @@ export default function EbooksPage() {
             <TabsTrigger value="chat" disabled={!hasPremium}>
               <MessageSquare className="h-4 w-4 mr-1" />Chat IA {!hasPremium && <Lock className="h-3 w-3 ml-1" />}
             </TabsTrigger>
-            <TabsTrigger value="config">Configurações</TabsTrigger>
+            
             <TabsTrigger value="mine">Meus eBooks ({ebooks.length})</TabsTrigger>
           </TabsList>
 
