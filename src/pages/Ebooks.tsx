@@ -244,27 +244,22 @@ export default function EbooksPage() {
                     disabled={
                       savingPref ||
                       !selectedConfig?.id ||
-                      (savedConfigId === selectedConfig?.id && overridesEqual(overrides, savedOverrides))
+                      savedConfigId === selectedConfig?.id
                     }
-                    title="Definir como padrão para novos eBooks (salva template + ajustes)"
+                    title="Definir como padrão para novos eBooks"
                   >
-                    {(() => {
-                      const isSaved = savedConfigId === selectedConfig?.id && overridesEqual(overrides, savedOverrides);
-                      return savingPref ? <Loader2 className="h-4 w-4 animate-spin" />
-                        : isSaved ? <Check className="h-4 w-4" />
-                        : <Save className="h-4 w-4" />;
-                    })()}
+                    {savingPref ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : savedConfigId === selectedConfig?.id ? <Check className="h-4 w-4" />
+                      : <Save className="h-4 w-4" />}
                     <span className="ml-1">
-                      {savedConfigId === selectedConfig?.id && overridesEqual(overrides, savedOverrides)
-                        ? 'Padrão definido'
-                        : 'Definir como padrão'}
+                      {savedConfigId === selectedConfig?.id ? 'Padrão definido' : 'Definir como padrão'}
                     </span>
                   </Button>
                 </div>
                 {selectedConfig && (
                   <p className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
                     <span>
-                      {selectedConfig.num_chapters || 8} capítulos · {overrides.depth_level || selectedConfig.depth_level || 'intermediario'}
+                      {selectedConfig.num_chapters || 8} capítulos · {selectedConfig.depth_level || 'intermediario'}
                       {selectedConfig.premium_product_mode && ' · 💎 Modo Produto'}
                     </span>
                     {savedConfigId === selectedConfig.id && (
