@@ -45,6 +45,9 @@ export default function EbooksPage() {
       .then(({ data }) => setProjects((data || []) as any));
     supabase.from('ebooks').select('id, title, subtitle, status, created_at').eq('user_id', user.id).order('created_at', { ascending: false })
       .then(({ data }) => setEbooks(data || []));
+    // Carrega template padrão (configurado em Add-ons → Ebooks)
+    supabase.from('ebook_configs').select('*').eq('user_id', user.id).order('is_default', { ascending: false }).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      .then(({ data }) => { if (data) setSelectedConfig(data as any); });
   }, [user]);
 
   const refreshEbooks = async () => {
