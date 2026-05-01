@@ -818,6 +818,11 @@ const Admin = () => {
             <NotificationsTab />
           </TabsContent>
 
+          <TabsContent value="audit" className="mt-4">
+            <CreditAuditTab />
+          </TabsContent>
+
+
 
           <TabsContent value="users" className="mt-4">
             {/* Users table */}
