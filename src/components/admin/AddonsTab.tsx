@@ -47,16 +47,27 @@ export const AddonsTab = () => {
   const [configuringSlug, setConfiguringSlug] = useState<string | null>(null);
 
   // Slugs that have a custom in-place configuration panel
+  const renderEbookConfig = () => (
+    <Tabs defaultValue="templates">
+      <TabsList>
+        <TabsTrigger value="templates">Templates</TabsTrigger>
+        <TabsTrigger value="costs">Custos por item</TabsTrigger>
+      </TabsList>
+      <TabsContent value="templates" className="mt-4"><EbookConfigPanel /></TabsContent>
+      <TabsContent value="costs" className="mt-4"><EbookItemCostsPanel /></TabsContent>
+    </Tabs>
+  );
+
   const CONFIGURABLE: Record<string, { label: string; icon: any; render: () => JSX.Element }> = {
     'ebook-generator': {
-      label: 'Configurar templates de eBooks',
+      label: 'Configurar templates e custos de eBooks',
       icon: BookOpen,
-      render: () => <EbookConfigPanel />,
+      render: renderEbookConfig,
     },
     'ebook-premium': {
-      label: 'Configurar templates de eBooks',
+      label: 'Configurar templates e custos de eBooks',
       icon: BookOpen,
-      render: () => <EbookConfigPanel />,
+      render: renderEbookConfig,
     },
   };
 
