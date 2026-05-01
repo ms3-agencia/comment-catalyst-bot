@@ -377,6 +377,27 @@ export function NotificationsTab() {
                   </div>
 
                   <div className="space-y-1.5">
+                    <Label className="text-xs flex items-center gap-1"><PenLine size={12} /> Assinatura</Label>
+                    <Select
+                      value={active.signature_id || '__default__'}
+                      onValueChange={v => updateTemplate(active.key, { signature_id: v === '__default__' ? null : v === '__none__' ? null : v })}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Usar assinatura padrão" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__default__">Usar padrão do sistema</SelectItem>
+                        {signatures.map(s => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name} {s.is_default ? '(padrão)' : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] text-muted-foreground">
+                      A assinatura é anexada ao final do email. Crie e edite na aba <strong>Assinaturas</strong>.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
                     <Label className="text-xs">Assunto</Label>
                     <Input value={active.subject} onChange={e => updateTemplate(active.key, { subject: e.target.value })} />
                   </div>
