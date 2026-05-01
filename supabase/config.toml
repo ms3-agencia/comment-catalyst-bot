@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.send-system-email]
 verify_jwt = false
+
+[functions.check-plan-renewals]
+verify_jwt = false
