@@ -14,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserAddons } from '@/hooks/useUserAddons';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import type { EbookConfig } from '@/components/ebook/EbookConfigPanel';
+import { EbookConfigPanel, type EbookConfig } from '@/components/ebook/EbookConfigPanel';
 import { EbookGenerationOverlay } from '@/components/ebook/EbookGenerationOverlay';
 
 type Project = { id: string; name: string; ai_profile?: string | null };
@@ -162,8 +162,26 @@ export default function EbooksPage() {
                   Usando: <strong>{selectedConfig?.name || 'Padrão do sistema'}</strong> · {selectedConfig?.num_chapters || 8} capítulos · {selectedConfig?.depth_level || 'intermediario'}
                   {selectedConfig?.premium_product_mode && ' · 💎 Modo Produto'}
                 </p>
-                <p className="text-xs text-muted-foreground">Os templates são definidos pela equipe administrativa.</p>
+                {hasPremium ? (
+                  <p className="text-xs text-muted-foreground">Você pode escolher entre os templates da equipe ou criar os seus na seção abaixo.</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Os templates são definidos pela equipe administrativa. Para personalizar nº de capítulos, estilo, profundidade, público e elementos opcionais, ative o add-on <Link to="/dashboard/addons" className="text-primary underline">eBooks Premium</Link>.
+                  </p>
+                )}
               </div>
+
+              {hasPremium && (
+                <details className="rounded-md border bg-muted/30">
+                  <summary className="cursor-pointer px-3 py-2 text-sm font-medium flex items-center gap-2">
+                    <Crown className="h-4 w-4 text-amber-400" />
+                    Personalizar template (Premium)
+                  </summary>
+                  <div className="p-3 border-t">
+                    <EbookConfigPanel mode="user" canEdit={true} onSelect={(c) => setSelectedConfig(c)} />
+                  </div>
+                </details>
+              )}
               <Button size="lg" onClick={generateFromAvatar} disabled={generating} className="w-full">
                 {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
                 Gerar estrutura do eBook (5 créditos)

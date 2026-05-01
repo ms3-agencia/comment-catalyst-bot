@@ -8,7 +8,8 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Plus, Trash2, Save, Star } from 'lucide-react';
+import { Loader2, Plus, Trash2, Save, Star, Lock } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export type EbookConfig = {
   id?: string;
@@ -51,7 +52,9 @@ const DEFAULT_CFG: EbookConfig = {
   ai_model: 'google/gemini-2.5-pro',
 };
 
-export function EbookConfigPanel({ onSelect }: { onSelect?: (cfg: EbookConfig) => void }) {
+type Mode = 'admin' | 'user';
+
+export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: { onSelect?: (cfg: EbookConfig) => void; mode?: Mode; canEdit?: boolean }) {
   const { toast } = useToast();
   const [configs, setConfigs] = useState<EbookConfig[]>([]);
   const [current, setCurrent] = useState<EbookConfig>(DEFAULT_CFG);
@@ -60,7 +63,13 @@ export function EbookConfigPanel({ onSelect }: { onSelect?: (cfg: EbookConfig) =
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from('ebook_configs').select('*').order('created_at', { ascending: false });
+    const { data: u } = await supabase.auth.getUser();
+    let query = supabase.from('ebook_configs').select('*').order('created_at', { ascending: false });
+    if (mode === 'user' && u.user) {
+      // Em modo user, lista os templates dele + globais (admins). RLS permite ler ambos.
+      query = query;
+    }
+    const { data } = await query;
     const list = (data || []) as EbookConfig[];
     setConfigs(list);
     const def = list.find(c => c.is_default) || list[0];
@@ -70,9 +79,13 @@ export function EbookConfigPanel({ onSelect }: { onSelect?: (cfg: EbookConfig) =
     }
     setLoading(false);
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [mode]);
 
   const save = async () => {
+    if (!canEdit) {
+      toast({ title: 'Add-on necessário', description: 'Você precisa do add-on eBooks Premium para criar/editar templates.', variant: 'destructive' });
+      return;
+    }
     setSaving(true);
     try {
       const { data: u } = await supabase.auth.getUser();
@@ -89,7 +102,7 @@ export function EbookConfigPanel({ onSelect }: { onSelect?: (cfg: EbookConfig) =
         result = await supabase.from('ebook_configs').insert(payload).select().single();
       }
       if (result.error) throw result.error;
-      toast({ title: 'Template salvo!' });
+      toast({ title: current.id ? 'Template atualizado!' : 'Template criado!' });
       setCurrent(result.data as any);
       onSelect?.(result.data as any);
       await load();
@@ -100,7 +113,30 @@ export function EbookConfigPanel({ onSelect }: { onSelect?: (cfg: EbookConfig) =
     }
   };
 
-  const newTemplate = () => setCurrent({ ...DEFAULT_CFG, name: 'Novo template', is_default: false });
+  const newTemplate = async () => {
+    if (!canEdit) {
+      toast({ title: 'Add-on necessário', description: 'Você precisa do add-on eBooks Premium para criar templates.', variant: 'destructive' });
+      return;
+    }
+    // Cria de fato no banco com nome padrão e seleciona para edição
+    setSaving(true);
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error('Não autenticado');
+      const payload: any = { ...DEFAULT_CFG, name: `Novo template ${configs.length + 1}`, is_default: false, user_id: u.user.id };
+      delete payload.id;
+      const { data, error } = await supabase.from('ebook_configs').insert(payload).select().single();
+      if (error) throw error;
+      toast({ title: 'Template criado!', description: 'Edite os campos e clique em "Salvar template".' });
+      setCurrent(data as any);
+      onSelect?.(data as any);
+      await load();
+    } catch (e: any) {
+      toast({ title: 'Erro ao criar template', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const remove = async (id?: string) => {
     if (!id) return;
@@ -121,8 +157,16 @@ export function EbookConfigPanel({ onSelect }: { onSelect?: (cfg: EbookConfig) =
       <Card className="p-3 space-y-1.5 max-h-[600px] overflow-y-auto">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold">Templates</span>
-          <Button size="sm" variant="outline" onClick={newTemplate}><Plus className="h-3.5 w-3.5" /></Button>
+          <Button size="sm" variant="outline" onClick={newTemplate} disabled={saving || !canEdit} title={canEdit ? 'Criar template' : 'Necessário add-on eBooks Premium'}>
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : !canEdit ? <Lock className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+          </Button>
         </div>
+        {!canEdit && (
+          <div className="text-xs p-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-200 space-y-1.5">
+            <p>Para criar seus próprios templates personalizados, ative o add-on <strong>eBooks Premium</strong>.</p>
+            <Button asChild size="sm" variant="outline" className="w-full"><Link to="/dashboard/addons">Ver add-on</Link></Button>
+          </div>
+        )}
         {configs.length === 0 && <p className="text-xs text-muted-foreground p-2">Nenhum template ainda. Crie o primeiro.</p>}
         {configs.map(c => (
           <button
@@ -140,6 +184,7 @@ export function EbookConfigPanel({ onSelect }: { onSelect?: (cfg: EbookConfig) =
       </Card>
 
       <Card className="p-5 space-y-5">
+        <fieldset disabled={!canEdit} className={!canEdit ? 'space-y-5 opacity-60' : 'space-y-5'}>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Nome do template</Label>
@@ -258,11 +303,12 @@ export function EbookConfigPanel({ onSelect }: { onSelect?: (cfg: EbookConfig) =
         </div>
 
         <div className="flex justify-end gap-2 border-t pt-4">
-          <Button onClick={save} disabled={saving}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Salvar template
+          <Button onClick={save} disabled={saving || !canEdit}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : !canEdit ? <Lock className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+            {canEdit ? 'Salvar template' : 'Bloqueado'}
           </Button>
         </div>
+        </fieldset>
       </Card>
     </div>
   );
