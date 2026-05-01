@@ -94,24 +94,38 @@ Deno.serve(async (req) => {
       } else {
         try {
           const port = parseInt(smtp.smtp_port || "587", 10);
-          const isSSL = smtp.smtp_secure === "ssl" || port === 465;
+          // Modo de segurança:
+          // - "ssl" / porta 465 => TLS implícito (tls: true)
+          // - "tls" / "starttls" / porta 587 => STARTTLS (tls: false)
+          // - "none" => sem criptografia
+          const secureMode = (smtp.smtp_secure || "").toLowerCase();
+          const isImplicitSSL = secureMode === "ssl" || port === 465;
+          const isNone = secureMode === "none";
+
           const client = new SMTPClient({
             connection: {
               hostname: smtp.smtp_host,
               port,
-              tls: isSSL,
+              tls: isImplicitSSL, // true SOMENTE para 465/SSL implícito
               auth: { username: smtp.smtp_user, password: smtp.smtp_password },
             },
+            // denomailer faz STARTTLS automaticamente quando tls=false e o servidor anuncia o comando,
+            // a menos que desabilitemos explicitamente.
+            ...(isNone ? { debug: { allowUnsecure: true } } : {}),
           });
-          await client.send({
-            from: `${smtp.smtp_from_name || "YCaptura"} <${smtp.smtp_from_email || smtp.smtp_user}>`,
-            to: toEmail,
-            subject,
-            html,
-            content: html.replace(/<[^>]+>/g, " "),
-          });
-          await client.close();
-          emailStatus = "sent";
+
+          try {
+            await client.send({
+              from: `${smtp.smtp_from_name || "YCaptura"} <${smtp.smtp_from_email || smtp.smtp_user}>`,
+              to: toEmail,
+              subject,
+              html,
+              content: html.replace(/<[^>]+>/g, " "),
+            });
+            emailStatus = "sent";
+          } finally {
+            try { await client.close(); } catch { /* ignore close errors */ }
+          }
         } catch (e: any) {
           emailStatus = "failed";
           emailError = String(e?.message || e);
