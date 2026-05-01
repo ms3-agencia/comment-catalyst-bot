@@ -7,10 +7,11 @@ import { useCredits } from '@/hooks/useCredits';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Check, Loader2, Coins, CreditCard, Crown, FileText, Palette, Zap } from 'lucide-react';
+import { Sparkles, Check, Loader2, Coins, CreditCard, Crown, FileText, Palette, Zap, BookOpen, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EbookConfigPanel } from '@/components/ebook/EbookConfigPanel';
 
 const ICONS: Record<string, any> = { Sparkles, FileText, Palette, Zap, Crown };
 
