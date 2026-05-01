@@ -104,6 +104,87 @@ const Admin = () => {
   const [creditsDescription, setCreditsDescription] = useState('Ajuste manual');
   const [creditsSaving, setCreditsSaving] = useState(false);
 
+  // Manage user addons
+  type AdminAddon = { id: string; slug: string; name: string; billing_type: string; is_active: boolean };
+  type AdminUserAddon = { id: string; addon_id: string; status: string; expires_at: string | null };
+  const [addonsUser, setAddonsUser] = useState<UserProfile | null>(null);
+  const [addonsList, setAddonsList] = useState<AdminAddon[]>([]);
+  const [userAddonsList, setUserAddonsList] = useState<AdminUserAddon[]>([]);
+  const [addonsLoading, setAddonsLoading] = useState(false);
+  const [addonTogglingId, setAddonTogglingId] = useState<string | null>(null);
+
+  const openAddons = async (u: UserProfile) => {
+    setAddonsUser(u);
+    setAddonsList([]);
+    setUserAddonsList([]);
+    setAddonsLoading(true);
+    try {
+      const [{ data: a, error: aErr }, { data: ua, error: uaErr }] = await Promise.all([
+        supabase.from('addons').select('id, slug, name, billing_type, is_active').order('sort_order'),
+        supabase.from('user_addons').select('id, addon_id, status, expires_at').eq('user_id', u.user_id),
+      ]);
+      if (aErr) throw aErr;
+      if (uaErr) throw uaErr;
+      setAddonsList((a || []) as AdminAddon[]);
+      setUserAddonsList((ua || []) as AdminUserAddon[]);
+    } catch (e: any) {
+      toast({ title: 'Erro ao carregar add-ons', description: e.message, variant: 'destructive' });
+    } finally {
+      setAddonsLoading(false);
+    }
+  };
+
+  const isAddonActiveForUser = (addonId: string) => {
+    const ua = userAddonsList.find(x => x.addon_id === addonId);
+    if (!ua) return false;
+    if (ua.status !== 'active') return false;
+    if (ua.expires_at && new Date(ua.expires_at) < new Date()) return false;
+    return true;
+  };
+
+  const toggleUserAddon = async (addon: AdminAddon, enable: boolean) => {
+    if (!addonsUser) return;
+    setAddonTogglingId(addon.id);
+    try {
+      const existing = userAddonsList.find(x => x.addon_id === addon.id);
+      if (enable) {
+        const expires = addon.billing_type === 'monthly'
+          ? new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString()
+          : null;
+        if (existing) {
+          const { error } = await supabase
+            .from('user_addons')
+            .update({ status: 'active', activated_at: new Date().toISOString(), expires_at: expires, billing_type: addon.billing_type, payment_method: 'admin' })
+            .eq('id', existing.id);
+          if (error) throw error;
+          setUserAddonsList(prev => prev.map(x => x.id === existing.id ? { ...x, status: 'active', expires_at: expires } : x));
+        } else {
+          const { data, error } = await supabase
+            .from('user_addons')
+            .insert({ user_id: addonsUser.user_id, addon_id: addon.id, status: 'active', billing_type: addon.billing_type, payment_method: 'admin', expires_at: expires })
+            .select('id, addon_id, status, expires_at')
+            .single();
+          if (error) throw error;
+          setUserAddonsList(prev => [...prev, data as AdminUserAddon]);
+        }
+        toast({ title: 'Recurso ativado', description: `${addon.name} ativado para ${addonsUser.full_name || addonsUser.email}` });
+      } else {
+        if (!existing) return;
+        const { error } = await supabase
+          .from('user_addons')
+          .update({ status: 'cancelled' })
+          .eq('id', existing.id);
+        if (error) throw error;
+        setUserAddonsList(prev => prev.map(x => x.id === existing.id ? { ...x, status: 'cancelled' } : x));
+        toast({ title: 'Recurso desativado', description: `${addon.name} removido de ${addonsUser.full_name || addonsUser.email}` });
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally {
+      setAddonTogglingId(null);
+    }
+  };
+
   // Logs viewer
   type SessionLog = {
     id: string;
@@ -763,6 +844,9 @@ const Admin = () => {
                                 <DropdownMenuItem onClick={() => openLogs(u)}>
                                   <FileText className="mr-2 h-4 w-4" /> Logs
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openAddons(u)}>
+                                  <Sparkles className="mr-2 h-4 w-4" /> Recursos adicionais
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => toggleAdmin(u)} disabled={isSelf}>
                                   {u.is_admin ? (
@@ -991,6 +1075,63 @@ const Admin = () => {
                     <span>{logsRows.length > 0 && `${logsRows.length} sessão(ões) — total ${logsRows.reduce((a, r) => a + (r.credits_used || 0), 0)}c consumidos`}</span>
                     <Button variant="outline" size="sm" onClick={() => setLogsUser(null)}>Fechar</Button>
                   </div>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Manage user addons */}
+            <Dialog open={!!addonsUser} onOpenChange={(open) => !open && setAddonsUser(null)}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Sparkles size={18} className="text-primary" />
+                    Recursos adicionais
+                  </DialogTitle>
+                  <DialogDescription>
+                    Ative ou desative recursos adicionais para <strong>{addonsUser?.full_name || addonsUser?.email}</strong>. Alterações são aplicadas imediatamente, sem cobrança.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="pt-2">
+                  {addonsLoading ? (
+                    <div className="flex items-center justify-center py-10 text-muted-foreground">
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" /> Carregando…
+                    </div>
+                  ) : addonsList.length === 0 ? (
+                    <div className="py-10 text-center text-muted-foreground text-sm">Nenhum add-on cadastrado.</div>
+                  ) : (
+                    <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                      {addonsList.map(addon => {
+                        const active = isAddonActiveForUser(addon.id);
+                        const ua = userAddonsList.find(x => x.addon_id === addon.id);
+                        return (
+                          <div key={addon.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium text-sm truncate">{addon.name}</span>
+                                <Badge variant="outline" className="text-[10px] py-0 h-5">{addon.billing_type === 'monthly' ? 'Mensal' : 'Único'}</Badge>
+                                {!addon.is_active && <Badge variant="secondary" className="text-[10px] py-0 h-5">Inativo</Badge>}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                                slug: {addon.slug}
+                                {ua?.expires_at && active && ` • expira em ${new Date(ua.expires_at).toLocaleDateString('pt-BR')}`}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {addonTogglingId === addon.id && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                              <Switch
+                                checked={active}
+                                disabled={addonTogglingId === addon.id}
+                                onCheckedChange={(v) => toggleUserAddon(addon, v)}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" size="sm" onClick={() => setAddonsUser(null)}>Fechar</Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
