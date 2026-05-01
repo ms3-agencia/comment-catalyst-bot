@@ -303,6 +303,69 @@ export default function ContentHistory() {
     }
   };
 
+  const slugify = (s: string) =>
+    (s || 'carrossel')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase().slice(0, 40) || 'carrossel';
+
+  const downloadCarouselZip = async (c: HistoryItem) => {
+    if (!c.slides?.length) return;
+    const slidesWithImg = c.slides.filter(s => s.image_url);
+    if (slidesWithImg.length === 0) {
+      toast({ title: 'Nenhuma imagem disponível', description: 'Este carrossel não tem imagens geradas para baixar.', variant: 'destructive' });
+      return;
+    }
+    setZipDownloadingId(c.id);
+    try {
+      const zip = new JSZip();
+      const baseName = slugify(c.title || 'carrossel');
+      const folder = zip.folder(baseName) || zip;
+
+      const fetched = await Promise.all(
+        slidesWithImg.map(async (s, idx) => {
+          try {
+            const res = await fetch(s.image_url!);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const blob = await res.blob();
+            const ext = (blob.type.split('/')[1] || 'png').split(';')[0].replace('jpeg', 'jpg');
+            const num = String(s.index ?? idx + 1).padStart(2, '0');
+            return { name: `slide-${num}.${ext}`, blob };
+          } catch (err) {
+            console.error('Falha ao baixar slide', idx, err);
+            return null;
+          }
+        })
+      );
+
+      const ok = fetched.filter((x): x is { name: string; blob: Blob } => !!x);
+      if (ok.length === 0) throw new Error('Nenhuma imagem pôde ser baixada');
+
+      ok.forEach(({ name, blob }) => folder.file(name, blob));
+
+      const roteiro = c.slides
+        .map((s, i) => `Slide ${s.index ?? i + 1}\n${s.text || ''}${s.visual ? `\n\nVisual: ${s.visual}` : ''}`)
+        .join('\n\n---\n\n');
+      folder.file('roteiro.txt', `${c.title || 'Carrossel'}\n\n${roteiro}`);
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${baseName}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      toast({ title: 'Download iniciado', description: `${ok.length} imagens compactadas em ${baseName}.zip` });
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: 'Erro ao gerar ZIP', description: err?.message || 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setZipDownloadingId(null);
+    }
+  };
+
   const openGenPanel = (c: HistoryItem) => {
     const fmts = getFormats(c.social_network, c.content_type);
     setGenFormat(fmts[0]);
