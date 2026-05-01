@@ -803,6 +803,7 @@ const Admin = () => {
             else if (v === 'youtube_settings') setIntegrationsTab('youtube_settings');
             else if (v === 'ai_providers') setIntegrationsTab('ai_providers');
             else if (v === 'video_ai_integrations') setIntegrationsTab('video_ai_integrations');
+            else if (v === 'video_ai_log') setIntegrationsTab('video_ai_log');
             else if (v === 'settings') setIntegrationsTab('settings');
             else setIntegrationsTab('connectors');
           }}
