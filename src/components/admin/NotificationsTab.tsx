@@ -9,12 +9,13 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, Mail, Bell, Send, Server, AlertCircle, CheckCircle2, Plus, Trash2, Megaphone, Lock } from 'lucide-react';
+import { Loader2, Save, Mail, Bell, Send, Server, AlertCircle, CheckCircle2, Plus, Trash2, Megaphone, Lock, PenLine } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { GmailAppPasswordTutorial } from './GmailAppPasswordTutorial';
 import { RichTextEditor } from './RichTextEditor';
 import { TemplateRulesEditor } from './TemplateRulesEditor';
 import { BroadcastTab } from './BroadcastTab';
+import { SignaturesTab } from './SignaturesTab';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
