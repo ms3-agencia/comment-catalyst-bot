@@ -102,9 +102,11 @@ export default function EbooksPage() {
     <DashboardLayout>
       <EbookGenerationOverlay
         visible={generating}
-        stage="outline"
-        title="Estruturando seu eBook"
+        stage={genDone ? 'done' : 'outline'}
+        title={genDone ? 'Estrutura pronta!' : 'Estruturando seu eBook'}
         subtitle={topic}
+        progress={genDone ? 100 : undefined}
+        estimatedMs={30_000}
       />
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
