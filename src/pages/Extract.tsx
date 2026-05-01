@@ -374,6 +374,28 @@ const Extract = () => {
           <p className="text-muted-foreground mt-1">Cole os links dos vídeos para extrair e analisar comentários via YouTube API</p>
         </div>
 
+        {usage && (
+          <Card className={`glass p-4 flex flex-wrap items-center gap-3 text-sm ${
+            usage.projects_limit !== null && usage.projects_used >= usage.projects_limit
+              ? 'border-destructive/60'
+              : ''
+          }`}>
+            <span className="text-muted-foreground">Plano <strong className="capitalize text-foreground">{usage.plan}</strong></span>
+            <span className="text-muted-foreground">·</span>
+            <span>
+              Projetos: <strong>{usage.projects_used}</strong>
+              {usage.projects_limit !== null ? ` / ${usage.projects_limit}` : ' (ilimitado)'}
+            </span>
+            <span className="text-muted-foreground">·</span>
+            <span>Créditos: <strong>{usage.credits_balance}</strong></span>
+            {usage.projects_limit !== null && usage.projects_used >= usage.projects_limit && (
+              <span className="ml-auto text-destructive flex items-center gap-1">
+                <AlertTriangle size={14} /> Limite atingido — faça upgrade
+              </span>
+            )}
+          </Card>
+        )}
+
         {!comments.length ? (
           <Card className="glass p-6">
             <form onSubmit={handleExtract} className="space-y-5">
