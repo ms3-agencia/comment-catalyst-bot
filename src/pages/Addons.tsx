@@ -82,6 +82,10 @@ const AddonsPage = () => {
           if (ctx && typeof ctx.json === 'function') {
             const body = await ctx.json();
             serverError = body?.error || body?.message || null;
+            if (body?.detail) {
+              const det = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail);
+              console.error('[Addons] MP detail:', det);
+            }
           }
         } catch { /* ignore */ }
         throw new Error(serverError || error.message || 'Falha ao iniciar pagamento');

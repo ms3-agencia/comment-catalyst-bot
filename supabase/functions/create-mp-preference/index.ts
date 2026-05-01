@@ -10,6 +10,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    console.log("[create-mp-preference] start", req.method, req.url);
     const authHeader = req.headers.get("Authorization") ?? "";
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -155,14 +156,17 @@ Deno.serve(async (req) => {
       body: JSON.stringify(preferencePayload),
     });
 
-    const mpData = await mpRes.json();
+    const mpData = await mpRes.json().catch(() => ({}));
     if (!mpRes.ok) {
+      console.error("[create-mp-preference] MP error", mpRes.status, JSON.stringify(mpData));
       await admin.from("payment_orders").update({ status: "rejected", raw_payload: mpData }).eq("id", order.id);
-      return new Response(JSON.stringify({ error: "Mercado Pago error", detail: mpData }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const detailMsg = (mpData as any)?.message || (mpData as any)?.error || `Mercado Pago retornou ${mpRes.status}`;
+      return new Response(JSON.stringify({ error: detailMsg, detail: mpData }), { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     await admin.from("payment_orders").update({ preference_id: mpData.id, raw_payload: mpData }).eq("id", order.id);
 
+    console.log("[create-mp-preference] success", { order_id: order.id, preference_id: mpData.id });
     return new Response(JSON.stringify({
       preference_id: mpData.id,
       init_point: mpData.init_point,
@@ -171,6 +175,8 @@ Deno.serve(async (req) => {
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
+    const stack = e instanceof Error ? e.stack : undefined;
+    console.error("[create-mp-preference] uncaught", msg, stack);
     return new Response(JSON.stringify({ error: msg }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
