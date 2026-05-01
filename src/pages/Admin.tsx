@@ -788,8 +788,24 @@ const Admin = () => {
           </Card>
         </div>
 
-        <Tabs defaultValue="users" className="w-full">
-          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-12 h-auto">
+        <Tabs
+          value={integrationsTab === 'payments' ? 'payments' : integrationsTab === 'settings' ? 'settings' : undefined}
+          defaultValue="users"
+          className="w-full"
+          onValueChange={(v) => {
+            // Quando trocar para qualquer aba que não seja Integrações ou seus sub-itens, reset
+            if (v !== 'integrations' && v !== 'payments' && v !== 'settings') {
+              setIntegrationsTab('connectors');
+            } else if (v === 'integrations') {
+              setIntegrationsTab('connectors');
+            } else if (v === 'payments') {
+              setIntegrationsTab('payments');
+            } else if (v === 'settings') {
+              setIntegrationsTab('settings');
+            }
+          }}
+        >
+          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-10 h-auto">
             <TabsTrigger value="users"><Users size={14} className="mr-1.5" />Usuários</TabsTrigger>
             <TabsTrigger value="plans"><ShieldCheck size={14} className="mr-1.5" />Planos</TabsTrigger>
             <TabsTrigger value="packages"><Package size={14} className="mr-1.5" />Pacotes</TabsTrigger>
@@ -797,11 +813,15 @@ const Admin = () => {
             <TabsTrigger value="costs"><Coins size={14} className="mr-1.5" />Custos</TabsTrigger>
             <TabsTrigger value="audit"><FileText size={14} className="mr-1.5" />Auditoria</TabsTrigger>
             <TabsTrigger value="video"><Clapperboard size={14} className="mr-1.5" />Vídeo</TabsTrigger>
-            <TabsTrigger value="payments"><Wallet size={14} className="mr-1.5" />Mercado Pago</TabsTrigger>
             <TabsTrigger value="notifications"><Bot size={14} className="mr-1.5" />Avisos & Emails</TabsTrigger>
-            <TabsTrigger value="integrations"><Plug size={14} className="mr-1.5" />Integrações</TabsTrigger>
+            <TabsTrigger
+              value="integrations"
+              data-active-sub={integrationsTab !== 'connectors' ? 'true' : undefined}
+              className="data-[active-sub=true]:bg-primary/10 data-[active-sub=true]:text-primary"
+            >
+              <Plug size={14} className="mr-1.5" />Integrações
+            </TabsTrigger>
             <TabsTrigger value="branding"><Palette size={14} className="mr-1.5" />Personalização</TabsTrigger>
-            <TabsTrigger value="settings"><Key size={14} className="mr-1.5" />APIs & IA</TabsTrigger>
           </TabsList>
 
           <TabsContent value="video" className="mt-4 space-y-6">
@@ -811,9 +831,7 @@ const Admin = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="integrations" className="mt-4">
-            <IntegrationsTab />
-          </TabsContent>
+          {/* Sub-abas de Integrações são renderizadas dentro do TabsContent value="integrations" abaixo */}
 
           <TabsContent value="notifications" className="mt-4">
             <NotificationsTab />
