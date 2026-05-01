@@ -18,7 +18,7 @@ import { VideoAiIntegrationsTab } from '@/components/admin/VideoAiIntegrationsTa
 import { VideoAiLogTab } from '@/components/admin/VideoAiLogTab';
 import { NotificationsTab } from '@/components/admin/NotificationsTab';
 import { CreditAuditTab } from '@/components/admin/CreditAuditTab';
-import { Plug } from 'lucide-react';
+import { Plug, ScrollText } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
