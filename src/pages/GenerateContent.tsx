@@ -314,8 +314,11 @@ const GenerateContent = () => {
           });
           if (error) throw error;
           if ((data as any)?.error) {
-            const isCredit = !!(data as any).insufficient_credits;
-            toast({ title: isCredit ? 'Créditos insuficientes' : 'Erro ao gerar imagem', description: (data as any).error, variant: 'destructive' });
+            if ((data as any).insufficient_credits) {
+              notifyInsufficient();
+            } else {
+              toast({ title: 'Erro ao gerar imagem', description: (data as any).error, variant: 'destructive' });
+            }
             return;
           }
           const img = (data as any).image_url;
