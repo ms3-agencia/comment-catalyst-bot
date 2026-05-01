@@ -10,7 +10,7 @@ import { Loader2, Download, Sparkles, ChevronLeft, FileText, CheckCircle2, Clock
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useUserAddons } from '@/hooks/useUserAddons';
-import { RichTextEditor } from '@/components/admin/RichTextEditor';
+import { EbookRichEditor } from '@/components/ebook/EbookRichEditor';
 import { exportEbookPdf, exportEbookDocx, exportEbookMarkdown, exportEbookTxt, EbookFull } from '@/lib/ebookExport';
 import { EbookGenerationOverlay, EbookGenStage } from '@/components/ebook/EbookGenerationOverlay';
 
