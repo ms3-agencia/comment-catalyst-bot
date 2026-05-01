@@ -844,6 +844,9 @@ const Admin = () => {
                                 <DropdownMenuItem onClick={() => openLogs(u)}>
                                   <FileText className="mr-2 h-4 w-4" /> Logs
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openAddons(u)}>
+                                  <Sparkles className="mr-2 h-4 w-4" /> Recursos adicionais
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => toggleAdmin(u)} disabled={isSelf}>
                                   {u.is_admin ? (
