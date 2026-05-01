@@ -59,14 +59,17 @@ const Login = () => {
       return;
     }
     setResending(true);
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+    const { data, error } = await supabase.functions.invoke('resend-confirmation', {
+      body: { email },
     });
     setResending(false);
     if (error) {
       toast({ title: 'Não foi possível reenviar', description: error.message, variant: 'destructive' });
+      return;
+    }
+    if ((data as any)?.alreadyConfirmed) {
+      toast({ title: 'Email já confirmado', description: 'Sua conta já está ativada. Faça login normalmente.' });
+      setShowUnconfirmedDialog(false);
       return;
     }
     toast({ title: 'Link enviado', description: `Enviamos um novo link de confirmação para ${email}.` });

@@ -19,11 +19,7 @@ const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const generateToken = () => {
-    const arr = new Uint8Array(32);
-    crypto.getRandomValues(arr);
-    return Array.from(arr, b => b.toString(16).padStart(2, '0')).join('');
-  };
+
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,50 +34,23 @@ const Register = () => {
     }
 
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-        emailRedirectTo: `${window.location.origin}/auth/confirm`,
-      },
+    const { data, error } = await supabase.functions.invoke('register-user', {
+      body: { email, password, fullName },
     });
+    setLoading(false);
 
-    if (error) {
-      setLoading(false);
-      toast({ title: 'Erro ao criar conta', description: error.message, variant: 'destructive' });
+    if (error || !(data as any)?.success) {
+      const errCode = (data as any)?.error;
+      let msg = (data as any)?.message || error?.message || 'Tente novamente.';
+      if (errCode === 'email_already_registered') {
+        msg = 'Este email já está cadastrado. Tente fazer login.';
+      } else if (errCode === 'weak_password') {
+        msg = 'A senha deve ter pelo menos 6 caracteres.';
+      }
+      toast({ title: 'Erro ao criar conta', description: msg, variant: 'destructive' });
       return;
     }
 
-    const newUserId = data.user?.id;
-    if (newUserId) {
-      // Gera token de confirmação e envia email via SMTP da plataforma
-      const token = generateToken();
-      const confirmationUrl = `${window.location.origin}/auth/confirm?token=${token}`;
-
-      const { error: tokenErr } = await supabase
-        .from('email_confirmation_tokens')
-        .insert({ user_id: newUserId, email, token });
-
-      if (!tokenErr) {
-        await supabase.functions.invoke('send-system-email', {
-          body: {
-            templateKey: 'email_confirmation',
-            userId: newUserId,
-            recipientEmail: email,
-            variables: {
-              user_name: fullName,
-              site_name: 'YCaptura',
-              confirmation_url: confirmationUrl,
-            },
-          },
-        }).catch((err) => console.warn('confirmation email failed', err));
-      } else {
-        console.warn('token insert failed', tokenErr);
-      }
-    }
-
-    setLoading(false);
     setPendingEmail(email);
   };
 
