@@ -550,6 +550,22 @@ const GenerateContent = () => {
         {step === 'project' && (
           <div className="space-y-4">
             <h2 className="font-heading text-xl font-semibold">1. Selecione um projeto</h2>
+            {usage && projectsRemaining !== null && projectsRemaining !== undefined && projectsRemaining <= 0 && (
+              <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 flex items-center justify-between gap-3">
+                <span className="text-xs">
+                  Você atingiu o limite de projetos do plano <strong>{usage.plan}</strong> ({usage.projects_used}/{usage.projects_limit}). Faça upgrade para criar mais.
+                </span>
+                <Button size="sm" variant="outline" onClick={goToCredits}>Ver planos</Button>
+              </div>
+            )}
+            {balance <= 0 && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 flex items-center justify-between gap-3">
+                <span className="text-xs text-destructive">
+                  Você está sem créditos para gerar conteúdo.
+                </span>
+                <Button size="sm" variant="outline" onClick={goToCredits}>Comprar créditos</Button>
+              </div>
+            )}
             {projects.length === 0 ? (
               <Card className="p-8 text-center">
                 <FolderOpen className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
