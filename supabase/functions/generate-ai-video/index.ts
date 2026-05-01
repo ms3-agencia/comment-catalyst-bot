@@ -132,6 +132,10 @@ Deno.serve(async (req) => {
 
     for (const provider of available) {
       chosen = provider;
+      videoUrl = null;
+      externalJobId = null;
+      errorMessage = null;
+      finalStatus = 'queued';
       const { data: logRow } = await admin
         .from('video_generation_log')
         .insert({
@@ -150,8 +154,8 @@ Deno.serve(async (req) => {
       logId = logRow?.id ?? null;
 
       try {
-      const apiKey = keyMap.get(provider.settingKey)!;
-      if (provider.id === 'replicate') {
+        const apiKey = keyMap.get(provider.settingKey)!;
+        if (provider.id === 'replicate') {
         // Use model-based endpoint (no version hash needed). Default to a text-to-video model.
         const modelSlug = 'minimax/video-01'; // text-to-video model on Replicate
         const r = await fetch(`https://api.replicate.com/v1/models/${modelSlug}/predictions`, {
@@ -175,7 +179,7 @@ Deno.serve(async (req) => {
         externalJobId = j.id || null;
         videoUrl = Array.isArray(j.output) ? j.output[0] : (j.output || null);
         finalStatus = videoUrl ? 'completed' : 'queued';
-      } else if (provider.id === 'runway') {
+        } else if (provider.id === 'runway') {
         const promptText = normalizeVideoPrompt(script);
         const r = await fetch('https://api.dev.runwayml.com/v1/image_to_video', {
           method: 'POST',
@@ -198,11 +202,11 @@ Deno.serve(async (req) => {
         }
         externalJobId = j.id || null;
         finalStatus = 'queued';
-      } else if (provider.id === 'stability') {
+        } else if (provider.id === 'stability') {
         // Stability video endpoints require image input — we record as queued and return job placeholder
         finalStatus = 'queued';
         externalJobId = `stability_${Date.now()}`;
-      } else if (provider.id === 'freesoragenerator') {
+        } else if (provider.id === 'freesoragenerator') {
         const r = await fetch('https://api.freesoragenerator.com/v1/videos/generations', {
           method: 'POST',
           headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
@@ -213,7 +217,7 @@ Deno.serve(async (req) => {
         externalJobId = j.id || j.job_id || null;
         videoUrl = j.video_url || j.url || null;
         finalStatus = videoUrl ? 'completed' : 'queued';
-      }
+        }
       } catch (e: any) {
         errorMessage = e?.message || String(e);
         finalStatus = 'failed';
