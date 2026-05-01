@@ -15,6 +15,7 @@ import { useUserAddons } from '@/hooks/useUserAddons';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { EbookConfigPanel, EbookConfig } from '@/components/ebook/EbookConfigPanel';
+import { EbookGenerationOverlay } from '@/components/ebook/EbookGenerationOverlay';
 
 type Project = { id: string; name: string; ai_profile?: string | null };
 
