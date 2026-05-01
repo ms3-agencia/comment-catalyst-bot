@@ -253,6 +253,8 @@ export default function EbookEditor() {
                 onGenerate={() => generateSection('introduction')}
                 generating={busy === 'introduction'}
                 hasContent={!!ebook.introduction}
+                ebookId={ebook.id}
+                contextHint={`${ebook.title}. ${ebook.subtitle || ''}`}
               />
             )}
             {activeChapter === -2 && (
@@ -264,6 +266,8 @@ export default function EbookEditor() {
                 onGenerate={() => generateSection('conclusion')}
                 generating={busy === 'conclusion'}
                 hasContent={!!ebook.conclusion}
+                ebookId={ebook.id}
+                contextHint={`${ebook.title}. ${ebook.subtitle || ''}`}
               />
             )}
             {activeChapter !== null && activeChapter > 0 && (() => {
@@ -280,6 +284,8 @@ export default function EbookEditor() {
                   generating={busy === `ch-${ch.chapter_number}`}
                   hasContent={ch.status === 'completed'}
                   wordCount={ch.word_count}
+                  ebookId={ebook.id}
+                  contextHint={`${ebook.title} — Cap. ${ch.chapter_number}: ${ch.title}. ${ch.summary || ''}`}
                 />
               );
             })()}
