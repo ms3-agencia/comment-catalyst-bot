@@ -21,6 +21,7 @@ import {
   Calendar as CalendarIcon, Search, CheckSquare, Square,
 } from 'lucide-react';
 import { useLogoCustomization, applyLogoOverlay, LogoFormatKey } from '@/hooks/useLogoCustomization';
+import { DeleteOverlay } from '@/components/DeleteOverlay';
 
 // Mapeia network + ratio para a chave de formato do logo (best-effort)
 const pickLogoFormatKey = (network: string, ratio?: string): LogoFormatKey => {
@@ -138,6 +139,9 @@ export default function ContentHistory() {
   const [genResults, setGenResults] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [deleteOverlay, setDeleteOverlay] = useState<{ open: boolean; count: number; label: string; done: boolean }>({
+    open: false, count: 0, label: 'conteúdo(s)', done: false,
+  });
   const [zipDownloadingId, setZipDownloadingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
@@ -156,6 +160,7 @@ export default function ContentHistory() {
     if (ids.length === 0) return;
     if (!confirm(`Excluir ${ids.length} conteúdo(s) ${label}? Esta ação não pode ser desfeita.`)) return;
     setBulkDeleting(true);
+    setDeleteOverlay({ open: true, count: ids.length, label: 'conteúdo(s)', done: false });
     try {
       const { error } = await supabase.from('generated_contents').delete().in('id', ids);
       if (error) throw error;
@@ -167,8 +172,12 @@ export default function ContentHistory() {
         return next;
       });
       if (activePost && idSet.has(activePost.id)) setActivePost(null);
+      // Mostra estado "concluído" e fecha em seguida (mantém o usuário na mesma página)
+      setDeleteOverlay(s => ({ ...s, done: true }));
+      setTimeout(() => setDeleteOverlay(s => ({ ...s, open: false })), 900);
       toast({ title: `${ids.length} conteúdo(s) excluído(s)` });
     } catch (e: any) {
+      setDeleteOverlay(s => ({ ...s, open: false }));
       toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
     } finally {
       setBulkDeleting(false);
@@ -178,13 +187,17 @@ export default function ContentHistory() {
   const deleteContent = async (h: HistoryItem) => {
     if (!confirm(`Excluir "${h.title || h.caption || 'este conteúdo'}"? Esta ação não pode ser desfeita.`)) return;
     setDeletingId(h.id);
+    setDeleteOverlay({ open: true, count: 1, label: 'conteúdo', done: false });
     try {
       const { error } = await supabase.from('generated_contents').delete().eq('id', h.id);
       if (error) throw error;
       setAllHistory(prev => prev.filter(x => x.id !== h.id));
       if (activePost?.id === h.id) setActivePost(null);
+      setDeleteOverlay(s => ({ ...s, done: true }));
+      setTimeout(() => setDeleteOverlay(s => ({ ...s, open: false })), 900);
       toast({ title: 'Conteúdo excluído' });
     } catch (e: any) {
+      setDeleteOverlay(s => ({ ...s, open: false }));
       toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
     } finally {
       setDeletingId(null);
@@ -407,6 +420,12 @@ export default function ContentHistory() {
 
   return (
     <DashboardLayout>
+      <DeleteOverlay
+        open={deleteOverlay.open}
+        count={deleteOverlay.count}
+        label={deleteOverlay.label}
+        done={deleteOverlay.done}
+      />
       <div className="max-w-6xl mx-auto space-y-6">
         <div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
