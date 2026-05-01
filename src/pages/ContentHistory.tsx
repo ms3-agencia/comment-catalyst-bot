@@ -139,6 +139,9 @@ export default function ContentHistory() {
   const [genResults, setGenResults] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [deleteOverlay, setDeleteOverlay] = useState<{ open: boolean; count: number; label: string; done: boolean }>({
+    open: false, count: 0, label: 'conteúdo(s)', done: false,
+  });
   const [zipDownloadingId, setZipDownloadingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
