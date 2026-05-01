@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useCredits } from '@/hooks/useCredits';
+import { usePlanUsage } from '@/hooks/usePlanUsage';
 import {
   Sparkles, Loader2, ArrowLeft, FolderOpen, Instagram, Youtube, Facebook, Linkedin,
   Music2, MessageCircle, Image as ImageIcon, Video, Film, Layers, FileText, Pin,
