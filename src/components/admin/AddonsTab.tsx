@@ -170,9 +170,21 @@ export const AddonsTab = () => {
                   <TableCell>
                     <div className="flex gap-1">
                       {cfg && (
-                        <Button size="sm" variant="outline" onClick={() => setConfiguringSlug(a.slug)} className="gap-1">
-                          <cfg.icon className="h-3.5 w-3.5" /> Configurações
-                        </Button>
+                        <TooltipProvider delayDuration={150}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => setConfiguringSlug(a.slug)}
+                                aria-label={cfg.label}
+                              >
+                                <Settings className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">{cfg.label}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
                       <Button size="icon" variant="ghost" onClick={() => setEditing(a)}><Pencil className="h-4 w-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => setDeleteId(a.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
