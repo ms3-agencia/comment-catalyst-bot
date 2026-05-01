@@ -9,9 +9,14 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, Mail, Bell, Send, Server, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Loader2, Save, Mail, Bell, Send, Server, AlertCircle, CheckCircle2, Plus, Trash2, Megaphone, Lock } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { GmailAppPasswordTutorial } from './GmailAppPasswordTutorial';
+import { RichTextEditor } from './RichTextEditor';
+import { TemplateRulesEditor } from './TemplateRulesEditor';
+import { BroadcastTab } from './BroadcastTab';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type EmailTemplate = {
   id: string;
@@ -23,9 +28,15 @@ type EmailTemplate = {
   enabled: boolean;
   send_email: boolean;
   send_inapp: boolean;
+  category: string;
+  trigger_type: string;
+  is_system: boolean;
+  description?: string;
 };
 
 const SMTP_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_from_email', 'smtp_from_name', 'smtp_secure'];
+
+const COMMON_VARS = ['user_name', 'user_email', 'site_name', 'app_url', 'plans_url', 'payment_link', 'credits_balance', 'plan_name', 'days_left', 'renewal_date'];
 
 export function NotificationsTab() {
   const { toast } = useToast();
@@ -40,20 +51,23 @@ export function NotificationsTab() {
   const [testingConn, setTestingConn] = useState(false);
   const [testingSend, setTestingSend] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const [{ data: tpls }, { data: settings }] = await Promise.all([
-        supabase.from('email_templates').select('*').order('key'),
-        supabase.from('app_settings').select('key, value').in('key', SMTP_KEYS),
-      ]);
-      setTemplates((tpls || []) as EmailTemplate[]);
-      const s: Record<string, string> = {};
-      (settings || []).forEach(r => { s[r.key] = r.value; });
-      setSmtp(s);
-      if (tpls && tpls.length > 0) setActiveKey(tpls[0].key);
-      setLoading(false);
-    })();
-  }, []);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newTpl, setNewTpl] = useState({ key: '', name: '', category: 'general', trigger_type: 'manual' });
+
+  const loadAll = async () => {
+    const [{ data: tpls }, { data: settings }] = await Promise.all([
+      supabase.from('email_templates').select('*').order('category').order('name'),
+      supabase.from('app_settings').select('key, value').in('key', SMTP_KEYS),
+    ]);
+    setTemplates((tpls || []) as EmailTemplate[]);
+    const s: Record<string, string> = {};
+    (settings || []).forEach(r => { s[r.key] = r.value; });
+    setSmtp(s);
+    if (tpls && tpls.length > 0 && !activeKey) setActiveKey(tpls[0].key);
+    setLoading(false);
+  };
+
+  useEffect(() => { loadAll(); }, []);
 
   const upsertSetting = async (key: string, value: string) => {
     const { data: existing } = await supabase.from('app_settings').select('id').eq('key', key).maybeSingle();
@@ -84,78 +98,107 @@ export function NotificationsTab() {
       enabled: tpl.enabled,
       send_email: tpl.send_email,
       send_inapp: tpl.send_inapp,
+      category: tpl.category,
+      trigger_type: tpl.trigger_type,
+      description: tpl.description,
+      variables: tpl.variables,
     }).eq('id', tpl.id);
     setSaving(false);
     if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     else toast({ title: 'Template salvo' });
   };
 
+  const createTemplate = async () => {
+    if (!newTpl.key || !newTpl.name) {
+      toast({ title: 'Preencha chave e nome', variant: 'destructive' }); return;
+    }
+    if (!/^[a-z0-9_]+$/.test(newTpl.key)) {
+      toast({ title: 'Chave inválida', description: 'Use apenas letras minúsculas, números e _', variant: 'destructive' }); return;
+    }
+    const { error } = await supabase.from('email_templates').insert({
+      key: newTpl.key,
+      name: newTpl.name,
+      subject: `${newTpl.name} - {{site_name}}`,
+      body_html: '<h2>Olá, {{user_name}}!</h2><p>Conteúdo do email aqui.</p>',
+      variables: ['user_name', 'site_name', 'app_url'],
+      category: newTpl.category,
+      trigger_type: newTpl.trigger_type,
+      is_system: false,
+      enabled: false,
+    });
+    if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    else {
+      toast({ title: 'Template criado' });
+      setCreateOpen(false);
+      setNewTpl({ key: '', name: '', category: 'general', trigger_type: 'manual' });
+      await loadAll();
+      setActiveKey(newTpl.key);
+    }
+  };
+
+  const deleteTemplate = async (tpl: EmailTemplate) => {
+    if (tpl.is_system) {
+      toast({ title: 'Template do sistema não pode ser removido', variant: 'destructive' }); return;
+    }
+    if (!confirm(`Remover o template "${tpl.name}"? Esta ação é permanente.`)) return;
+    const { error } = await supabase.from('email_templates').delete().eq('id', tpl.id);
+    if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' });
+    else {
+      toast({ title: 'Template removido' });
+      const remaining = templates.filter(t => t.id !== tpl.id);
+      setActiveKey(remaining[0]?.key || null);
+      loadAll();
+    }
+  };
+
   const testSmtpConnection = async () => {
     setTestingConn(true);
-    const { data, error } = await supabase.functions.invoke('send-system-email', {
-      body: { action: 'test_connection' },
-    });
+    const { data, error } = await supabase.functions.invoke('send-system-email', { body: { action: 'test_connection' } });
     setTestingConn(false);
-    if (error) toast({ title: 'Falha ao testar', description: error.message, variant: 'destructive' });
+    if (error) toast({ title: 'Falha', description: error.message, variant: 'destructive' });
     else if ((data as any)?.ok) toast({ title: 'Conexão OK', description: (data as any).message });
-    else toast({ title: 'Conexão falhou', description: (data as any)?.error || 'Erro desconhecido', variant: 'destructive' });
+    else toast({ title: 'Falhou', description: (data as any)?.error || 'Erro', variant: 'destructive' });
   };
 
   const sendSmtpTestEmail = async () => {
-    if (!smtpTestEmail) {
-      toast({ title: 'Informe um email para teste', variant: 'destructive' });
-      return;
-    }
+    if (!smtpTestEmail) { toast({ title: 'Informe um email', variant: 'destructive' }); return; }
     setTestingSend(true);
-    const { data, error } = await supabase.functions.invoke('send-system-email', {
-      body: { action: 'test_send', recipientEmail: smtpTestEmail },
-    });
+    const { data, error } = await supabase.functions.invoke('send-system-email', { body: { action: 'test_send', recipientEmail: smtpTestEmail } });
     setTestingSend(false);
-    if (error) toast({ title: 'Falha no envio', description: error.message, variant: 'destructive' });
+    if (error) toast({ title: 'Falha', description: error.message, variant: 'destructive' });
     else if ((data as any)?.ok) toast({ title: 'Email enviado', description: (data as any).message });
-    else toast({ title: 'Envio falhou', description: (data as any)?.error || 'Erro desconhecido', variant: 'destructive' });
+    else toast({ title: 'Falhou', description: (data as any)?.error || 'Erro', variant: 'destructive' });
   };
 
   const sendTestEmail = async (tpl: EmailTemplate) => {
-    if (!testEmail) {
-      toast({ title: 'Informe um email para teste', variant: 'destructive' });
-      return;
-    }
+    if (!testEmail) { toast({ title: 'Informe um email', variant: 'destructive' }); return; }
     setSendingTest(true);
     const sampleVars: Record<string, any> = {
-      user_name: 'João Teste',
-      site_name: 'YCaptura',
-      free_credits: 50,
-      app_url: window.location.origin,
-      package_name: 'Pacote Plus 500',
-      credits: 500,
-      amount: '49,90',
-      addon_name: 'PDF Custom',
-      addon_description: 'Personalize todos os PDFs gerados.',
-      expires_at: '31/12/2026',
-      plan_name: 'Pro',
-      monthly_credits: 1000,
-      plan_description: 'Acesso completo aos recursos profissionais.',
-      days_left: 3,
-      renewal_date: '15/05/2026',
+      user_name: 'João Teste', site_name: 'YCaptura', free_credits: 50, app_url: window.location.origin,
+      package_name: 'Pacote Plus 500', credits: 500, amount: '49,90',
+      addon_name: 'PDF Custom', addon_description: 'Personalize seus PDFs.', expires_at: '31/12/2026',
+      plan_name: 'Pro', monthly_credits: 1000, plan_description: 'Acesso completo.',
+      days_left: 3, renewal_date: '15/05/2026',
+      payment_link: window.location.origin + '/dashboard/credits',
+      plans_url: window.location.origin + '/dashboard/credits',
+      credits_balance: 8, credits_url: window.location.origin + '/dashboard/credits',
     };
     const { data, error } = await supabase.functions.invoke('send-system-email', {
-      body: {
-        templateKey: tpl.key,
-        recipientEmail: testEmail,
-        variables: sampleVars,
-      },
+      body: { templateKey: tpl.key, recipientEmail: testEmail, variables: sampleVars },
     });
     setSendingTest(false);
-    if (error) toast({ title: 'Falha no envio', description: error.message, variant: 'destructive' });
-    else if ((data as any)?.email === 'failed') toast({ title: 'SMTP falhou', description: 'Verifique credenciais. Veja logs no Supabase.', variant: 'destructive' });
-    else if ((data as any)?.email === 'skipped') toast({ title: 'SMTP não configurado', description: 'Preencha as credenciais SMTP primeiro.', variant: 'destructive' });
-    else toast({ title: 'Email de teste enviado', description: `Confira a caixa de entrada de ${testEmail}.` });
+    if (error) toast({ title: 'Falha', description: error.message, variant: 'destructive' });
+    else if ((data as any)?.email === 'failed') toast({ title: 'SMTP falhou', description: (data as any)?.error || 'Verifique credenciais', variant: 'destructive' });
+    else if ((data as any)?.email === 'skipped') toast({ title: 'SMTP não configurado', variant: 'destructive' });
+    else toast({ title: 'Email enviado', description: `Confira ${testEmail}` });
   };
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" /></div>;
 
   const active = templates.find(t => t.key === activeKey);
+  const groupedTemplates = templates.reduce((acc, t) => {
+    (acc[t.category] = acc[t.category] || []).push(t); return acc;
+  }, {} as Record<string, EmailTemplate[]>);
 
   return (
     <div className="space-y-4">
@@ -163,14 +206,15 @@ export function NotificationsTab() {
         <Bell className="h-4 w-4" />
         <AlertTitle>Avisos & Emails do sistema</AlertTitle>
         <AlertDescription>
-          Configure o servidor de email (SMTP) e personalize cada template. Variáveis no formato <code className="text-primary">{'{{user_name}}'}</code> são substituídas automaticamente. Cada template pode ser entregue por email, in-app ou ambos.
+          Configure SMTP, crie templates personalizados, defina regras de envio automático e dispare broadcasts manuais.
         </AlertDescription>
       </Alert>
 
-      <Tabs defaultValue="smtp" className="w-full">
+      <Tabs defaultValue="templates" className="w-full">
         <TabsList>
-          <TabsTrigger value="smtp"><Server size={14} className="mr-1.5" />Servidor SMTP</TabsTrigger>
-          <TabsTrigger value="templates"><Mail size={14} className="mr-1.5" />Templates</TabsTrigger>
+          <TabsTrigger value="smtp"><Server size={14} className="mr-1.5" />SMTP</TabsTrigger>
+          <TabsTrigger value="templates"><Mail size={14} className="mr-1.5" />Templates & regras</TabsTrigger>
+          <TabsTrigger value="broadcast"><Megaphone size={14} className="mr-1.5" />Broadcasts</TabsTrigger>
         </TabsList>
 
         <TabsContent value="smtp" className="mt-4">
@@ -182,178 +226,209 @@ export function NotificationsTab() {
             <Alert>
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="text-xs space-y-2">
-                <p>
-                  Para Gmail use Host: <b>smtp.gmail.com</b>, Porta: <b>587</b>, criptografia <b>tls</b>, e gere uma <b>senha de app</b> (a senha normal do Gmail não funciona).
-                </p>
+                <p>Para Gmail use Host: <b>smtp.gmail.com</b>, Porta: <b>587</b>, criptografia <b>tls</b>, e gere uma <b>senha de app</b>.</p>
                 <GmailAppPasswordTutorial />
               </AlertDescription>
             </Alert>
             <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Host SMTP</Label>
-                <Input value={smtp.smtp_host || ''} onChange={e => setSmtp(p => ({ ...p, smtp_host: e.target.value }))} placeholder="smtp.gmail.com" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Porta</Label>
-                <Input value={smtp.smtp_port || ''} onChange={e => setSmtp(p => ({ ...p, smtp_port: e.target.value }))} placeholder="587" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Usuário (email completo)</Label>
-                <Input value={smtp.smtp_user || ''} onChange={e => setSmtp(p => ({ ...p, smtp_user: e.target.value }))} placeholder="seuemail@gmail.com" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Senha (senha de app)</Label>
-                <Input type="password" value={smtp.smtp_password || ''} onChange={e => setSmtp(p => ({ ...p, smtp_password: e.target.value }))} placeholder="xxxx xxxx xxxx xxxx" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Email remetente (From)</Label>
-                <Input value={smtp.smtp_from_email || ''} onChange={e => setSmtp(p => ({ ...p, smtp_from_email: e.target.value }))} placeholder="noreply@seudominio.com" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Nome remetente</Label>
-                <Input value={smtp.smtp_from_name || ''} onChange={e => setSmtp(p => ({ ...p, smtp_from_name: e.target.value }))} placeholder="YCaptura" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Criptografia</Label>
-                <Input value={smtp.smtp_secure || 'tls'} onChange={e => setSmtp(p => ({ ...p, smtp_secure: e.target.value }))} placeholder="tls ou ssl" />
-              </div>
+              <div className="space-y-1.5"><Label className="text-xs">Host SMTP</Label><Input value={smtp.smtp_host || ''} onChange={e => setSmtp(p => ({ ...p, smtp_host: e.target.value }))} placeholder="smtp.gmail.com" /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Porta</Label><Input value={smtp.smtp_port || ''} onChange={e => setSmtp(p => ({ ...p, smtp_port: e.target.value }))} placeholder="587" /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Usuário</Label><Input value={smtp.smtp_user || ''} onChange={e => setSmtp(p => ({ ...p, smtp_user: e.target.value }))} placeholder="seuemail@gmail.com" /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Senha (senha de app)</Label><Input type="password" value={smtp.smtp_password || ''} onChange={e => setSmtp(p => ({ ...p, smtp_password: e.target.value }))} /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Email remetente</Label><Input value={smtp.smtp_from_email || ''} onChange={e => setSmtp(p => ({ ...p, smtp_from_email: e.target.value }))} /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Nome remetente</Label><Input value={smtp.smtp_from_name || ''} onChange={e => setSmtp(p => ({ ...p, smtp_from_name: e.target.value }))} placeholder="YCaptura" /></div>
+              <div className="space-y-1.5"><Label className="text-xs">Criptografia</Label><Input value={smtp.smtp_secure || 'tls'} onChange={e => setSmtp(p => ({ ...p, smtp_secure: e.target.value }))} placeholder="tls ou ssl" /></div>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-border">
               <div className="flex items-center gap-2 flex-wrap">
                 <Button variant="outline" size="sm" onClick={testSmtpConnection} disabled={testingConn}>
-                  {testingConn ? <Loader2 className="animate-spin mr-2" size={14} /> : <Server className="mr-2" size={14} />}
-                  Testar conexão
+                  {testingConn ? <Loader2 className="animate-spin mr-2" size={14} /> : <Server className="mr-2" size={14} />} Testar conexão
                 </Button>
-                <Input
-                  placeholder="email@para.teste"
-                  className="w-56"
-                  value={smtpTestEmail}
-                  onChange={e => setSmtpTestEmail(e.target.value)}
-                />
+                <Input placeholder="email@para.teste" className="w-56" value={smtpTestEmail} onChange={e => setSmtpTestEmail(e.target.value)} />
                 <Button variant="outline" size="sm" onClick={sendSmtpTestEmail} disabled={testingSend}>
-                  {testingSend ? <Loader2 className="animate-spin mr-2" size={14} /> : <Send className="mr-2" size={14} />}
-                  Enviar teste
+                  {testingSend ? <Loader2 className="animate-spin mr-2" size={14} /> : <Send className="mr-2" size={14} />} Enviar teste
                 </Button>
               </div>
               <Button onClick={saveSmtp} disabled={saving} size="sm">
                 {saving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Save className="mr-2" size={14} />} Salvar SMTP
               </Button>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Salve as configurações antes de testar. "Testar conexão" valida host/porta/usuário/senha. "Enviar teste" envia um email simples para confirmar entrega.
-            </p>
           </Card>
         </TabsContent>
 
         <TabsContent value="templates" className="mt-4">
-          <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+          <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
             <Card className="glass p-2 h-fit">
-              <div className="space-y-1">
-                {templates.map(t => (
-                  <button
-                    key={t.key}
-                    onClick={() => setActiveKey(t.key)}
-                    className={`w-full text-left rounded-md px-3 py-2 text-sm transition-colors ${activeKey === t.key ? 'bg-primary/10 text-primary' : 'hover:bg-secondary'}`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium truncate">{t.name}</span>
-                      {t.enabled
-                        ? <CheckCircle2 size={12} className="text-emerald-400 shrink-0" />
-                        : <span className="h-2 w-2 rounded-full bg-muted-foreground shrink-0" />}
+              <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full mb-2"><Plus size={14} className="mr-1" /> Novo template</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Novo template de email</DialogTitle></DialogHeader>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Chave (única, sem espaços)</Label>
+                      <Input value={newTpl.key} onChange={e => setNewTpl(p => ({ ...p, key: e.target.value.toLowerCase() }))} placeholder="ex: trial_ending" />
                     </div>
-                    <code className="text-[10px] text-muted-foreground">{t.key}</code>
-                  </button>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Nome</Label>
+                      <Input value={newTpl.name} onChange={e => setNewTpl(p => ({ ...p, name: e.target.value }))} placeholder="Aviso de trial expirando" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Categoria</Label>
+                        <Select value={newTpl.category} onValueChange={v => setNewTpl(p => ({ ...p, category: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="general">Geral</SelectItem>
+                            <SelectItem value="lifecycle">Ciclo de vida</SelectItem>
+                            <SelectItem value="billing">Cobrança</SelectItem>
+                            <SelectItem value="transactional">Transacional</SelectItem>
+                            <SelectItem value="marketing">Marketing</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Tipo de gatilho</Label>
+                        <Select value={newTpl.trigger_type} onValueChange={v => setNewTpl(p => ({ ...p, trigger_type: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="manual">Manual / broadcast</SelectItem>
+                            <SelectItem value="scheduled">Agendado (com regras)</SelectItem>
+                            <SelectItem value="event">Evento do sistema</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+                    <Button onClick={createTemplate}>Criar</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                {Object.entries(groupedTemplates).map(([cat, list]) => (
+                  <div key={cat}>
+                    <div className="px-2 py-1 text-[10px] uppercase font-semibold text-muted-foreground">{cat}</div>
+                    {list.map(t => (
+                      <button key={t.key} onClick={() => setActiveKey(t.key)}
+                        className={`w-full text-left rounded-md px-3 py-2 text-sm transition-colors ${activeKey === t.key ? 'bg-primary/10 text-primary' : 'hover:bg-secondary'}`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium truncate flex items-center gap-1.5">
+                            {t.is_system && <Lock size={10} className="text-muted-foreground shrink-0" />}
+                            {t.name}
+                          </span>
+                          {t.enabled
+                            ? <CheckCircle2 size={12} className="text-emerald-400 shrink-0" />
+                            : <span className="h-2 w-2 rounded-full bg-muted-foreground shrink-0" />}
+                        </div>
+                        <code className="text-[10px] text-muted-foreground">{t.key}</code>
+                      </button>
+                    ))}
+                  </div>
                 ))}
               </div>
             </Card>
 
             {active && (
-              <Card className="glass p-5 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold">{active.name}</h3>
-                    <code className="text-xs text-muted-foreground">{active.key}</code>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2 text-xs">
-                      <Switch checked={active.enabled} onCheckedChange={v => updateTemplate(active.key, { enabled: v })} />
-                      Ativo
-                    </label>
-                    <label className="flex items-center gap-2 text-xs">
-                      <Switch checked={active.send_email} onCheckedChange={v => updateTemplate(active.key, { send_email: v })} />
-                      <Mail size={12} /> Email
-                    </label>
-                    <label className="flex items-center gap-2 text-xs">
-                      <Switch checked={active.send_inapp} onCheckedChange={v => updateTemplate(active.key, { send_inapp: v })} />
-                      <Bell size={12} /> In-app
-                    </label>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Nome interno</Label>
-                  <Input value={active.name} onChange={e => updateTemplate(active.key, { name: e.target.value })} />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Assunto do email</Label>
-                  <Input value={active.subject} onChange={e => updateTemplate(active.key, { subject: e.target.value })} />
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <Label className="text-xs">Corpo (HTML)</Label>
-                    <div className="flex flex-wrap gap-1">
-                      {active.variables.map(v => (
-                        <Badge
-                          key={v}
-                          variant="outline"
-                          className="cursor-pointer text-[10px] hover:bg-primary/10"
-                          onClick={() => {
-                            navigator.clipboard.writeText(`{{${v}}}`);
-                            toast({ title: `Copiado: {{${v}}}` });
-                          }}
-                        >
-                          {`{{${v}}}`}
-                        </Badge>
-                      ))}
+              <div className="space-y-4">
+                <Card className="glass p-5 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      {active.is_system && <Badge variant="outline" className="text-[10px]"><Lock size={10} className="mr-1" />Sistema</Badge>}
+                      <div>
+                        <h3 className="font-semibold">{active.name}</h3>
+                        <code className="text-xs text-muted-foreground">{active.key}</code>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <label className="flex items-center gap-2 text-xs"><Switch checked={active.enabled} onCheckedChange={v => updateTemplate(active.key, { enabled: v })} />Ativo</label>
+                      <label className="flex items-center gap-2 text-xs"><Switch checked={active.send_email} onCheckedChange={v => updateTemplate(active.key, { send_email: v })} /><Mail size={12} /> Email</label>
+                      <label className="flex items-center gap-2 text-xs"><Switch checked={active.send_inapp} onCheckedChange={v => updateTemplate(active.key, { send_inapp: v })} /><Bell size={12} /> In-app</label>
                     </div>
                   </div>
-                  <Textarea
-                    rows={10}
-                    className="font-mono text-xs"
-                    value={active.body_html}
-                    onChange={e => updateTemplate(active.key, { body_html: e.target.value })}
-                  />
-                  <p className="text-[10px] text-muted-foreground">Clique em uma variável acima para copiar. Use HTML simples (h2, p, b, a, ul/li).</p>
-                </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Pré-visualização</Label>
-                  <div className="rounded-lg border border-border bg-background/50 p-4 text-sm" dangerouslySetInnerHTML={{ __html: active.body_html }} />
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-border">
-                  <div className="flex items-center gap-2">
-                    <Input
-                      placeholder="email@para.teste"
-                      className="w-56"
-                      value={testEmail}
-                      onChange={e => setTestEmail(e.target.value)}
-                    />
-                    <Button variant="outline" size="sm" onClick={() => sendTestEmail(active)} disabled={sendingTest}>
-                      {sendingTest ? <Loader2 className="animate-spin mr-2" size={14} /> : <Send className="mr-2" size={14} />}
-                      Enviar teste
-                    </Button>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-1.5"><Label className="text-xs">Nome</Label><Input value={active.name} onChange={e => updateTemplate(active.key, { name: e.target.value })} /></div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Categoria</Label>
+                      <Select value={active.category} onValueChange={v => updateTemplate(active.key, { category: v })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="general">Geral</SelectItem>
+                          <SelectItem value="lifecycle">Ciclo de vida</SelectItem>
+                          <SelectItem value="billing">Cobrança</SelectItem>
+                          <SelectItem value="transactional">Transacional</SelectItem>
+                          <SelectItem value="marketing">Marketing</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <Button onClick={() => saveTemplate(active)} disabled={saving} size="sm">
-                    {saving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Save className="mr-2" size={14} />}
-                    Salvar template
-                  </Button>
-                </div>
-              </Card>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Assunto</Label>
+                    <Input value={active.subject} onChange={e => updateTemplate(active.key, { subject: e.target.value })} />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <Label className="text-xs">Corpo do email</Label>
+                      <div className="flex flex-wrap gap-1">
+                        {(active.variables.length > 0 ? active.variables : COMMON_VARS).map(v => (
+                          <Badge key={v} variant="outline" className="cursor-pointer text-[10px] hover:bg-primary/10"
+                            onClick={() => { navigator.clipboard.writeText(`{{${v}}}`); toast({ title: `Copiado: {{${v}}}` }); }}>
+                            {`{{${v}}}`}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    <RichTextEditor value={active.body_html} onChange={html => updateTemplate(active.key, { body_html: html })} />
+                    <p className="text-[10px] text-muted-foreground">Clique em uma variável para copiar e cole no editor. Variáveis no formato <code>{`{{nome}}`}</code> são substituídas no envio.</p>
+                  </div>
+
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Variáveis aceitas (avançado)</summary>
+                    <Textarea
+                      className="mt-2 font-mono text-xs"
+                      rows={2}
+                      value={active.variables.join(', ')}
+                      onChange={e => updateTemplate(active.key, { variables: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                      placeholder="user_name, site_name, ..."
+                    />
+                  </details>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-border">
+                    <div className="flex items-center gap-2">
+                      <Input placeholder="email@para.teste" className="w-56" value={testEmail} onChange={e => setTestEmail(e.target.value)} />
+                      <Button variant="outline" size="sm" onClick={() => sendTestEmail(active)} disabled={sendingTest}>
+                        {sendingTest ? <Loader2 className="animate-spin mr-2" size={14} /> : <Send className="mr-2" size={14} />} Enviar teste
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!active.is_system && (
+                        <Button variant="outline" size="sm" className="text-destructive" onClick={() => deleteTemplate(active)}>
+                          <Trash2 size={14} className="mr-1" /> Remover
+                        </Button>
+                      )}
+                      <Button onClick={() => saveTemplate(active)} disabled={saving} size="sm">
+                        {saving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Save className="mr-2" size={14} />} Salvar
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+
+                {(active.trigger_type === 'scheduled' || active.key === 'plan_renewal' || active.key === 'low_credits') && (
+                  <TemplateRulesEditor templateId={active.id} />
+                )}
+              </div>
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="broadcast" className="mt-4">
+          <BroadcastTab />
         </TabsContent>
       </Tabs>
     </div>
