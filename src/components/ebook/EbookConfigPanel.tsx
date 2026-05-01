@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Plus, Trash2, Save, Star, Lock } from 'lucide-react';
+import { Loader2, Plus, Trash2, Save, Star, Lock, Gem } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export type EbookConfig = {
@@ -179,6 +179,9 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
           >
             <span className="truncate flex items-center gap-1.5">
               {c.is_default && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
+              {c.premium_product_mode && (
+                <Gem className="h-3 w-3 text-cyan-400" aria-label="Modo Premium ativo" />
+              )}
               {c.name}
             </span>
             <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive shrink-0" onClick={(e) => { e.stopPropagation(); remove(c.id); }} />
