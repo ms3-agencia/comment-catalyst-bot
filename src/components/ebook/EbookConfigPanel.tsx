@@ -33,7 +33,8 @@ export type EbookConfig = {
   premium_product_mode: boolean;
   ai_model: string;
   structure?: any;
-};
+  category?: string;
+  tags?: string[];
 
 const DEFAULT_CFG: EbookConfig = {
   name: 'Meu template',
