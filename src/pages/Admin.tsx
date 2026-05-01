@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, ArrowUpCircle, ArrowDownCircle, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2, CreditCard, Package, Coins, Wallet, Plus, Pencil, Palette, Clapperboard, FileText, Clock, Sparkles } from 'lucide-react';
+import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, ArrowUpCircle, ArrowDownCircle, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2, CreditCard, Package, Coins, Wallet, Plus, Pencil, Palette, Clapperboard, FileText, Clock, Sparkles, BookOpen } from 'lucide-react';
 import { BrandingTab } from '@/components/admin/BrandingTab';
 import { PwaTab } from '@/components/admin/PwaTab';
 import { AddonsTab } from '@/components/admin/AddonsTab';
@@ -18,6 +18,7 @@ import { VideoAiIntegrationsTab } from '@/components/admin/VideoAiIntegrationsTa
 import { VideoAiLogTab } from '@/components/admin/VideoAiLogTab';
 import { NotificationsTab } from '@/components/admin/NotificationsTab';
 import { CreditAuditTab } from '@/components/admin/CreditAuditTab';
+import { EbookConfigPanel } from '@/components/ebook/EbookConfigPanel';
 import { Plug, ScrollText } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -809,11 +810,12 @@ const Admin = () => {
           }}
         >
 
-          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-10 h-auto">
+          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-11 h-auto">
             <TabsTrigger value="users"><Users size={14} className="mr-1.5" />Usuários</TabsTrigger>
             <TabsTrigger value="plans"><ShieldCheck size={14} className="mr-1.5" />Planos</TabsTrigger>
             <TabsTrigger value="packages"><Package size={14} className="mr-1.5" />Pacotes</TabsTrigger>
             <TabsTrigger value="addons"><Sparkles size={14} className="mr-1.5" />Add-ons</TabsTrigger>
+            <TabsTrigger value="ebooks"><BookOpen size={14} className="mr-1.5" />Ebooks</TabsTrigger>
             <TabsTrigger value="costs"><Coins size={14} className="mr-1.5" />Custos</TabsTrigger>
             <TabsTrigger value="audit"><FileText size={14} className="mr-1.5" />Auditoria</TabsTrigger>
             <TabsTrigger value="video"><Clapperboard size={14} className="mr-1.5" />Vídeo</TabsTrigger>
@@ -1504,6 +1506,22 @@ const Admin = () => {
 
           <TabsContent value="addons" className="mt-4">
             <AddonsTab />
+          </TabsContent>
+
+          {/* CONFIGURAÇÕES DE EBOOKS (somente admin) */}
+          <TabsContent value="ebooks" className="mt-4 space-y-4">
+            <Card className="glass p-4 bg-primary/5 border-primary/20">
+              <div className="flex items-start gap-3">
+                <BookOpen className="h-5 w-5 text-primary mt-0.5" />
+                <div>
+                  <h3 className="font-heading font-semibold">Configurações do Gerador de eBooks</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Templates globais usados por todos os usuários ao gerar eBooks. Apenas administradores podem criar, editar ou excluir.
+                  </p>
+                </div>
+              </div>
+            </Card>
+            <EbookConfigPanel />
           </TabsContent>
 
           {/* CUSTOS POR AÇÃO */}
