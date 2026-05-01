@@ -57,6 +57,10 @@ type Mode = 'admin' | 'user';
 
 export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: { onSelect?: (cfg: EbookConfig) => void; mode?: Mode; canEdit?: boolean }) {
   const { toast } = useToast();
+  const { hasAddon } = useUserAddons();
+  const isAdminMode = mode === 'admin';
+  const canSeeAiModel = isAdminMode; // Modelo de IA só para admin
+  const canSeePremiumMode = isAdminMode || hasAddon('ebook-premium'); // Modo Produto Premium exige add-on premium
   const [configs, setConfigs] = useState<EbookConfig[]>([]);
   const [current, setCurrent] = useState<EbookConfig>(DEFAULT_CFG);
   const [loading, setLoading] = useState(true);
