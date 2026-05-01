@@ -183,6 +183,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                   </Badge>
                 )}
               </Link>
+            </div>
           </nav>
           <div className="border-t border-border p-4">
             <DropdownMenu>
