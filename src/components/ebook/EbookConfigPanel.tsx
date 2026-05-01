@@ -308,6 +308,7 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
             {canEdit ? 'Salvar template' : 'Bloqueado'}
           </Button>
         </div>
+        </fieldset>
       </Card>
     </div>
   );
