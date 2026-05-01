@@ -114,11 +114,19 @@ export function EbookItemCostsPanel() {
       </Card>
 
       <Card className="p-5">
-        <h3 className="font-semibold mb-1">Custo por item (créditos / capítulo)</h3>
-        <p className="text-xs text-muted-foreground mb-4">
-          Esses créditos são somados ao custo base do capítulo (8) quando o item está ativo no template, multiplicado pelo plano do usuário.
-        </p>
-        <div className="space-y-2">
+        <div className="flex items-start justify-between gap-4 mb-1">
+          <div>
+            <h3 className="font-semibold">Custo por item (créditos / capítulo)</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Esses créditos são somados ao custo base do capítulo (8) quando o item está ativo no template, multiplicado pelo plano do usuário.
+            </p>
+          </div>
+          <Button size="sm" variant="outline" onClick={reseed} disabled={seeding}>
+            {seeding ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
+            Ressincronizar padrões
+          </Button>
+        </div>
+        <div className="space-y-2 mt-4">
           {items.map(it => (
             <div key={it.id} className="grid grid-cols-12 gap-2 items-center p-2 rounded-md border hover:bg-accent/30">
               <div className="col-span-5">
