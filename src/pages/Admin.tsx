@@ -109,6 +109,7 @@ const Admin = () => {
   const [creditsSaving, setCreditsSaving] = useState(false);
   const [creditsMode, setCreditsMode] = useState<'add' | 'remove'>('add');
   const [creditsCurrentBalance, setCreditsCurrentBalance] = useState<number | null>(null);
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
 
   // Manage user addons
   type AdminAddon = { id: string; slug: string; name: string; billing_type: string; is_active: boolean };
@@ -1107,7 +1108,13 @@ const Admin = () => {
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setCreditsUser(null)}>Cancelar</Button>
                   <Button
-                    onClick={handleAddCredits}
+                    onClick={() => {
+                      if (creditsMode === 'remove') {
+                        setConfirmRemoveOpen(true);
+                      } else {
+                        handleAddCredits();
+                      }
+                    }}
                     disabled={
                       creditsSaving ||
                       !creditsAmount ||
@@ -1123,6 +1130,55 @@ const Admin = () => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            {/* Confirmação de remoção de créditos */}
+            <AlertDialog open={confirmRemoveOpen} onOpenChange={(open) => !open && setConfirmRemoveOpen(false)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar remoção de créditos?</AlertDialogTitle>
+                  <AlertDialogDescription asChild>
+                    <div className="space-y-3">
+                      <p>
+                        Você está prestes a remover <strong className="text-destructive">{creditsAmount}</strong> créditos de{' '}
+                        <strong>{creditsUser?.email}</strong>. Esta ação será registrada na auditoria.
+                      </p>
+                      <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1.5 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Saldo atual:</span>
+                          <span className="font-mono font-semibold">{creditsCurrentBalance ?? 0}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">A remover:</span>
+                          <span className="font-mono font-semibold text-destructive">−{creditsAmount}</span>
+                        </div>
+                        <div className="flex justify-between border-t border-border pt-1.5">
+                          <span className="text-muted-foreground">Novo saldo estimado:</span>
+                          <span className="font-mono font-bold text-foreground">
+                            {Math.max((creditsCurrentBalance ?? 0) - (creditsAmount || 0), 0)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={creditsSaving}>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    disabled={creditsSaving}
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      await handleAddCredits();
+                      setConfirmRemoveOpen(false);
+                    }}
+                  >
+                    {creditsSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ArrowDownCircle className="mr-2 h-4 w-4" />}
+                    Sim, remover créditos
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
 
             {/* Delete confirmation */}
             <AlertDialog open={!!deleteUser} onOpenChange={(open) => !open && setDeleteUser(null)}>
