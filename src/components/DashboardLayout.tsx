@@ -14,7 +14,7 @@ const navItems = [
   { to: '/dashboard/projects', icon: FolderOpen, label: 'Meus Projetos' },
   { to: '/dashboard/generate', icon: Sparkles, label: 'Gerar Conteúdo' },
   { to: '/dashboard/drafts', icon: Clapperboard, label: 'Rascunhos do Editor' },
-  { to: '/dashboard/ebooks', icon: BookOpen, label: 'eBooks' },
+  
   { to: '/dashboard/credits', icon: Coins, label: 'Créditos & Planos' },
 ];
 
@@ -29,6 +29,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
   const { hasAddon } = useUserAddons();
   const pdfAddonActive = hasAddon('pdf-customization');
   const logoAddonActive = hasAddon('custom-logo');
+  const ebookAddonActive = hasAddon('ebook-generator') || hasAddon('ebook-premium');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Fecha sidebar ao navegar (mobile)
@@ -161,6 +162,22 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                 <ImagePlus size={18} />
                 <span className="flex-1">Logo Custom</span>
                 {logoAddonActive && (
+                  <Badge className="h-5 px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 hover:bg-emerald-500/20">
+                    ATIVO
+                  </Badge>
+                )}
+              </Link>
+              <Link
+                to="/dashboard/ebooks"
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  location.pathname.startsWith('/dashboard/ebooks')
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                }`}
+              >
+                <BookOpen size={18} />
+                <span className="flex-1">eBooks</span>
+                {ebookAddonActive && (
                   <Badge className="h-5 px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 hover:bg-emerald-500/20">
                     ATIVO
                   </Badge>
