@@ -1078,6 +1078,63 @@ const Admin = () => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            {/* Manage user addons */}
+            <Dialog open={!!addonsUser} onOpenChange={(open) => !open && setAddonsUser(null)}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Sparkles size={18} className="text-primary" />
+                    Recursos adicionais
+                  </DialogTitle>
+                  <DialogDescription>
+                    Ative ou desative recursos adicionais para <strong>{addonsUser?.full_name || addonsUser?.email}</strong>. Alterações são aplicadas imediatamente, sem cobrança.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="pt-2">
+                  {addonsLoading ? (
+                    <div className="flex items-center justify-center py-10 text-muted-foreground">
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" /> Carregando…
+                    </div>
+                  ) : addonsList.length === 0 ? (
+                    <div className="py-10 text-center text-muted-foreground text-sm">Nenhum add-on cadastrado.</div>
+                  ) : (
+                    <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                      {addonsList.map(addon => {
+                        const active = isAddonActiveForUser(addon.id);
+                        const ua = userAddonsList.find(x => x.addon_id === addon.id);
+                        return (
+                          <div key={addon.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 p-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium text-sm truncate">{addon.name}</span>
+                                <Badge variant="outline" className="text-[10px] py-0 h-5">{addon.billing_type === 'monthly' ? 'Mensal' : 'Único'}</Badge>
+                                {!addon.is_active && <Badge variant="secondary" className="text-[10px] py-0 h-5">Inativo</Badge>}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                                slug: {addon.slug}
+                                {ua?.expires_at && active && ` • expira em ${new Date(ua.expires_at).toLocaleDateString('pt-BR')}`}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {addonTogglingId === addon.id && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                              <Switch
+                                checked={active}
+                                disabled={addonTogglingId === addon.id}
+                                onCheckedChange={(v) => toggleUserAddon(addon, v)}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" size="sm" onClick={() => setAddonsUser(null)}>Fechar</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           {/* PLANOS */}
