@@ -281,6 +281,15 @@ const GenerateContent = () => {
   };
 
   const generateImage = async (content: GeneratedContent, format?: ImgFormat) => {
+    const fmtPre = format || selectedFormat || getFormats(content.social_network, content.content_type)[0];
+    const isCarousel = content.content_type === 'carrossel' && Array.isArray(content.slides) && content.slides.length > 0;
+    const unitCost = imageCreditCost(fmtPre.w, fmtPre.h);
+    const totalEstimated = unitCost * (isCarousel ? (content.slides?.length || 1) : 1);
+    if (balance < totalEstimated) {
+      notifyInsufficient(totalEstimated, balance);
+      return;
+    }
+    if (!(await guardAffordable('generate_content_image'))) return;
     setImagingId(content.id);
     try {
       const fmt = format || selectedFormat || getFormats(content.social_network, content.content_type)[0];
