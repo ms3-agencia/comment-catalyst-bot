@@ -138,6 +138,7 @@ export default function ContentHistory() {
   const [genResults, setGenResults] = useState<string[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [zipDownloadingId, setZipDownloadingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
