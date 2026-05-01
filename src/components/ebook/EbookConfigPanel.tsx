@@ -225,22 +225,35 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
           </div>
         )}
         {configs.length === 0 && <p className="text-xs text-muted-foreground p-2">Nenhum template ainda. Crie o primeiro.</p>}
-        {configs.map(c => (
-          <button
-            key={c.id}
-            onClick={() => { setCurrent(c); onSelect?.(c); }}
-            className={`w-full text-left px-2.5 py-2 rounded-md text-sm hover:bg-accent flex items-center justify-between gap-2 ${current.id === c.id ? 'bg-accent' : ''}`}
-          >
-            <span className="truncate flex items-center gap-1.5">
-              {c.is_default && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
-              {c.premium_product_mode && (
-                <Gem className="h-3 w-3 text-cyan-400" aria-label="Modo Premium ativo" />
+        {configs.map(c => {
+          const isGlobal = mode === 'user' && c.user_id && currentUserId && c.user_id !== currentUserId;
+          return (
+            <button
+              key={c.id}
+              onClick={() => { setCurrent(c); onSelect?.(c); }}
+              className={`w-full text-left px-2.5 py-2 rounded-md text-sm hover:bg-accent flex items-center justify-between gap-2 ${current.id === c.id ? 'bg-accent' : ''}`}
+            >
+              <span className="truncate flex items-center gap-1.5">
+                {c.is_default && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
+                {c.premium_product_mode && (
+                  <Gem className="h-3 w-3 text-cyan-400" aria-label="Modo Premium ativo" />
+                )}
+                <span className="truncate">{c.name}</span>
+                {isGlobal && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shrink-0">equipe</span>
+                )}
+              </span>
+              {!isGlobal ? (
+                <Trash2
+                  className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive shrink-0"
+                  onClick={(e) => { e.stopPropagation(); remove(c.id, c.user_id); }}
+                />
+              ) : (
+                <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-label="Template da equipe (somente leitura)" />
               )}
-              {c.name}
-            </span>
-            <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive shrink-0" onClick={(e) => { e.stopPropagation(); remove(c.id); }} />
-          </button>
-        ))}
+            </button>
+          );
+        })}
       </Card>
 
       <Card className="p-5 space-y-5">
