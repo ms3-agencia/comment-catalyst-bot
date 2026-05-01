@@ -1452,6 +1452,60 @@ export type Database = {
         }
         Relationships: []
       }
+      video_generation_log: {
+        Row: {
+          content_id: string | null
+          created_at: string
+          credits_spent: number
+          error_message: string | null
+          external_job_id: string | null
+          id: string
+          metadata: Json
+          model: string | null
+          provider: string
+          script: string | null
+          status: string
+          updated_at: string
+          user_email: string | null
+          user_id: string
+          video_url: string | null
+        }
+        Insert: {
+          content_id?: string | null
+          created_at?: string
+          credits_spent?: number
+          error_message?: string | null
+          external_job_id?: string | null
+          id?: string
+          metadata?: Json
+          model?: string | null
+          provider: string
+          script?: string | null
+          status?: string
+          updated_at?: string
+          user_email?: string | null
+          user_id: string
+          video_url?: string | null
+        }
+        Update: {
+          content_id?: string | null
+          created_at?: string
+          credits_spent?: number
+          error_message?: string | null
+          external_job_id?: string | null
+          id?: string
+          metadata?: Json
+          model?: string | null
+          provider?: string
+          script?: string | null
+          status?: string
+          updated_at?: string
+          user_email?: string | null
+          user_id?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       video_providers: {
         Row: {
           api_key_secret_name: string | null
