@@ -245,14 +245,23 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shrink-0">equipe</span>
                 )}
               </span>
-              {!isGlobal ? (
-                <Trash2
-                  className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive shrink-0"
-                  onClick={(e) => { e.stopPropagation(); remove(c.id, c.user_id); }}
-                />
-              ) : (
-                <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-label="Template da equipe (somente leitura)" />
-              )}
+              <span className="flex items-center gap-1.5 shrink-0">
+                {canEdit && (
+                  <Copy
+                    className="h-3.5 w-3.5 text-muted-foreground hover:text-cyan-400"
+                    aria-label="Duplicar template"
+                    onClick={(e) => { e.stopPropagation(); duplicateTemplate(c); }}
+                  />
+                )}
+                {!isGlobal ? (
+                  <Trash2
+                    className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive"
+                    onClick={(e) => { e.stopPropagation(); remove(c.id, c.user_id); }}
+                  />
+                ) : (
+                  <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-label="Template da equipe (somente leitura)" />
+                )}
+              </span>
             </button>
           );
         })}
