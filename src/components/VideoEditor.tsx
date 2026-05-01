@@ -199,7 +199,7 @@ const DEFAULT_PRESET: StylePreset = {
   fonts: ['display', 'sans'],
   textColors: ['#ffffff'],
   textBg: 'rgba(0,0,0,0.45)',
-  fontSize: 1.0,
+  fontSize: 0.5,
   textPosition: 'bottom',
 };
 
