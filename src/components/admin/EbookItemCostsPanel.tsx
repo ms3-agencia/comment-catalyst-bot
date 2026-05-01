@@ -32,6 +32,19 @@ export function EbookItemCostsPanel() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savingPlan, setSavingPlan] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
+
+  const reseed = async () => {
+    setSeeding(true);
+    const { data, error } = await supabase.rpc('admin_seed_ebook_item_costs' as any);
+    if (error) toast({ title: 'Erro ao ressincronizar', description: error.message, variant: 'destructive' });
+    else {
+      const r: any = data;
+      toast({ title: 'Itens ressincronizados', description: `Inseridos: ${r?.inserted ?? 0} • Atualizados: ${r?.updated ?? 0}` });
+      await load();
+    }
+    setSeeding(false);
+  };
 
   const load = async () => {
     setLoading(true);
