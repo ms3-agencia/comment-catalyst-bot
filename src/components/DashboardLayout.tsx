@@ -14,7 +14,7 @@ const navItems = [
   { to: '/dashboard/projects', icon: FolderOpen, label: 'Meus Projetos' },
   { to: '/dashboard/generate', icon: Sparkles, label: 'Gerar Conteúdo' },
   { to: '/dashboard/drafts', icon: Clapperboard, label: 'Rascunhos do Editor' },
-  { to: '/dashboard/ebooks', icon: BookOpen, label: 'eBooks' },
+  
   { to: '/dashboard/credits', icon: Coins, label: 'Créditos & Planos' },
 ];
 
