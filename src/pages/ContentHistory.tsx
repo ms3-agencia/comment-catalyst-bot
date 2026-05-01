@@ -790,6 +790,20 @@ export default function ContentHistory() {
                         ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         : <Trash2 className="h-3.5 w-3.5" />}
                     </button>
+                    {h.content_type === 'carrossel' && Array.isArray(h.slides) && h.slides.some(s => s.image_url) && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); downloadCarouselZip(h); }}
+                        disabled={zipDownloadingId === h.id}
+                        title="Baixar imagens do carrossel (ZIP)"
+                        aria-label="Baixar imagens do carrossel"
+                        className="absolute top-2 right-10 z-10 p-1.5 rounded-lg bg-background/90 hover:bg-primary hover:text-primary-foreground text-primary border border-primary/40 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50"
+                      >
+                        {zipDownloadingId === h.id
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <Download className="h-3.5 w-3.5" />}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setActivePost(h)}
