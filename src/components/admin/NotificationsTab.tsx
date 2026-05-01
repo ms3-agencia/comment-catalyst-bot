@@ -109,6 +109,7 @@ export function NotificationsTab() {
       trigger_type: tpl.trigger_type,
       description: tpl.description,
       variables: tpl.variables,
+      signature_id: tpl.signature_id ?? null,
     }).eq('id', tpl.id);
     setSaving(false);
     if (error) toast({ title: 'Erro', description: error.message, variant: 'destructive' });
