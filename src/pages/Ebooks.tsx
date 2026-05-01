@@ -186,8 +186,6 @@ export default function EbooksPage() {
               </p>
             </Card>
           </TabsContent>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="chat" className="mt-4">
             {hasPremium ? (
@@ -196,7 +194,6 @@ export default function EbooksPage() {
               <Card className="p-8 text-center"><Crown className="h-10 w-10 mx-auto text-amber-400" /><p className="mt-2">Recurso exclusivo do add-on <strong>eBooks Premium</strong>.</p></Card>
             )}
           </TabsContent>
-
 
           <TabsContent value="mine" className="mt-4">
             {ebooks.length === 0 ? (
@@ -219,6 +216,20 @@ export default function EbooksPage() {
               </div>
             )}
           </TabsContent>
+
+          {hasCustomization && (
+            <TabsContent value="templates" className="mt-4">
+              <Card className="p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Crown className="h-5 w-5 text-amber-400" />
+                  <h2 className="font-semibold text-lg">Personalizar Template</h2>
+                  {!hasPremium && <Badge className="bg-cyan-500/20 text-cyan-400 border-cyan-500/30">Add-on</Badge>}
+                </div>
+                <p className="text-sm text-muted-foreground">Crie e edite templates personalizados para usar na geração dos seus eBooks.</p>
+                <EbookConfigPanel mode="user" canEdit={true} onSelect={(c) => setSelectedConfig(c)} />
+              </Card>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </DashboardLayout>
