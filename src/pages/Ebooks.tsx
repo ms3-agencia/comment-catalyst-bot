@@ -169,7 +169,7 @@ export default function EbooksPage() {
                   {selectedConfig?.premium_product_mode && ' · 💎 Modo Produto'}
                 </p>
                 {hasCustomization ? (
-                  <p className="text-xs text-muted-foreground">Você pode escolher entre os templates da equipe ou criar os seus na seção abaixo.</p>
+                  <p className="text-xs text-muted-foreground">Você pode escolher entre os templates da equipe ou criar/editar os seus na aba <strong>Personalizar Template</strong>.</p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
                     Os templates são definidos pela equipe administrativa. Para personalizar nº de capítulos, estilo, profundidade, público e elementos opcionais, ative o add-on <Link to="/dashboard/addons" className="text-primary underline">Personalizar Template</Link> ou <Link to="/dashboard/addons" className="text-primary underline">eBooks Premium</Link>.
