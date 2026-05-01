@@ -13,13 +13,19 @@ function genToken(): string {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+function getClientIp(req: Request): string {
+  const fwd = req.headers.get("x-forwarded-for");
+  if (fwd) return fwd.split(",")[0].trim();
+  return req.headers.get("x-real-ip") || "unknown";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const { email } = await req.json();
     if (!email) {
-      return new Response(JSON.stringify({ success: false, error: "missing_email" }), {
+      return new Response(JSON.stringify({ success: false, error: "missing_email", message: "Email não informado." }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -27,6 +33,40 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceKey);
+
+    const ip = getClientIp(req);
+
+    // Rate limit por EMAIL: 3 tentativas / 15 minutos
+    const { data: emailRl } = await admin.rpc("check_auth_rate_limit", {
+      _identifier: email,
+      _action: "resend_confirmation_email",
+      _max_attempts: 3,
+      _window_seconds: 900,
+    });
+    if (emailRl && emailRl.allowed === false) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: "rate_limit_exceeded",
+        message: emailRl.message || "Muitas tentativas para este email. Aguarde alguns minutos.",
+        retry_after_seconds: emailRl.retry_after_seconds,
+      }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Rate limit por IP: 10 tentativas / 1 hora
+    const { data: ipRl } = await admin.rpc("check_auth_rate_limit", {
+      _identifier: ip,
+      _action: "resend_confirmation_ip",
+      _max_attempts: 10,
+      _window_seconds: 3600,
+    });
+    if (ipRl && ipRl.allowed === false) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: "rate_limit_exceeded",
+        message: "Muitas tentativas a partir deste dispositivo. Tente novamente mais tarde.",
+        retry_after_seconds: ipRl.retry_after_seconds,
+      }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // Busca usuário pelo profile (público) — evita listar auth.users
     const { data: profile } = await admin
