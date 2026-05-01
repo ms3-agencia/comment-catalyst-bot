@@ -504,6 +504,7 @@ export type Database = {
         Row: {
           ai_model: string
           base_prompt: string | null
+          category: string
           created_at: string
           custom_style: string | null
           depth_level: string
@@ -520,6 +521,7 @@ export type Database = {
           num_chapters: number
           premium_product_mode: boolean
           structure: Json
+          tags: string[]
           target_audience: string | null
           updated_at: string
           user_id: string
@@ -528,6 +530,7 @@ export type Database = {
         Insert: {
           ai_model?: string
           base_prompt?: string | null
+          category?: string
           created_at?: string
           custom_style?: string | null
           depth_level?: string
@@ -544,6 +547,7 @@ export type Database = {
           num_chapters?: number
           premium_product_mode?: boolean
           structure?: Json
+          tags?: string[]
           target_audience?: string | null
           updated_at?: string
           user_id: string
@@ -552,6 +556,7 @@ export type Database = {
         Update: {
           ai_model?: string
           base_prompt?: string | null
+          category?: string
           created_at?: string
           custom_style?: string | null
           depth_level?: string
@@ -568,6 +573,7 @@ export type Database = {
           num_chapters?: number
           premium_product_mode?: boolean
           structure?: Json
+          tags?: string[]
           target_audience?: string | null
           updated_at?: string
           user_id?: string
