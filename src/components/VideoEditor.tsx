@@ -178,7 +178,7 @@ function splitScriptIntoScenes(c: SourceContent): string[] {
     }
   }
   if (c.cta) out.push(c.cta.trim());
-  return out.slice(0, 12); // safety cap
+  return out.slice(0, 6); // padrão: máximo 6 cenas
 }
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
