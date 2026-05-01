@@ -218,11 +218,30 @@ export function NotificationsTab() {
                 <Input value={smtp.smtp_secure || 'tls'} onChange={e => setSmtp(p => ({ ...p, smtp_secure: e.target.value }))} placeholder="tls ou ssl" />
               </div>
             </div>
-            <div className="flex justify-end">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-border">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button variant="outline" size="sm" onClick={testSmtpConnection} disabled={testingConn}>
+                  {testingConn ? <Loader2 className="animate-spin mr-2" size={14} /> : <Server className="mr-2" size={14} />}
+                  Testar conexão
+                </Button>
+                <Input
+                  placeholder="email@para.teste"
+                  className="w-56"
+                  value={smtpTestEmail}
+                  onChange={e => setSmtpTestEmail(e.target.value)}
+                />
+                <Button variant="outline" size="sm" onClick={sendSmtpTestEmail} disabled={testingSend}>
+                  {testingSend ? <Loader2 className="animate-spin mr-2" size={14} /> : <Send className="mr-2" size={14} />}
+                  Enviar teste
+                </Button>
+              </div>
               <Button onClick={saveSmtp} disabled={saving} size="sm">
                 {saving ? <Loader2 className="animate-spin mr-2" size={14} /> : <Save className="mr-2" size={14} />} Salvar SMTP
               </Button>
             </div>
+            <p className="text-[11px] text-muted-foreground">
+              Salve as configurações antes de testar. "Testar conexão" valida host/porta/usuário/senha. "Enviar teste" envia um email simples para confirmar entrega.
+            </p>
           </Card>
         </TabsContent>
 
