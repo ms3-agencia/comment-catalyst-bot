@@ -52,7 +52,9 @@ const DEFAULT_CFG: EbookConfig = {
   ai_model: 'google/gemini-2.5-pro',
 };
 
-export function EbookConfigPanel({ onSelect }: { onSelect?: (cfg: EbookConfig) => void }) {
+type Mode = 'admin' | 'user';
+
+export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: { onSelect?: (cfg: EbookConfig) => void; mode?: Mode; canEdit?: boolean }) {
   const { toast } = useToast();
   const [configs, setConfigs] = useState<EbookConfig[]>([]);
   const [current, setCurrent] = useState<EbookConfig>(DEFAULT_CFG);
@@ -61,7 +63,13 @@ export function EbookConfigPanel({ onSelect }: { onSelect?: (cfg: EbookConfig) =
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from('ebook_configs').select('*').order('created_at', { ascending: false });
+    const { data: u } = await supabase.auth.getUser();
+    let query = supabase.from('ebook_configs').select('*').order('created_at', { ascending: false });
+    if (mode === 'user' && u.user) {
+      // Em modo user, lista os templates dele + globais (admins). RLS permite ler ambos.
+      query = query;
+    }
+    const { data } = await query;
     const list = (data || []) as EbookConfig[];
     setConfigs(list);
     const def = list.find(c => c.is_default) || list[0];
@@ -71,9 +79,13 @@ export function EbookConfigPanel({ onSelect }: { onSelect?: (cfg: EbookConfig) =
     }
     setLoading(false);
   };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [mode]);
 
   const save = async () => {
+    if (!canEdit) {
+      toast({ title: 'Add-on necessário', description: 'Você precisa do add-on eBooks Premium para criar/editar templates.', variant: 'destructive' });
+      return;
+    }
     setSaving(true);
     try {
       const { data: u } = await supabase.auth.getUser();
@@ -90,7 +102,7 @@ export function EbookConfigPanel({ onSelect }: { onSelect?: (cfg: EbookConfig) =
         result = await supabase.from('ebook_configs').insert(payload).select().single();
       }
       if (result.error) throw result.error;
-      toast({ title: 'Template salvo!' });
+      toast({ title: current.id ? 'Template atualizado!' : 'Template criado!' });
       setCurrent(result.data as any);
       onSelect?.(result.data as any);
       await load();
@@ -101,7 +113,30 @@ export function EbookConfigPanel({ onSelect }: { onSelect?: (cfg: EbookConfig) =
     }
   };
 
-  const newTemplate = () => setCurrent({ ...DEFAULT_CFG, name: 'Novo template', is_default: false });
+  const newTemplate = async () => {
+    if (!canEdit) {
+      toast({ title: 'Add-on necessário', description: 'Você precisa do add-on eBooks Premium para criar templates.', variant: 'destructive' });
+      return;
+    }
+    // Cria de fato no banco com nome padrão e seleciona para edição
+    setSaving(true);
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) throw new Error('Não autenticado');
+      const payload: any = { ...DEFAULT_CFG, name: `Novo template ${configs.length + 1}`, is_default: false, user_id: u.user.id };
+      delete payload.id;
+      const { data, error } = await supabase.from('ebook_configs').insert(payload).select().single();
+      if (error) throw error;
+      toast({ title: 'Template criado!', description: 'Edite os campos e clique em "Salvar template".' });
+      setCurrent(data as any);
+      onSelect?.(data as any);
+      await load();
+    } catch (e: any) {
+      toast({ title: 'Erro ao criar template', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const remove = async (id?: string) => {
     if (!id) return;
