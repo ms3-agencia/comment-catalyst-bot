@@ -14,6 +14,7 @@ import { useUserAddons } from '@/hooks/useUserAddons';
 
 export type EbookConfig = {
   id?: string;
+  user_id?: string;
   name: string;
   is_default: boolean;
   num_chapters: number;
