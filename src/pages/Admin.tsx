@@ -800,6 +800,9 @@ const Admin = () => {
             else setIntegrationsTab('connectors');
           }}
         >
+          {(() => null)()}
+          {/* helper: navegar pelas sub-abas de Integrações via activeTab */}
+
           <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-10 h-auto">
             <TabsTrigger value="users"><Users size={14} className="mr-1.5" />Usuários</TabsTrigger>
             <TabsTrigger value="plans"><ShieldCheck size={14} className="mr-1.5" />Planos</TabsTrigger>
