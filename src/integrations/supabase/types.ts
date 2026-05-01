@@ -493,6 +493,7 @@ export type Database = {
           preference_id: string | null
           raw_payload: Json | null
           status: string
+          target_plan: Database["public"]["Enums"]["app_plan"] | null
           updated_at: string
           user_id: string
         }
@@ -508,6 +509,7 @@ export type Database = {
           preference_id?: string | null
           raw_payload?: Json | null
           status?: string
+          target_plan?: Database["public"]["Enums"]["app_plan"] | null
           updated_at?: string
           user_id: string
         }
@@ -523,6 +525,7 @@ export type Database = {
           preference_id?: string | null
           raw_payload?: Json | null
           status?: string
+          target_plan?: Database["public"]["Enums"]["app_plan"] | null
           updated_at?: string
           user_id?: string
         }
