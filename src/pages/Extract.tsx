@@ -239,6 +239,26 @@ const Extract = () => {
       return;
     }
 
+    // Plan limit pre-check: number of projects
+    if (usage && usage.projects_limit !== null && usage.projects_used >= usage.projects_limit) {
+      toast({
+        title: 'Limite de projetos atingido',
+        description: `Seu plano (${usage.plan}) permite no máximo ${usage.projects_limit} projetos. Faça upgrade para criar mais.`,
+        variant: 'destructive',
+      });
+      setTimeout(() => navigate('/dashboard/credits'), 1500);
+      return;
+    }
+
+    // Credit pre-check (server-side authoritative): extract_video cost vs balance
+    const aff = await checkAffordable('extract_video');
+    if (!aff.affordable) {
+      handleInsufficient(
+        `Saldo atual: ${aff.balance} créditos. Esta ação requer ${aff.cost}.`,
+      );
+      return;
+    }
+
     // Check for previous extractions of the same video IDs across the user's projects.
     try {
       const ids = validUrls.map(extractYoutubeId).filter(Boolean) as string[];
