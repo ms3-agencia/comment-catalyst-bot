@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Upload, Save, Globe, FileText, ImageIcon, Trash2 } from 'lucide-react';
+import { Loader2, Upload, Save, Globe, FileText, ImageIcon, Trash2, Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -189,6 +189,79 @@ const BrandingForm = ({
   );
 };
 
+const AppUrlSection = () => {
+  const { toast } = useToast();
+  const [appUrl, setAppUrl] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'app_base_url')
+        .maybeSingle();
+      setAppUrl(data?.value || '');
+      setLoading(false);
+    })();
+  }, []);
+
+  const handleSave = async () => {
+    const trimmed = appUrl.trim().replace(/\/+$/, '');
+    if (trimmed && !/^https?:\/\//i.test(trimmed)) {
+      toast({ title: 'URL inválida', description: 'A URL deve começar com http:// ou https://', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({ key: 'app_base_url', value: trimmed }, { onConflict: 'key' });
+      if (error) throw error;
+      setAppUrl(trimmed);
+      toast({ title: 'URL salva', description: 'Os links {{app_url}} dos emails passarão a usar este domínio.' });
+    } catch (err) {
+      toast({ title: 'Erro ao salvar', description: (err as Error).message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="glass p-6 space-y-5">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary shrink-0">
+          <Link2 size={20} />
+        </div>
+        <div>
+          <h3 className="font-heading text-lg font-bold">URL pública do sistema</h3>
+          <p className="text-sm text-muted-foreground">
+            Domínio que substituirá a variável <code className="px-1 py-0.5 rounded bg-secondary text-xs">{'{{app_url}}'}</code> em todos os templates de email (confirmação, recuperação, avisos, etc.).
+          </p>
+        </div>
+      </div>
+      <Separator />
+      <div className="space-y-2">
+        <Label>URL base (sem barra final)</Label>
+        <Input
+          value={appUrl}
+          onChange={(e) => setAppUrl(e.target.value)}
+          placeholder="https://ycaptura.ms3.com.br"
+          disabled={loading}
+        />
+        <p className="text-xs text-muted-foreground">
+          Exemplo: links como <code>{'{{app_url}}'}/confirm-email?token=...</code> serão renderizados com este domínio.
+        </p>
+      </div>
+      <Button onClick={handleSave} disabled={saving || loading} className="w-full md:w-auto">
+        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+        Salvar URL
+      </Button>
+    </Card>
+  );
+};
+
 export const BrandingTab = () => {
   const [landing, setLanding] = useState<Branding>(empty('landing'));
   const [pdf, setPdf] = useState<Branding>(empty('pdf'));
@@ -219,6 +292,7 @@ export const BrandingTab = () => {
 
   return (
     <div className="space-y-6">
+      <AppUrlSection />
       <BrandingForm
         ctx="landing"
         icon={<Globe size={20} />}
