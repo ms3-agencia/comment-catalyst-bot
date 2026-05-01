@@ -1604,15 +1604,11 @@ const Admin = () => {
           <TabsContent value="payments" className="mt-4 space-y-4">
             <Card className="glass p-2">
               <div className="flex flex-wrap gap-1">
-                <Button size="sm" variant="ghost" onClick={() => setActiveTab('integrations')} className="gap-1.5">
-                  <Plug size={14} /> Conectores
-                </Button>
-                <Button size="sm" variant="default" className="gap-1.5">
-                  <Wallet size={14} /> Mercado Pago
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setActiveTab('settings')} className="gap-1.5">
-                  <Key size={14} /> APIs & IA
-                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('integrations')} className="gap-1.5"><Plug size={14} /> Conectores</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('youtube_settings')} className="gap-1.5"><Key size={14} /> YouTube</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('ai_providers')} className="gap-1.5"><Bot size={14} /> Provedores de IA</Button>
+                <Button size="sm" variant="ghost" onClick={() => setActiveTab('video_ai_integrations')} className="gap-1.5"><Clapperboard size={14} /> IA de Vídeos</Button>
+                <Button size="sm" variant="default" className="gap-1.5"><Wallet size={14} /> Mercado Pago</Button>
               </div>
             </Card>
             <Card className="glass p-6 space-y-5">
