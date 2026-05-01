@@ -178,9 +178,6 @@ export default function EbooksPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="config" className="mt-4">
-            <EbookConfigPanel onSelect={setSelectedConfig} />
-          </TabsContent>
 
           <TabsContent value="mine" className="mt-4">
             {ebooks.length === 0 ? (
