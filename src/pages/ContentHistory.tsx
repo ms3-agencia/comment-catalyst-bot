@@ -96,6 +96,14 @@ const imageCreditCost = (w: number, h: number): number => {
   return 5;
 };
 
+type Slide = {
+  index: number;
+  text: string;
+  visual?: string | null;
+  image_url?: string | null;
+  image_prompt?: string | null;
+};
+
 type HistoryItem = {
   id: string;
   title: string | null;
@@ -109,6 +117,7 @@ type HistoryItem = {
   content_type: string;
   image_url?: string | null;
   image_prompt?: string | null;
+  slides?: Slide[] | null;
   created_at?: string;
 };
 
