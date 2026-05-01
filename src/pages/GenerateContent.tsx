@@ -240,6 +240,7 @@ const GenerateContent = () => {
 
   const editImage = async (content: GeneratedContent, prompt: string) => {
     if (!prompt.trim()) return;
+    if (!(await guardAffordable('edit_content_image'))) return;
     setEditLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('edit-content-image', {
@@ -247,8 +248,11 @@ const GenerateContent = () => {
       });
       if (error) throw error;
       if ((data as any)?.error) {
-        const isCredit = !!(data as any).insufficient_credits;
-        toast({ title: isCredit ? 'Créditos insuficientes' : 'Erro ao editar', description: (data as any).error, variant: 'destructive' });
+        if ((data as any).insufficient_credits) {
+          notifyInsufficient();
+        } else {
+          toast({ title: 'Erro ao editar', description: (data as any).error, variant: 'destructive' });
+        }
         return;
       }
       const updated = { image_url: (data as any).image_url, image_prompt: (data as any).image_prompt };
