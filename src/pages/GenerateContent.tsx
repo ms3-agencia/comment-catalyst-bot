@@ -205,11 +205,11 @@ const GenerateContent = () => {
       if (error) throw error;
       const res = data as any;
       if (res?.error) {
-        toast({
-          title: res.insufficient_credits ? 'Créditos insuficientes' : 'Erro ao gerar vídeo',
-          description: res.error,
-          variant: 'destructive',
-        });
+        if (res.insufficient_credits) {
+          notifyInsufficient();
+        } else {
+          toast({ title: 'Erro ao gerar vídeo', description: res.error, variant: 'destructive' });
+        }
         return;
       }
       refreshCredits();
