@@ -420,6 +420,12 @@ export default function ContentHistory() {
 
   return (
     <DashboardLayout>
+      <DeleteOverlay
+        open={deleteOverlay.open}
+        count={deleteOverlay.count}
+        label={deleteOverlay.label}
+        done={deleteOverlay.done}
+      />
       <div className="max-w-6xl mx-auto space-y-6">
         <div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
