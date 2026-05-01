@@ -63,7 +63,28 @@ Deno.serve(async (req) => {
     }).eq("id", orderId);
 
     if (mappedStatus === "approved") {
-      if (order.order_type === "addon" && order.addon_id) {
+      if (order.order_type === "plan" && order.target_plan) {
+        const { data: planConfig } = await admin
+          .from("plan_configs")
+          .select("monthly_credits")
+          .eq("plan", order.target_plan)
+          .maybeSingle();
+
+        await admin
+          .from("profiles")
+          .update({ plan: order.target_plan })
+          .eq("user_id", order.user_id);
+
+        if (planConfig) {
+          await admin
+            .from("user_credits")
+            .upsert({
+              user_id: order.user_id,
+              monthly_allocation: planConfig.monthly_credits,
+              monthly_reset_at: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
+            }, { onConflict: "user_id" });
+        }
+      } else if (order.order_type === "addon" && order.addon_id) {
         // Activate add-on
         const { data: addon } = await admin.from("addons").select("*").eq("id", order.addon_id).maybeSingle();
         if (addon) {
