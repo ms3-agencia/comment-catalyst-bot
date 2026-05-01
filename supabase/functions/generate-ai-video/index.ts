@@ -164,11 +164,13 @@ Deno.serve(async (req) => {
       errorMessage = e?.message || String(e);
       finalStatus = 'failed';
       // Refund credits on hard failure
-      await admin.rpc('admin_add_credits', {
-        _user_id: user.id,
-        _amount: cost,
-        _description: `Estorno: falha ao gerar vídeo (${chosen.name})`,
-      }).catch(() => {});
+      try {
+        await admin.rpc('admin_add_credits', {
+          _user_id: user.id,
+          _amount: cost,
+          _description: `Estorno: falha ao gerar vídeo (${chosen.name})`,
+        });
+      } catch (_) { /* ignore refund errors */ }
     }
 
     if (logId) {
