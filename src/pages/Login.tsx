@@ -5,13 +5,35 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { LogIn, Eye, EyeOff } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { LogIn, Eye, EyeOff, MailWarning, Loader2, Send } from 'lucide-react';
+
+const isEmailNotConfirmedError = (error: { message?: string; code?: string; name?: string } | null) => {
+  if (!error) return false;
+  const msg = (error.message || '').toLowerCase();
+  return (
+    error.code === 'email_not_confirmed' ||
+    msg.includes('email not confirmed') ||
+    msg.includes('email não confirmado') ||
+    msg.includes('confirm your email') ||
+    msg.includes('not confirmed')
+  );
+};
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showUnconfirmedDialog, setShowUnconfirmedDialog] = useState(false);
+  const [resending, setResending] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -21,10 +43,34 @@ const Login = () => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
+      if (isEmailNotConfirmedError(error)) {
+        setShowUnconfirmedDialog(true);
+        return;
+      }
       toast({ title: 'Erro ao entrar', description: error.message, variant: 'destructive' });
     } else {
       navigate('/dashboard');
     }
+  };
+
+  const handleResend = async () => {
+    if (!email) {
+      toast({ title: 'Informe o e-mail', description: 'Preencha o campo de e-mail para reenviar a confirmação.', variant: 'destructive' });
+      return;
+    }
+    setResending(true);
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/dashboard` },
+    });
+    setResending(false);
+    if (error) {
+      toast({ title: 'Não foi possível reenviar', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Link enviado', description: `Enviamos um novo link de confirmação para ${email}.` });
+    setShowUnconfirmedDialog(false);
   };
 
   return (
@@ -56,6 +102,47 @@ const Login = () => {
           Não tem conta? <Link to="/register" className="text-primary hover:underline">Criar conta</Link>
         </p>
       </div>
+
+      <Dialog open={showUnconfirmedDialog} onOpenChange={setShowUnconfirmedDialog}>
+        <DialogContent className="glass border-primary/20 sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 border border-primary/30 glow-primary">
+              <MailWarning className="h-7 w-7 text-primary" />
+            </div>
+            <DialogTitle className="text-center font-heading text-xl">
+              Confirme seu e-mail para continuar
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Sua conta ainda não foi ativada. Enviamos um link de confirmação para{' '}
+              <span className="font-medium text-foreground">{email || 'seu e-mail'}</span>.
+              Verifique sua caixa de entrada (e a pasta de spam) antes de entrar.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
+            <p className="mb-1 font-medium text-foreground">Não recebeu o e-mail?</p>
+            <p>Aguarde alguns instantes ou clique em <span className="text-primary">Reenviar link</span> abaixo para receber um novo.</p>
+          </div>
+
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button onClick={handleResend} disabled={resending} className="w-full glow-primary">
+              {resending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Reenviando...</>
+              ) : (
+                <><Send className="mr-2 h-4 w-4" /> Reenviar link de confirmação</>
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => setShowUnconfirmedDialog(false)}
+            >
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
