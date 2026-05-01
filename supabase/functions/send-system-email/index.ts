@@ -329,8 +329,11 @@ Deno.serve(async (req) => {
     }
 
     // Wrapper com logo no topo (se disponível e não já incluído pelo template)
-    const html = logoUrl && !tpl.body_html.includes("{{logo_url}}")
-      ? `<div style="text-align:center;padding:24px 0;"><img src="${logoUrl}" alt="${allVars.site_name}" style="max-height:48px;max-width:200px;" /></div>${bodyHtml}`
+    // Wrapper com logo no topo somente se nem o template nem a assinatura já usam {{logo_url}}
+    const templateHasLogoVar = tpl.body_html.includes("{{logo_url}}") || tpl.body_html.includes("{{ logo_url }}");
+    const signatureHasLogoVar = !!signature?.body_html && (signature.body_html.includes("{{logo_url}}") || signature.body_html.includes("{{ logo_url }}"));
+    const html = logoUrl && !templateHasLogoVar && !signatureHasLogoVar
+      ? `<div style="text-align:center;padding:24px 0;">${logoImgTag}</div>${bodyHtml}`
       : bodyHtml;
 
     const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
