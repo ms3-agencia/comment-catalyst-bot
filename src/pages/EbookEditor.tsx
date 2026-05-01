@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUserAddons } from '@/hooks/useUserAddons';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { exportEbookPdf, exportEbookDocx, exportEbookMarkdown, exportEbookTxt, EbookFull } from '@/lib/ebookExport';
+import { EbookGenerationOverlay, EbookGenStage } from '@/components/ebook/EbookGenerationOverlay';
 
 export default function EbookEditor() {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +26,7 @@ export default function EbookEditor() {
   const [busy, setBusy] = useState<string | null>(null);
   const [activeChapter, setActiveChapter] = useState<number | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [overlay, setOverlay] = useState<{ stage: EbookGenStage; title: string; subtitle?: string; current?: number; total?: number } | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -40,8 +42,9 @@ export default function EbookEditor() {
 
   useEffect(() => { load(); }, [load]);
 
-  const generateSection = async (section: 'introduction' | 'conclusion') => {
+  const generateSection = async (section: 'introduction' | 'conclusion', silent = false) => {
     setBusy(section);
+    if (!silent) setOverlay({ stage: 'section', title: section === 'introduction' ? 'Gerando introdução' : 'Gerando conclusão', subtitle: ebook?.title });
     try {
       const { data, error } = await supabase.functions.invoke('ebook-generate-chapter', {
         body: { ebook_id: id, section },
@@ -52,11 +55,13 @@ export default function EbookEditor() {
       await load();
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
-    } finally { setBusy(null); }
+    } finally { setBusy(null); if (!silent) setOverlay(null); }
   };
 
-  const generateChapter = async (n: number) => {
+  const generateChapter = async (n: number, silent = false) => {
     setBusy(`ch-${n}`);
+    const ch = chapters.find(c => c.chapter_number === n);
+    if (!silent) setOverlay({ stage: 'chapter', title: `Gerando Capítulo ${n}`, subtitle: ch?.title });
     try {
       const { data, error } = await supabase.functions.invoke('ebook-generate-chapter', {
         body: { ebook_id: id, chapter_number: n },
@@ -68,16 +73,36 @@ export default function EbookEditor() {
       setActiveChapter(n);
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
-    } finally { setBusy(null); }
+    } finally { setBusy(null); if (!silent) setOverlay(null); }
   };
 
   const generateAll = async () => {
-    const pending = chapters.filter(c => c.status !== 'completed');
-    for (const c of pending) {
-      await generateChapter(c.chapter_number);
+    const pendingChapters = chapters.filter(c => c.status !== 'completed');
+    const sectionsPending = (ebook?.introduction ? 0 : 1) + (ebook?.conclusion ? 0 : 1);
+    const total = pendingChapters.length + sectionsPending;
+    let done = 0;
+    setOverlay({ stage: 'batch', title: 'Gerando tudo que falta', subtitle: ebook?.title, current: 0, total });
+    try {
+      for (const c of pendingChapters) {
+        setOverlay({ stage: 'batch', title: `Capítulo ${c.chapter_number}`, subtitle: c.title, current: done, total });
+        await generateChapter(c.chapter_number, true);
+        done++;
+      }
+      if (!ebook?.introduction) {
+        setOverlay({ stage: 'batch', title: 'Introdução', subtitle: ebook?.title, current: done, total });
+        await generateSection('introduction', true);
+        done++;
+      }
+      if (!ebook?.conclusion) {
+        setOverlay({ stage: 'batch', title: 'Conclusão', subtitle: ebook?.title, current: done, total });
+        await generateSection('conclusion', true);
+        done++;
+      }
+      setOverlay({ stage: 'done', title: 'eBook completo!', current: total, total });
+      setTimeout(() => setOverlay(null), 1200);
+    } catch {
+      setOverlay(null);
     }
-    if (!ebook?.introduction) await generateSection('introduction');
-    if (!ebook?.conclusion) await generateSection('conclusion');
   };
 
   const saveField = async (patch: any) => {
@@ -125,6 +150,14 @@ export default function EbookEditor() {
 
   return (
     <DashboardLayout>
+      <EbookGenerationOverlay
+        visible={!!overlay}
+        stage={overlay?.stage || 'chapter'}
+        title={overlay?.title}
+        subtitle={overlay?.subtitle}
+        current={overlay?.current}
+        total={overlay?.total}
+      />
       <div className="max-w-7xl mx-auto space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">

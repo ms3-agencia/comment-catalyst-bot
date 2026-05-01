@@ -15,6 +15,7 @@ import { useUserAddons } from '@/hooks/useUserAddons';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { EbookConfigPanel, EbookConfig } from '@/components/ebook/EbookConfigPanel';
+import { EbookGenerationOverlay } from '@/components/ebook/EbookGenerationOverlay';
 
 type Project = { id: string; name: string; ai_profile?: string | null };
 
@@ -96,6 +97,12 @@ export default function EbooksPage() {
 
   return (
     <DashboardLayout>
+      <EbookGenerationOverlay
+        visible={generating}
+        stage="outline"
+        title="Estruturando seu eBook"
+        subtitle={topic}
+      />
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
@@ -308,7 +315,9 @@ function EbookChatTab({ onCreated }: { onCreated: (ebookId: string) => void }) {
   };
 
   return (
-    <Card className="flex flex-col h-[600px]">
+    <>
+      <EbookGenerationOverlay visible={creating} stage="outline" title="Criando seu eBook a partir do chat" />
+      <Card className="flex flex-col h-[600px]">
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -317,7 +326,6 @@ function EbookChatTab({ onCreated }: { onCreated: (ebookId: string) => void }) {
             </div>
           </div>
         ))}
-        {creating && <div className="text-center text-sm text-primary"><Loader2 className="h-4 w-4 animate-spin inline mr-2" />Gerando estrutura do eBook…</div>}
       </div>
       <div className="border-t p-3 flex gap-2">
         <Textarea value={input} onChange={e => setInput(e.target.value)} placeholder="Sua resposta..."
@@ -328,6 +336,7 @@ function EbookChatTab({ onCreated }: { onCreated: (ebookId: string) => void }) {
         </Button>
       </div>
     </Card>
+    </>
   );
 }
 
