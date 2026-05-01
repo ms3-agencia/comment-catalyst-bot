@@ -14,6 +14,7 @@ import { AddonsTab } from '@/components/admin/AddonsTab';
 import { VideoProvidersTab } from '@/components/admin/VideoProvidersTab';
 import { VideoStylePresetsTab } from '@/components/admin/VideoStylePresetsTab';
 import { IntegrationsTab } from '@/components/admin/IntegrationsTab';
+import { VideoAiIntegrationsTab } from '@/components/admin/VideoAiIntegrationsTab';
 import { NotificationsTab } from '@/components/admin/NotificationsTab';
 import { CreditAuditTab } from '@/components/admin/CreditAuditTab';
 import { Plug } from 'lucide-react';
@@ -87,7 +88,7 @@ const Admin = () => {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('users');
-  const [integrationsTab, setIntegrationsTab] = useState<'connectors' | 'payments' | 'settings'>('connectors');
+  const [integrationsTab, setIntegrationsTab] = useState<'connectors' | 'payments' | 'settings' | 'youtube_settings' | 'video_ai_integrations' | 'ai_providers'>('connectors');
   const [editUser, setEditUser] = useState<UserProfile | null>(null);
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
