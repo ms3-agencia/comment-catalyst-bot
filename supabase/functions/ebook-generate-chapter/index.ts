@@ -116,9 +116,19 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true, cached: true, chapter }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Calcula custo dinâmico baseado nos itens ativos do template + multiplicador do plano
+    let chapterCost = 8;
+    try {
+      const { data: dyn } = await admin.rpc("compute_ebook_chapter_cost", {
+        _user_id: user.id,
+        _config_id: ebook.config_id || null,
+      });
+      if (typeof dyn === "number" && dyn > 0) chapterCost = dyn;
+    } catch (_e) { /* fallback ao custo base */ }
+
     const consume = await userClient.rpc("consume_credits", {
-      _amount: 8, _action_key: "ebook_chapter",
-      _description: `Capítulo ${chapter_number} - ${chapter.title.slice(0, 60)}`,
+      _amount: chapterCost, _action_key: "ebook_chapter",
+      _description: `Capítulo ${chapter_number} - ${chapter.title.slice(0, 60)} (${chapterCost} cr.)`,
       _reference_id: ebook.id,
     });
     if (!(consume.data as any)?.success) {

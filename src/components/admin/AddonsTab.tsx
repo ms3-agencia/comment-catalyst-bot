@@ -12,6 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Pencil, Trash2, Loader2, Sparkles, Settings, BookOpen } from 'lucide-react';
 import { EbookConfigPanel } from '@/components/ebook/EbookConfigPanel';
+import { EbookItemCostsPanel } from '@/components/admin/EbookItemCostsPanel';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -45,16 +47,27 @@ export const AddonsTab = () => {
   const [configuringSlug, setConfiguringSlug] = useState<string | null>(null);
 
   // Slugs that have a custom in-place configuration panel
+  const renderEbookConfig = () => (
+    <Tabs defaultValue="templates">
+      <TabsList>
+        <TabsTrigger value="templates">Templates</TabsTrigger>
+        <TabsTrigger value="costs">Custos por item</TabsTrigger>
+      </TabsList>
+      <TabsContent value="templates" className="mt-4"><EbookConfigPanel /></TabsContent>
+      <TabsContent value="costs" className="mt-4"><EbookItemCostsPanel /></TabsContent>
+    </Tabs>
+  );
+
   const CONFIGURABLE: Record<string, { label: string; icon: any; render: () => JSX.Element }> = {
     'ebook-generator': {
-      label: 'Configurar templates de eBooks',
+      label: 'Configurar templates e custos de eBooks',
       icon: BookOpen,
-      render: () => <EbookConfigPanel />,
+      render: renderEbookConfig,
     },
     'ebook-premium': {
-      label: 'Configurar templates de eBooks',
+      label: 'Configurar templates e custos de eBooks',
       icon: BookOpen,
-      render: () => <EbookConfigPanel />,
+      render: renderEbookConfig,
     },
   };
 

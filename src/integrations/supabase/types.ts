@@ -575,6 +575,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ebook_item_costs: {
+        Row: {
+          cost_per_chapter: number
+          created_at: string
+          description: string | null
+          display_name: string
+          enabled: boolean
+          id: string
+          item_key: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          cost_per_chapter?: number
+          created_at?: string
+          description?: string | null
+          display_name: string
+          enabled?: boolean
+          id?: string
+          item_key: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          cost_per_chapter?: number
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          enabled?: boolean
+          id?: string
+          item_key?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ebooks: {
         Row: {
           conclusion: string | null
@@ -1270,6 +1306,7 @@ export type Database = {
           created_at: string
           description: string | null
           display_name: string
+          ebook_cost_multiplier: number
           features: string[]
           id: string
           max_projects: number | null
@@ -1282,6 +1319,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_name: string
+          ebook_cost_multiplier?: number
           features?: string[]
           id?: string
           max_projects?: number | null
@@ -1294,6 +1332,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_name?: string
+          ebook_cost_multiplier?: number
           features?: string[]
           id?: string
           max_projects?: number | null
@@ -1948,6 +1987,10 @@ export type Database = {
       cleanup_auth_rate_limits: { Args: never; Returns: number }
       cleanup_email_confirmation_tokens: { Args: never; Returns: number }
       cleanup_video_editor_drafts: { Args: never; Returns: Json }
+      compute_ebook_chapter_cost: {
+        Args: { _config_id: string; _user_id: string }
+        Returns: number
+      }
       confirm_email_token_consume: { Args: { _token: string }; Returns: Json }
       consume_credits: {
         Args: {
