@@ -221,6 +221,7 @@ function EbookChatTab({ onCreated }: { onCreated: (ebookId: string) => void }) {
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [creatingDone, setCreatingDone] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }, [messages]);
