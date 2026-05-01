@@ -326,7 +326,6 @@ function EbookChatTab({ onCreated }: { onCreated: (ebookId: string) => void }) {
             </div>
           </div>
         ))}
-        {creating && <div className="text-center text-sm text-primary"><Loader2 className="h-4 w-4 animate-spin inline mr-2" />Gerando estrutura do eBook…</div>}
       </div>
       <div className="border-t p-3 flex gap-2">
         <Textarea value={input} onChange={e => setInput(e.target.value)} placeholder="Sua resposta..."
@@ -337,6 +336,7 @@ function EbookChatTab({ onCreated }: { onCreated: (ebookId: string) => void }) {
         </Button>
       </div>
     </Card>
+    </>
   );
 }
 
