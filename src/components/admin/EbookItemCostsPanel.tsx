@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Save, Coins } from 'lucide-react';
+import { Loader2, Save, Coins, RefreshCw } from 'lucide-react';
 
 type ItemCost = {
   id: string;
