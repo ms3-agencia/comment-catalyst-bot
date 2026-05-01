@@ -179,9 +179,9 @@ export function EbookRichEditor({ value, onChange, ebookId, contextHint }: Ebook
 
         {/* Font family */}
         <Select
-          value={editor.getAttributes('textStyle').fontFamily || ''}
+          value={editor.getAttributes('textStyle').fontFamily || '__'}
           onValueChange={(v) => {
-            if (!v) editor.chain().focus().unsetFontFamily().run();
+            if (!v || v === '__') editor.chain().focus().unsetFontFamily().run();
             else editor.chain().focus().setFontFamily(v).run();
           }}
         >
