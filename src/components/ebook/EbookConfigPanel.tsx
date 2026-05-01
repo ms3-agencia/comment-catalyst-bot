@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, Plus, Trash2, Save, Star, Lock, Gem } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useUserAddons } from '@/hooks/useUserAddons';
 
 export type EbookConfig = {
   id?: string;
@@ -56,6 +57,10 @@ type Mode = 'admin' | 'user';
 
 export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: { onSelect?: (cfg: EbookConfig) => void; mode?: Mode; canEdit?: boolean }) {
   const { toast } = useToast();
+  const { hasAddon } = useUserAddons();
+  const isAdminMode = mode === 'admin';
+  const canSeeAiModel = isAdminMode; // Modelo de IA só para admin
+  const canSeePremiumMode = isAdminMode || hasAddon('ebook-premium'); // Modo Produto Premium exige add-on premium
   const [configs, setConfigs] = useState<EbookConfig[]>([]);
   const [current, setCurrent] = useState<EbookConfig>(DEFAULT_CFG);
   const [loading, setLoading] = useState(true);
@@ -204,7 +209,7 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
 
         <div className="border-t pt-4">
           <h4 className="font-semibold mb-3">📌 Estrutura</h4>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className={`grid gap-4 ${canSeeAiModel ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
             <div className="space-y-1.5">
               <Label>Nº de capítulos</Label>
               <Input type="number" min={3} max={30} value={current.num_chapters} onChange={e => setField('num_chapters', Number(e.target.value))} />
@@ -213,18 +218,20 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
               <Label>Mín. páginas/cap.</Label>
               <Input type="number" min={3} max={30} value={current.min_pages_per_chapter} onChange={e => setField('min_pages_per_chapter', Number(e.target.value))} />
             </div>
-            <div className="space-y-1.5">
-              <Label>Modelo de IA</Label>
-              <Select value={current.ai_model} onValueChange={v => setField('ai_model', v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="google/gemini-2.5-pro">Lovable AI Pro (alta qualidade)</SelectItem>
-                  <SelectItem value="google/gemini-2.5-flash">Lovable AI Flash (rápido)</SelectItem>
-                  <SelectItem value="openai/gpt-5">GPT-5 (premium)</SelectItem>
-                  <SelectItem value="openai/gpt-5-mini">GPT-5 Mini</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {canSeeAiModel && (
+              <div className="space-y-1.5">
+                <Label>Modelo de IA</Label>
+                <Select value={current.ai_model} onValueChange={v => setField('ai_model', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="google/gemini-2.5-pro">Lovable AI Pro (alta qualidade)</SelectItem>
+                    <SelectItem value="google/gemini-2.5-flash">Lovable AI Flash (rápido)</SelectItem>
+                    <SelectItem value="openai/gpt-5">GPT-5 (premium)</SelectItem>
+                    <SelectItem value="openai/gpt-5-mini">GPT-5 Mini</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </div>
 
@@ -290,15 +297,17 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
           </div>
         </div>
 
-        <div className="border-t pt-4">
-          <div className="flex items-center gap-3 p-3 rounded-md bg-amber-500/10 border border-amber-500/30">
-            <Switch checked={current.premium_product_mode} onCheckedChange={v => setField('premium_product_mode', v)} />
-            <div>
-              <Label className="cursor-pointer">💎 Modo Produto Premium</Label>
-              <p className="text-xs text-muted-foreground">A IA criará nome de método exclusivo, promessa forte e posicionamento de mercado.</p>
+        {canSeePremiumMode && (
+          <div className="border-t pt-4">
+            <div className="flex items-center gap-3 p-3 rounded-md bg-amber-500/10 border border-amber-500/30">
+              <Switch checked={current.premium_product_mode} onCheckedChange={v => setField('premium_product_mode', v)} />
+              <div>
+                <Label className="cursor-pointer">💎 Modo Produto Premium</Label>
+                <p className="text-xs text-muted-foreground">A IA criará nome de método exclusivo, promessa forte e posicionamento de mercado.</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="border-t pt-4">
           <h4 className="font-semibold mb-2">🧾 Prompt base (opcional)</h4>
