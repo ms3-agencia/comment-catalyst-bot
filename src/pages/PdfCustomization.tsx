@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserAddons } from '@/hooks/useUserAddons';
@@ -73,6 +73,8 @@ const PdfCustomization = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   const owned = hasAddon('pdf-customization');
 
@@ -278,12 +280,36 @@ const PdfCustomization = () => {
                 <Label>Logo</Label>
                 <div className="flex items-center gap-4 mt-2">
                   {config.logo_url && <img src={config.logo_url} alt="Logo" className="h-16 w-16 object-contain rounded border bg-white p-1" />}
-                  <label className="cursor-pointer">
-                    <Input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload('logo_url', e.target.files[0])} />
-                    <Button type="button" variant="outline" disabled={uploading === 'logo_url'} asChild>
-                      <span>{uploading === 'logo_url' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Enviar logo</span>
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) upload('logo_url', f);
+                      e.target.value = '';
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploading === 'logo_url'}
+                    onClick={() => logoInputRef.current?.click()}
+                  >
+                    {uploading === 'logo_url' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    Enviar logo
+                  </Button>
+                  {config.logo_url && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setConfig({ ...config, logo_url: null })}
+                    >
+                      <Trash2 className="h-4 w-4" /> Remover
                     </Button>
-                  </label>
+                  )}
                 </div>
               </div>
 
@@ -378,12 +404,36 @@ const PdfCustomization = () => {
                 <Label>Imagem de fundo da capa</Label>
                 <div className="flex items-center gap-4 mt-2">
                   {config.cover_image_url && <img src={config.cover_image_url} alt="" className="h-20 w-32 object-cover rounded border" />}
-                  <label className="cursor-pointer">
-                    <Input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload('cover_image_url', e.target.files[0])} />
-                    <Button type="button" variant="outline" disabled={uploading === 'cover_image_url'} asChild>
-                      <span>{uploading === 'cover_image_url' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Enviar imagem</span>
+                  <input
+                    ref={coverInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) upload('cover_image_url', f);
+                      e.target.value = '';
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploading === 'cover_image_url'}
+                    onClick={() => coverInputRef.current?.click()}
+                  >
+                    {uploading === 'cover_image_url' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    Enviar imagem
+                  </Button>
+                  {config.cover_image_url && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setConfig({ ...config, cover_image_url: null })}
+                    >
+                      <Trash2 className="h-4 w-4" /> Remover
                     </Button>
-                  </label>
+                  )}
                 </div>
               </div>
             </Card>
