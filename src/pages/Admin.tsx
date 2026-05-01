@@ -624,29 +624,50 @@ const Admin = () => {
     }
   };
 
+  const openCreditsDialog = async (u: UserProfile, mode: 'add' | 'remove') => {
+    setCreditsUser(u);
+    setCreditsMode(mode);
+    setCreditsAmount(100);
+    setCreditsDescription(mode === 'add' ? 'Ajuste manual (crédito)' : 'Ajuste manual (débito)');
+    setCreditsCurrentBalance(null);
+    const { data } = await supabase.from('user_credits').select('balance').eq('user_id', u.user_id).maybeSingle();
+    setCreditsCurrentBalance(data?.balance ?? 0);
+  };
+
   const handleAddCredits = async () => {
     if (!creditsUser) return;
-    const amt = Number(creditsAmount);
-    if (!Number.isFinite(amt) || amt === 0) {
-      toast({ title: 'Informe um valor diferente de zero', variant: 'destructive' });
+    const raw = Number(creditsAmount);
+    if (!Number.isFinite(raw) || raw <= 0) {
+      toast({ title: 'Informe um valor maior que zero', variant: 'destructive' });
+      return;
+    }
+    const delta = creditsMode === 'add' ? Math.trunc(raw) : -Math.trunc(raw);
+    if (creditsMode === 'remove' && creditsCurrentBalance !== null && raw > creditsCurrentBalance) {
+      toast({
+        title: 'Saldo insuficiente',
+        description: `Usuário tem apenas ${creditsCurrentBalance} créditos.`,
+        variant: 'destructive',
+      });
       return;
     }
     setCreditsSaving(true);
     const { error } = await supabase.rpc('admin_add_credits', {
       _user_id: creditsUser.user_id,
-      _amount: Math.trunc(amt),
-      _description: creditsDescription || 'Ajuste manual',
+      _amount: delta,
+      _description: creditsDescription || (creditsMode === 'add' ? 'Ajuste manual (crédito)' : 'Ajuste manual (débito)'),
     });
     setCreditsSaving(false);
     if (error) {
       toast({ title: 'Erro', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: amt > 0 ? `+${amt} créditos adicionados` : `${amt} créditos removidos` });
+      toast({ title: creditsMode === 'add' ? `+${raw} créditos adicionados` : `-${raw} créditos removidos` });
       setCreditsUser(null);
       setCreditsAmount(100);
       setCreditsDescription('Ajuste manual');
+      setCreditsCurrentBalance(null);
     }
   };
+
 
   const handleSaveApiKey = async () => {
     if (!youtubeApiKey.trim()) {
