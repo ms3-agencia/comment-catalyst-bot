@@ -315,7 +315,7 @@ function SidebarItem({ active, onClick, status, label }: any) {
   );
 }
 
-function SectionEditor({ title, subtitle, html, onChange, onGenerate, generating, hasContent, premiumLocked, wordCount }: any) {
+function SectionEditor({ title, subtitle, html, onChange, onGenerate, generating, hasContent, premiumLocked, wordCount, ebookId, contextHint }: any) {
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -330,9 +330,9 @@ function SectionEditor({ title, subtitle, html, onChange, onGenerate, generating
         </Button>
       </div>
       {premiumLocked ? (
-        <div className="prose prose-sm prose-invert max-w-none p-4 border rounded-md" dangerouslySetInnerHTML={{ __html: html }} />
+        <div className="ebook-prose px-8 py-6 border border-border rounded-lg bg-card" dangerouslySetInnerHTML={{ __html: html }} />
       ) : hasContent ? (
-        <RichTextEditor value={html} onChange={onChange} />
+        <EbookRichEditor value={html} onChange={onChange} ebookId={ebookId} contextHint={contextHint} />
       ) : (
         <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-md">
           <p className="mb-4">Conteúdo ainda não gerado.</p>
