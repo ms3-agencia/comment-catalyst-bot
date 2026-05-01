@@ -747,6 +747,7 @@ export type Database = {
           display_name: string
           features: string[]
           id: string
+          max_projects: number | null
           monthly_credits: number
           plan: Database["public"]["Enums"]["app_plan"]
           price_brl: number
@@ -758,6 +759,7 @@ export type Database = {
           display_name: string
           features?: string[]
           id?: string
+          max_projects?: number | null
           monthly_credits?: number
           plan: Database["public"]["Enums"]["app_plan"]
           price_brl?: number
@@ -769,6 +771,7 @@ export type Database = {
           display_name?: string
           features?: string[]
           id?: string
+          max_projects?: number | null
           monthly_credits?: number
           plan?: Database["public"]["Enums"]["app_plan"]
           price_brl?: number
@@ -1284,6 +1287,7 @@ export type Database = {
         Args: { _new_password: string; _user_id: string }
         Returns: undefined
       }
+      check_action_affordable: { Args: { _action_key: string }; Returns: Json }
       cleanup_video_editor_drafts: { Args: never; Returns: Json }
       consume_credits: {
         Args: {
@@ -1294,6 +1298,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_user_plan_usage: { Args: { _user_id?: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
