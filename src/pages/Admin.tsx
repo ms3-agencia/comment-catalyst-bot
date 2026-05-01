@@ -1482,24 +1482,21 @@ const Admin = () => {
             {integrationsTab === 'connectors' && <IntegrationsTab />}
           </TabsContent>
 
-          {/* MERCADO PAGO */}
-          <TabsContent value="payments" className="mt-4 space-y-4" forceMount={undefined as any} hidden={integrationsTab !== 'payments'}>
-            {integrationsTab === 'payments' && (
-              <Card className="glass p-2 mb-2">
-                <div className="flex flex-wrap gap-1">
-                  <Button size="sm" variant="ghost" onClick={() => setIntegrationsTab('connectors')} className="gap-1.5">
-                    <Plug size={14} /> Conectores
-                  </Button>
-                  <Button size="sm" variant="default" className="gap-1.5">
-                    <Wallet size={14} /> Mercado Pago
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setIntegrationsTab('settings')} className="gap-1.5">
-                    <Key size={14} /> APIs & IA
-                  </Button>
-                </div>
-              </Card>
-            )}
+          {/* MERCADO PAGO (sub-aba de Integrações) */}
           <TabsContent value="payments" className="mt-4 space-y-4">
+            <Card className="glass p-2">
+              <div className="flex flex-wrap gap-1">
+                <Button size="sm" variant="ghost" onClick={() => setIntegrationsTab('connectors')} className="gap-1.5">
+                  <Plug size={14} /> Conectores
+                </Button>
+                <Button size="sm" variant="default" className="gap-1.5">
+                  <Wallet size={14} /> Mercado Pago
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setIntegrationsTab('settings')} className="gap-1.5">
+                  <Key size={14} /> APIs & IA
+                </Button>
+              </div>
+            </Card>
             <Card className="glass p-6 space-y-5">
               <div>
                 <h3 className="font-heading text-lg font-bold flex items-center gap-2"><Wallet size={20} className="text-primary" /> Integração Mercado Pago</h3>
