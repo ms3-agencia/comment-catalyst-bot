@@ -256,13 +256,17 @@ export default function EbooksPage() {
                       {availableConfigs.length === 0 && (
                         <SelectItem value="__none__" disabled>Nenhum template disponível</SelectItem>
                       )}
-                      {availableConfigs.map(c => (
-                        <SelectItem key={c.id} value={c.id!}>
-                          {c.name}
-                          {c.user_id && user && c.user_id === user.id ? ' (meu)' : ' (equipe)'}
-                          {c.is_default ? ' · padrão' : ''}
-                        </SelectItem>
-                      ))}
+                      {availableConfigs.map(c => {
+                        const mine = c.user_id && user && c.user_id === user.id;
+                        const isUserDefault = savedConfigId === c.id;
+                        return (
+                          <SelectItem key={c.id} value={c.id!}>
+                            {c.name}
+                            {mine ? ' (meu)' : ' (equipe)'}
+                            {isUserDefault ? ' · ⭐ meu padrão' : (c.is_default ? ' · padrão' : '')}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                   <Button
@@ -274,7 +278,7 @@ export default function EbooksPage() {
                       !selectedConfig?.id ||
                       (savedConfigId === selectedConfig?.id && overridesEqual(overrides, savedOverrides))
                     }
-                    title="Salvar template e ajustes como meus padrões"
+                    title="Definir como padrão para novos eBooks (salva template + ajustes)"
                   >
                     {(() => {
                       const isSaved = savedConfigId === selectedConfig?.id && overridesEqual(overrides, savedOverrides);
@@ -283,14 +287,21 @@ export default function EbooksPage() {
                         : <Save className="h-4 w-4" />;
                     })()}
                     <span className="ml-1">
-                      {savedConfigId === selectedConfig?.id && overridesEqual(overrides, savedOverrides) ? 'Salvo' : 'Salvar'}
+                      {savedConfigId === selectedConfig?.id && overridesEqual(overrides, savedOverrides)
+                        ? 'Padrão definido'
+                        : 'Definir como padrão'}
                     </span>
                   </Button>
                 </div>
                 {selectedConfig && (
-                  <p className="text-xs text-muted-foreground">
-                    {selectedConfig.num_chapters || 8} capítulos · {overrides.depth_level || selectedConfig.depth_level || 'intermediario'}
-                    {selectedConfig.premium_product_mode && ' · 💎 Modo Produto'}
+                  <p className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                    <span>
+                      {selectedConfig.num_chapters || 8} capítulos · {overrides.depth_level || selectedConfig.depth_level || 'intermediario'}
+                      {selectedConfig.premium_product_mode && ' · 💎 Modo Produto'}
+                    </span>
+                    {savedConfigId === selectedConfig.id && (
+                      <Badge variant="secondary" className="text-[10px]">⭐ Padrão para novos eBooks</Badge>
+                    )}
                   </p>
                 )}
                 {hasCustomization ? (
