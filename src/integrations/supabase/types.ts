@@ -520,6 +520,7 @@ export type Database = {
           name: string
           num_chapters: number
           premium_product_mode: boolean
+          sort_order: number
           structure: Json
           tags: string[]
           target_audience: string | null
@@ -546,6 +547,7 @@ export type Database = {
           name?: string
           num_chapters?: number
           premium_product_mode?: boolean
+          sort_order?: number
           structure?: Json
           tags?: string[]
           target_audience?: string | null
@@ -572,6 +574,7 @@ export type Database = {
           name?: string
           num_chapters?: number
           premium_product_mode?: boolean
+          sort_order?: number
           structure?: Json
           tags?: string[]
           target_audience?: string | null
