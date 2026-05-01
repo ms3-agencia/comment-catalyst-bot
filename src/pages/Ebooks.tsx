@@ -34,7 +34,7 @@ export default function EbooksPage() {
 
   // Avatar tab
   const [topic, setTopic] = useState('');
-  const [projectId, setProjectId] = useState<string>('');
+  const [projectId, setProjectId] = useState<string>('none');
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
@@ -55,7 +55,7 @@ export default function EbooksPage() {
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke('ebook-generate-outline', {
-        body: { topic, project_id: projectId || null, config_id: selectedConfig?.id || null, premium_product_mode: selectedConfig?.premium_product_mode },
+        body: { topic, project_id: projectId && projectId !== 'none' ? projectId : null, config_id: selectedConfig?.id || null, premium_product_mode: selectedConfig?.premium_product_mode },
       });
       if (error) {
         let msg = error.message;
@@ -133,7 +133,7 @@ export default function EbooksPage() {
                 <Select value={projectId} onValueChange={setProjectId}>
                   <SelectTrigger><SelectValue placeholder="Selecione um projeto para usar o avatar dele" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sem avatar (usar só o tema)</SelectItem>
+                    <SelectItem value="none">Sem avatar (usar só o tema)</SelectItem>
                     {projects.filter(p => p.ai_profile).map(p => (
                       <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                     ))}
