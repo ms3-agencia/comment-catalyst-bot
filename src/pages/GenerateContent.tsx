@@ -300,6 +300,18 @@ const GenerateContent = () => {
 
   const handleGenerate = async () => {
     if (!project || !network || !contentType) return;
+
+    // Pre-check credits (server-authoritative): generate_content cost vs balance
+    const aff = await checkAffordable('generate_content');
+    if (!aff.affordable) {
+      toast({
+        title: 'Créditos insuficientes',
+        description: `Saldo atual: ${aff.balance} créditos. Esta ação requer ${aff.cost}.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-content', {
