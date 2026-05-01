@@ -104,6 +104,87 @@ const Admin = () => {
   const [creditsDescription, setCreditsDescription] = useState('Ajuste manual');
   const [creditsSaving, setCreditsSaving] = useState(false);
 
+  // Manage user addons
+  type AdminAddon = { id: string; slug: string; name: string; billing_type: string; is_active: boolean };
+  type AdminUserAddon = { id: string; addon_id: string; status: string; expires_at: string | null };
+  const [addonsUser, setAddonsUser] = useState<UserProfile | null>(null);
+  const [addonsList, setAddonsList] = useState<AdminAddon[]>([]);
+  const [userAddonsList, setUserAddonsList] = useState<AdminUserAddon[]>([]);
+  const [addonsLoading, setAddonsLoading] = useState(false);
+  const [addonTogglingId, setAddonTogglingId] = useState<string | null>(null);
+
+  const openAddons = async (u: UserProfile) => {
+    setAddonsUser(u);
+    setAddonsList([]);
+    setUserAddonsList([]);
+    setAddonsLoading(true);
+    try {
+      const [{ data: a, error: aErr }, { data: ua, error: uaErr }] = await Promise.all([
+        supabase.from('addons').select('id, slug, name, billing_type, is_active').order('sort_order'),
+        supabase.from('user_addons').select('id, addon_id, status, expires_at').eq('user_id', u.user_id),
+      ]);
+      if (aErr) throw aErr;
+      if (uaErr) throw uaErr;
+      setAddonsList((a || []) as AdminAddon[]);
+      setUserAddonsList((ua || []) as AdminUserAddon[]);
+    } catch (e: any) {
+      toast({ title: 'Erro ao carregar add-ons', description: e.message, variant: 'destructive' });
+    } finally {
+      setAddonsLoading(false);
+    }
+  };
+
+  const isAddonActiveForUser = (addonId: string) => {
+    const ua = userAddonsList.find(x => x.addon_id === addonId);
+    if (!ua) return false;
+    if (ua.status !== 'active') return false;
+    if (ua.expires_at && new Date(ua.expires_at) < new Date()) return false;
+    return true;
+  };
+
+  const toggleUserAddon = async (addon: AdminAddon, enable: boolean) => {
+    if (!addonsUser) return;
+    setAddonTogglingId(addon.id);
+    try {
+      const existing = userAddonsList.find(x => x.addon_id === addon.id);
+      if (enable) {
+        const expires = addon.billing_type === 'monthly'
+          ? new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString()
+          : null;
+        if (existing) {
+          const { error } = await supabase
+            .from('user_addons')
+            .update({ status: 'active', activated_at: new Date().toISOString(), expires_at: expires, billing_type: addon.billing_type, payment_method: 'admin' })
+            .eq('id', existing.id);
+          if (error) throw error;
+          setUserAddonsList(prev => prev.map(x => x.id === existing.id ? { ...x, status: 'active', expires_at: expires } : x));
+        } else {
+          const { data, error } = await supabase
+            .from('user_addons')
+            .insert({ user_id: addonsUser.user_id, addon_id: addon.id, status: 'active', billing_type: addon.billing_type, payment_method: 'admin', expires_at: expires })
+            .select('id, addon_id, status, expires_at')
+            .single();
+          if (error) throw error;
+          setUserAddonsList(prev => [...prev, data as AdminUserAddon]);
+        }
+        toast({ title: 'Recurso ativado', description: `${addon.name} ativado para ${addonsUser.full_name || addonsUser.email}` });
+      } else {
+        if (!existing) return;
+        const { error } = await supabase
+          .from('user_addons')
+          .update({ status: 'cancelled' })
+          .eq('id', existing.id);
+        if (error) throw error;
+        setUserAddonsList(prev => prev.map(x => x.id === existing.id ? { ...x, status: 'cancelled' } : x));
+        toast({ title: 'Recurso desativado', description: `${addon.name} removido de ${addonsUser.full_name || addonsUser.email}` });
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally {
+      setAddonTogglingId(null);
+    }
+  };
+
   // Logs viewer
   type SessionLog = {
     id: string;
