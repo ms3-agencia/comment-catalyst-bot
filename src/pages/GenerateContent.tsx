@@ -156,6 +156,44 @@ const GenerateContent = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [zipDownloadingId, setZipDownloadingId] = useState<string | null>(null);
   const [videoEditorContent, setVideoEditorContent] = useState<GeneratedContent | null>(null);
+  const [generatingVideoId, setGeneratingVideoId] = useState<string | null>(null);
+
+  const generateAiVideo = async (content: GeneratedContent) => {
+    if (!content.script || !content.script.trim()) {
+      toast({ title: 'Sem roteiro', description: 'Este conteúdo não possui roteiro para gerar o vídeo.', variant: 'destructive' });
+      return;
+    }
+    setGeneratingVideoId(content.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-ai-video', {
+        body: { content_id: content.id, script: content.script },
+      });
+      if (error) throw error;
+      const res = data as any;
+      if (res?.error) {
+        toast({
+          title: res.insufficient_credits ? 'Créditos insuficientes' : 'Erro ao gerar vídeo',
+          description: res.error,
+          variant: 'destructive',
+        });
+        return;
+      }
+      refreshCredits();
+      if (res?.status === 'completed' && res?.video_url) {
+        toast({ title: 'Vídeo gerado!', description: `Provedor: ${res.provider_name}. Veja em Admin → Integrações → Log.` });
+      } else {
+        toast({
+          title: 'Solicitação enviada',
+          description: `Vídeo na fila do ${res?.provider_name || 'provedor'}. Acompanhe em Admin → Integrações → Log.`,
+        });
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e?.message || 'Falha ao gerar vídeo', variant: 'destructive' });
+    } finally {
+      setGeneratingVideoId(null);
+    }
+  };
+
 
   const EDIT_SUGGESTIONS = [
     'Arrumar a escrita',
