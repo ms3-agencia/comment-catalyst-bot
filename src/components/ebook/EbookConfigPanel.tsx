@@ -115,7 +115,7 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
 
   const newTemplate = async () => {
     if (!canEdit) {
-      toast({ title: 'Add-on necessário', description: 'Você precisa do add-on eBooks Premium para criar templates.', variant: 'destructive' });
+      toast({ title: 'Add-on necessário', description: 'Ative o add-on Personalizar Template ou eBooks Premium para criar templates.', variant: 'destructive' });
       return;
     }
     // Cria de fato no banco com nome padrão e seleciona para edição
