@@ -119,7 +119,7 @@ PÚBLICO-ALVO: ${config.target_audience || "definir com base no avatar"}
 ESTILO: ${styleDesc}
 PROFUNDIDADE: ${depthDesc}
 ESTRUTURA: ${config.num_chapters} capítulos, cada um com no mínimo ${config.min_pages_per_chapter} páginas (~${config.min_pages_per_chapter * 300} palavras).
-ELEMENTOS A INCLUIR EM CADA CAPÍTULO: ${elements.join(", ") || "nenhum especial"}.${avatar ? `\n\nAVATAR DO PÚBLICO (use para calibrar dores, linguagem e exemplos):\n${avatar}` : ""}${config.extra_notes ? `\n\nOBSERVAÇÕES DO USUÁRIO (siga rigorosamente):\n${config.extra_notes}` : ""}${productPart}
+ELEMENTOS A INCLUIR EM CADA CAPÍTULO: ${elements.join(", ") || "nenhum especial"}.${avatar ? `\n\nAVATAR DO PÚBLICO (use para calibrar dores, linguagem e exemplos):\n${avatar}` : ""}${productPart}
 
 Crie a ESTRUTURA COMPLETA do eBook. Retorne via tool call.`;
 
