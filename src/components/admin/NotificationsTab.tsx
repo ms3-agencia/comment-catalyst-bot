@@ -267,6 +267,10 @@ export function NotificationsTab() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="logs" className="mt-4">
+          <EmailLogsTab />
+        </TabsContent>
+
         <TabsContent value="templates" className="mt-4">
           <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
             <Card className="glass p-2 h-fit">
