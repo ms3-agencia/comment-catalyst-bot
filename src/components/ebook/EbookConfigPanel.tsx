@@ -297,15 +297,17 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
           </div>
         </div>
 
-        <div className="border-t pt-4">
-          <div className="flex items-center gap-3 p-3 rounded-md bg-amber-500/10 border border-amber-500/30">
-            <Switch checked={current.premium_product_mode} onCheckedChange={v => setField('premium_product_mode', v)} />
-            <div>
-              <Label className="cursor-pointer">💎 Modo Produto Premium</Label>
-              <p className="text-xs text-muted-foreground">A IA criará nome de método exclusivo, promessa forte e posicionamento de mercado.</p>
+        {canSeePremiumMode && (
+          <div className="border-t pt-4">
+            <div className="flex items-center gap-3 p-3 rounded-md bg-amber-500/10 border border-amber-500/30">
+              <Switch checked={current.premium_product_mode} onCheckedChange={v => setField('premium_product_mode', v)} />
+              <div>
+                <Label className="cursor-pointer">💎 Modo Produto Premium</Label>
+                <p className="text-xs text-muted-foreground">A IA criará nome de método exclusivo, promessa forte e posicionamento de mercado.</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="border-t pt-4">
           <h4 className="font-semibold mb-2">🧾 Prompt base (opcional)</h4>
