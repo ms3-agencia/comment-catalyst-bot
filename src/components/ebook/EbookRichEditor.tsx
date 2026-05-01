@@ -153,9 +153,9 @@ export function EbookRichEditor({ value, onChange, ebookId, contextHint }: Ebook
   const Sep = () => <div className="w-px self-stretch bg-border mx-0.5" />;
 
   return (
-    <div className="rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+    <div className="ebook-page overflow-hidden">
       {/* Barra de ferramentas (sticky) */}
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-0.5 border-b border-border bg-card/95 backdrop-blur-sm p-1.5">
+      <div className="sticky top-0 z-20 flex flex-wrap items-center gap-0.5 border-b border-border bg-card/95 backdrop-blur-sm p-1.5">
         {/* Heading select */}
         <Select
           value={
