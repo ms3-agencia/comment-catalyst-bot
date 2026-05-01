@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     const user = userData.user;
 
     const body = await req.json();
-    const { topic, config_id, project_id, premium_product_mode, overrides } = body || {};
+    const { topic, config_id, project_id, premium_product_mode } = body || {};
     if (!topic || typeof topic !== "string" || topic.length < 3) {
       return new Response(JSON.stringify({ error: "topic_required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
