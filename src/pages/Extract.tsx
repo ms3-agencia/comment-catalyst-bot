@@ -391,9 +391,14 @@ const Extract = () => {
             {usage.projects_limit !== null && usage.projects_used >= usage.projects_limit && (
               <span className="ml-auto text-destructive flex items-center gap-1">
                 <AlertTriangle size={14} /> Limite atingido —{' '}
+            {usage.projects_limit !== null && usage.projects_used >= usage.projects_limit && (
+              <span className="ml-auto text-destructive flex items-center gap-1">
+                <AlertTriangle size={14} /> Limite atingido —{' '}
                 <Link to="/dashboard/credits" className="underline font-medium hover:text-destructive/80">
-                  Créditos & Planos
+                  faça upgrade
                 </Link>
+              </span>
+            )}
               </span>
             )}
           </Card>
