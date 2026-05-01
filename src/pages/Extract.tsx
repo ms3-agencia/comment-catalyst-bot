@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Youtube, Plus, X, Loader2, MessageSquare, ThumbsUp, Sparkles, AlertTriangle } from 'lucide-react';
 import { AiProfileCard } from '@/components/AiProfileCard';
 import { useCredits } from '@/hooks/useCredits';
+import { usePlanUsage } from '@/hooks/usePlanUsage';
 
 // Translates HTTP status / known error codes into user-friendly Portuguese messages.
 const friendlyMessage = (raw: string | undefined, status?: number): string => {
@@ -105,6 +106,7 @@ const extractYoutubeId = (url: string): string | null => {
 const Extract = () => {
   const { user, profile } = useAuth();
   const { refresh: refreshCredits } = useCredits();
+  const { usage, checkAffordable } = usePlanUsage();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -179,8 +181,16 @@ const Extract = () => {
       }).select().single();
 
       if (error) {
-        toast({ title: 'Erro ao criar projeto', description: error.message, variant: 'destructive' });
+        const isLimit = /plan_project_limit_reached/i.test(error.message || '');
+        toast({
+          title: isLimit ? 'Limite de projetos atingido' : 'Erro ao criar projeto',
+          description: isLimit
+            ? (error.message.split(':').slice(1).join(':').trim() || 'Faça upgrade para criar mais projetos.')
+            : error.message,
+          variant: 'destructive',
+        });
         setLoading(false);
+        if (isLimit) setTimeout(() => navigate('/dashboard/credits'), 1500);
         return;
       }
 
@@ -234,6 +244,26 @@ const Extract = () => {
         description: `Verifique: ${invalid[0]}. Use links completos do YouTube.`,
         variant: 'destructive',
       });
+      return;
+    }
+
+    // Plan limit pre-check: number of projects
+    if (usage && usage.projects_limit !== null && usage.projects_used >= usage.projects_limit) {
+      toast({
+        title: 'Limite de projetos atingido',
+        description: `Seu plano (${usage.plan}) permite no máximo ${usage.projects_limit} projetos. Faça upgrade para criar mais.`,
+        variant: 'destructive',
+      });
+      setTimeout(() => navigate('/dashboard/credits'), 1500);
+      return;
+    }
+
+    // Credit pre-check (server-side authoritative): extract_video cost vs balance
+    const aff = await checkAffordable('extract_video');
+    if (!aff.affordable) {
+      handleInsufficient(
+        `Saldo atual: ${aff.balance} créditos. Esta ação requer ${aff.cost}.`,
+      );
       return;
     }
 
@@ -344,6 +374,28 @@ const Extract = () => {
           <p className="text-muted-foreground mt-1">Cole os links dos vídeos para extrair e analisar comentários via YouTube API</p>
         </div>
 
+        {usage && (
+          <Card className={`glass p-4 flex flex-wrap items-center gap-3 text-sm ${
+            usage.projects_limit !== null && usage.projects_used >= usage.projects_limit
+              ? 'border-destructive/60'
+              : ''
+          }`}>
+            <span className="text-muted-foreground">Plano <strong className="capitalize text-foreground">{usage.plan}</strong></span>
+            <span className="text-muted-foreground">·</span>
+            <span>
+              Projetos: <strong>{usage.projects_used}</strong>
+              {usage.projects_limit !== null ? ` / ${usage.projects_limit}` : ' (ilimitado)'}
+            </span>
+            <span className="text-muted-foreground">·</span>
+            <span>Créditos: <strong>{usage.credits_balance}</strong></span>
+            {usage.projects_limit !== null && usage.projects_used >= usage.projects_limit && (
+              <span className="ml-auto text-destructive flex items-center gap-1">
+                <AlertTriangle size={14} /> Limite atingido — faça upgrade
+              </span>
+            )}
+          </Card>
+        )}
+
         {!comments.length ? (
           <Card className="glass p-6">
             <form onSubmit={handleExtract} className="space-y-5">
@@ -363,7 +415,15 @@ const Extract = () => {
                 ))}
                 <Button type="button" variant="outline" size="sm" onClick={addUrl}><Plus className="mr-1" size={14} /> Adicionar URL</Button>
               </div>
-              <Button type="submit" className="w-full glow-primary" disabled={loading}>
+              <Button
+                type="submit"
+                className="w-full glow-primary"
+                disabled={
+                  loading ||
+                  (usage?.projects_limit !== null && (usage?.projects_used ?? 0) >= (usage?.projects_limit ?? Infinity)) ||
+                  (usage !== null && usage.credits_balance <= 0)
+                }
+              >
                 {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Extraindo via YouTube API...</> : 'Extrair Comentários'}
               </Button>
             </form>
