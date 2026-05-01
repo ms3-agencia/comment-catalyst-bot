@@ -167,7 +167,22 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
                   </Badge>
                 )}
               </Link>
-            </div>
+              <Link
+                to="/dashboard/ebooks"
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  location.pathname.startsWith('/dashboard/ebooks')
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                }`}
+              >
+                <BookOpen size={18} />
+                <span className="flex-1">eBooks</span>
+                {ebookAddonActive && (
+                  <Badge className="h-5 px-1.5 text-[10px] font-semibold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 hover:bg-emerald-500/20">
+                    ATIVO
+                  </Badge>
+                )}
+              </Link>
           </nav>
           <div className="border-t border-border p-4">
             <DropdownMenu>
