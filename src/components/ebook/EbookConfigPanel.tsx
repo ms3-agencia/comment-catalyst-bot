@@ -187,10 +187,18 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
     }
   };
 
-  const remove = async (id?: string) => {
+  const remove = async (id?: string, ownerId?: string | null) => {
     if (!id) return;
+    if (mode === 'user' && ownerId && currentUserId && ownerId !== currentUserId) {
+      toast({ title: 'Template da equipe', description: 'Você não pode excluir templates globais. Apenas administradores podem.', variant: 'destructive' });
+      return;
+    }
     if (!confirm('Excluir este template?')) return;
-    await supabase.from('ebook_configs').delete().eq('id', id);
+    const { error } = await supabase.from('ebook_configs').delete().eq('id', id);
+    if (error) {
+      toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' });
+      return;
+    }
     if (current.id === id) setCurrent(DEFAULT_CFG);
     load();
   };
