@@ -1449,7 +1449,56 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
+          {/* INTEGRAÇÕES (com sub-abas: Conectores, Mercado Pago, APIs & IA) */}
+          <TabsContent value="integrations" className="mt-4 space-y-4">
+            <Card className="glass p-2">
+              <div className="flex flex-wrap gap-1">
+                <Button
+                  size="sm"
+                  variant={integrationsTab === 'connectors' ? 'default' : 'ghost'}
+                  onClick={() => setIntegrationsTab('connectors')}
+                  className="gap-1.5"
+                >
+                  <Plug size={14} /> Conectores
+                </Button>
+                <Button
+                  size="sm"
+                  variant={integrationsTab === 'payments' ? 'default' : 'ghost'}
+                  onClick={() => setIntegrationsTab('payments')}
+                  className="gap-1.5"
+                >
+                  <Wallet size={14} /> Mercado Pago
+                </Button>
+                <Button
+                  size="sm"
+                  variant={integrationsTab === 'settings' ? 'default' : 'ghost'}
+                  onClick={() => setIntegrationsTab('settings')}
+                  className="gap-1.5"
+                >
+                  <Key size={14} /> APIs & IA
+                </Button>
+              </div>
+            </Card>
+            {integrationsTab === 'connectors' && <IntegrationsTab />}
+          </TabsContent>
+
           {/* MERCADO PAGO */}
+          <TabsContent value="payments" className="mt-4 space-y-4" forceMount={undefined as any} hidden={integrationsTab !== 'payments'}>
+            {integrationsTab === 'payments' && (
+              <Card className="glass p-2 mb-2">
+                <div className="flex flex-wrap gap-1">
+                  <Button size="sm" variant="ghost" onClick={() => setIntegrationsTab('connectors')} className="gap-1.5">
+                    <Plug size={14} /> Conectores
+                  </Button>
+                  <Button size="sm" variant="default" className="gap-1.5">
+                    <Wallet size={14} /> Mercado Pago
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setIntegrationsTab('settings')} className="gap-1.5">
+                    <Key size={14} /> APIs & IA
+                  </Button>
+                </div>
+              </Card>
+            )}
           <TabsContent value="payments" className="mt-4 space-y-4">
             <Card className="glass p-6 space-y-5">
               <div>
