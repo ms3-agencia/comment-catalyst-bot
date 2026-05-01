@@ -390,7 +390,10 @@ const Extract = () => {
             <span>Créditos: <strong>{usage.credits_balance}</strong></span>
             {usage.projects_limit !== null && usage.projects_used >= usage.projects_limit && (
               <span className="ml-auto text-destructive flex items-center gap-1">
-                <AlertTriangle size={14} /> Limite atingido — faça upgrade
+                <AlertTriangle size={14} /> Limite atingido —{' '}
+                <Link to="/dashboard/credits" className="underline font-medium hover:text-destructive/80">
+                  Créditos & Planos
+                </Link>
               </span>
             )}
           </Card>
