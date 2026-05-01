@@ -196,6 +196,7 @@ const GenerateContent = () => {
       toast({ title: 'Sem roteiro', description: 'Este conteúdo não possui roteiro para gerar o vídeo.', variant: 'destructive' });
       return;
     }
+    if (!(await guardAffordable('generate_ai_video'))) return;
     setGeneratingVideoId(content.id);
     try {
       const { data, error } = await supabase.functions.invoke('generate-ai-video', {
