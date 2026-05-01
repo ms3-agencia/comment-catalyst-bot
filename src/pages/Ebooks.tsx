@@ -27,6 +27,7 @@ export default function EbooksPage() {
 
   const hasBasic = hasAddon('ebook-generator');
   const hasPremium = hasAddon('ebook-premium');
+  const hasCustomization = hasPremium || hasAddon('ebook-template-customization');
   const anyAccess = hasBasic || hasPremium;
 
   const [projects, setProjects] = useState<Project[]>([]);
@@ -162,20 +163,21 @@ export default function EbooksPage() {
                   Usando: <strong>{selectedConfig?.name || 'Padrão do sistema'}</strong> · {selectedConfig?.num_chapters || 8} capítulos · {selectedConfig?.depth_level || 'intermediario'}
                   {selectedConfig?.premium_product_mode && ' · 💎 Modo Produto'}
                 </p>
-                {hasPremium ? (
+                {hasCustomization ? (
                   <p className="text-xs text-muted-foreground">Você pode escolher entre os templates da equipe ou criar os seus na seção abaixo.</p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    Os templates são definidos pela equipe administrativa. Para personalizar nº de capítulos, estilo, profundidade, público e elementos opcionais, ative o add-on <Link to="/dashboard/addons" className="text-primary underline">eBooks Premium</Link>.
+                    Os templates são definidos pela equipe administrativa. Para personalizar nº de capítulos, estilo, profundidade, público e elementos opcionais, ative o add-on <Link to="/dashboard/addons" className="text-primary underline">Personalizar Template</Link> ou <Link to="/dashboard/addons" className="text-primary underline">eBooks Premium</Link>.
                   </p>
                 )}
               </div>
 
-              {hasPremium && (
+              {hasCustomization && (
                 <details className="rounded-md border bg-muted/30">
                   <summary className="cursor-pointer px-3 py-2 text-sm font-medium flex items-center gap-2">
                     <Crown className="h-4 w-4 text-amber-400" />
-                    Personalizar template (Premium)
+                    Personalizar template
+                    {!hasPremium && <Badge className="ml-1 bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-[10px]">Add-on</Badge>}
                   </summary>
                   <div className="p-3 border-t">
                     <EbookConfigPanel mode="user" canEdit={true} onSelect={(c) => setSelectedConfig(c)} />

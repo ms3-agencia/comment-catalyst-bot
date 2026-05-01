@@ -83,7 +83,7 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
 
   const save = async () => {
     if (!canEdit) {
-      toast({ title: 'Add-on necessário', description: 'Você precisa do add-on eBooks Premium para criar/editar templates.', variant: 'destructive' });
+      toast({ title: 'Add-on necessário', description: 'Ative o add-on Personalizar Template ou eBooks Premium para criar/editar templates.', variant: 'destructive' });
       return;
     }
     setSaving(true);
@@ -115,7 +115,7 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
 
   const newTemplate = async () => {
     if (!canEdit) {
-      toast({ title: 'Add-on necessário', description: 'Você precisa do add-on eBooks Premium para criar templates.', variant: 'destructive' });
+      toast({ title: 'Add-on necessário', description: 'Ative o add-on Personalizar Template ou eBooks Premium para criar templates.', variant: 'destructive' });
       return;
     }
     // Cria de fato no banco com nome padrão e seleciona para edição
@@ -160,14 +160,14 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
       <Card className="p-3 space-y-1.5 max-h-[600px] overflow-y-auto">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold">Templates</span>
-          <Button size="sm" variant="outline" onClick={newTemplate} disabled={saving || !canEdit} title={canEdit ? 'Criar template' : 'Necessário add-on eBooks Premium'}>
+          <Button size="sm" variant="outline" onClick={newTemplate} disabled={saving || !canEdit} title={canEdit ? 'Criar template' : 'Necessário add-on Personalizar Template ou eBooks Premium'}>
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : !canEdit ? <Lock className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
           </Button>
         </div>
         {!canEdit && (
           <div className="text-xs p-2 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-200 space-y-1.5">
-            <p>Para criar seus próprios templates personalizados, ative o add-on <strong>eBooks Premium</strong>.</p>
-            <Button asChild size="sm" variant="outline" className="w-full"><Link to="/dashboard/addons">Ver add-on</Link></Button>
+            <p>Para criar seus próprios templates personalizados, ative o add-on <strong>Personalizar Template</strong> ou <strong>eBooks Premium</strong>.</p>
+            <Button asChild size="sm" variant="outline" className="w-full"><Link to="/dashboard/addons">Ver add-ons</Link></Button>
           </div>
         )}
         {configs.length === 0 && <p className="text-xs text-muted-foreground p-2">Nenhum template ainda. Crie o primeiro.</p>}
