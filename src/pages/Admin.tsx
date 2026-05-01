@@ -109,6 +109,7 @@ const Admin = () => {
   const [creditsSaving, setCreditsSaving] = useState(false);
   const [creditsMode, setCreditsMode] = useState<'add' | 'remove'>('add');
   const [creditsCurrentBalance, setCreditsCurrentBalance] = useState<number | null>(null);
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
 
   // Manage user addons
   type AdminAddon = { id: string; slug: string; name: string; billing_type: string; is_active: boolean };
