@@ -178,7 +178,13 @@ function splitScriptIntoScenes(c: SourceContent): string[] {
     }
   }
   if (c.cta) out.push(c.cta.trim());
-  return out.slice(0, 12); // safety cap
+  // Padrão: sempre 6 cenas. Se houver mais, corta; se houver menos, repete a última para preencher.
+  const TARGET = 6;
+  if (out.length === 0) out.push(c.title?.trim() || c.caption?.trim() || 'Cena 1');
+  while (out.length < TARGET) {
+    out.push(out[out.length - 1]);
+  }
+  return out.slice(0, TARGET);
 }
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
@@ -199,7 +205,7 @@ const DEFAULT_PRESET: StylePreset = {
   fonts: ['display', 'sans'],
   textColors: ['#ffffff'],
   textBg: 'rgba(0,0,0,0.45)',
-  fontSize: 1.0,
+  fontSize: 0.5,
   textPosition: 'bottom',
 };
 
@@ -221,7 +227,7 @@ function buildInitialScenes(content: SourceContent, preset: StylePreset = DEFAUL
     textColor: colors[i % colors.length],
     textBg: preset.textBg,
     fontFamily: i === 0 ? (fonts.includes('display') ? 'display' : fonts[0]) : fonts[i % fonts.length],
-    fontSize: i === 0 ? Math.min(1.5, preset.fontSize * 1.15) : preset.fontSize,
+    fontSize: preset.fontSize,
     audio: defaultSceneAudio(),
     transitionIn: i === 0 ? 'none' : 'fade',
   }));

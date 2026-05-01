@@ -46,7 +46,17 @@ const Credits = () => {
       const { data, error } = await supabase.functions.invoke('create-mp-preference', {
         body: { package_id: pkg.id },
       });
-      if (error) throw error;
+      let serverError: string | null = null;
+      if (error) {
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx && typeof ctx.json === 'function') {
+            const body = await ctx.json();
+            serverError = body?.error || body?.message || null;
+          }
+        } catch { /* ignore */ }
+        throw new Error(serverError || error.message || 'Falha ao iniciar pagamento');
+      }
       if (data?.init_point) {
         window.location.href = data.init_point;
       } else if (data?.error) {
@@ -55,14 +65,25 @@ const Credits = () => {
         throw new Error('Resposta inválida do servidor');
       }
     } catch (err: any) {
+      const msg = err.message || '';
+      const isNotConfigured = /mercado\s*pago.*n[ãa]o\s*configurado/i.test(msg);
       toast({
-        title: 'Erro ao iniciar pagamento',
-        description: err.message || 'Verifique se o Mercado Pago foi configurado pelo administrador.',
+        title: 'Pagamento por cartão indisponível',
+        description: isNotConfigured
+          ? 'O Mercado Pago ainda não foi configurado pelo administrador. Por favor, contate o suporte.'
+          : msg || 'Tente novamente em instantes.',
         variant: 'destructive',
       });
     } finally {
       setBuying(null);
     }
+  };
+
+  const handleUpgrade = (plan: Plan) => {
+    toast({
+      title: 'Upgrade de plano',
+      description: `Para fazer upgrade ao plano ${plan.display_name}, contate o administrador. Em breve o upgrade será automático.`,
+    });
   };
 
   const balance = credits?.balance ?? 0;
@@ -123,7 +144,12 @@ const Credits = () => {
                     <li className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> Recargas avulsas disponíveis</li>
                     <li className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> Suporte e análise IA</li>
                   </ul>
-                  <Button className="w-full mt-5" variant={current ? 'outline' : popular ? 'default' : 'outline'} disabled={current}>
+                  <Button
+                    className="w-full mt-5"
+                    variant={current ? 'outline' : popular ? 'default' : 'outline'}
+                    disabled={current}
+                    onClick={() => !current && handleUpgrade(p)}
+                  >
                     {current ? 'Plano ativo' : 'Fazer upgrade'}
                   </Button>
                 </Card>
