@@ -978,9 +978,9 @@ const Admin = () => {
             <Dialog open={!!creditsUser} onOpenChange={(open) => { if (!open) { setCreditsUser(null); setCreditsCurrentBalance(null); } }}>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{creditsMode === 'add' ? 'Adicionar créditos' : 'Remover créditos'}</DialogTitle>
+                  <DialogTitle className="flex items-center gap-2"><Coins className="h-5 w-5 text-primary" /> Créditos</DialogTitle>
                   <DialogDescription>
-                    {creditsMode === 'add' ? 'Creditar' : 'Debitar'} saldo de <strong>{creditsUser?.email}</strong>.
+                    Ajustar saldo de <strong>{creditsUser?.email}</strong>.
                     {creditsCurrentBalance !== null && (
                       <> Saldo atual: <strong>{creditsCurrentBalance.toLocaleString('pt-BR')}</strong> créditos.</>
                     )}
@@ -988,15 +988,39 @@ const Admin = () => {
                 </DialogHeader>
                 <div className="space-y-4 pt-2">
                   <div className="space-y-2">
-                    <Label>Quantidade {creditsMode === 'add' ? 'a adicionar' : 'a remover'}</Label>
+                    <Label>Ação</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant={creditsMode === 'add' ? 'default' : 'outline'}
+                        className={creditsMode === 'add' ? 'glow-primary' : ''}
+                        onClick={() => setCreditsMode('add')}
+                      >
+                        <ArrowUpCircle className="mr-2 h-4 w-4" /> Adicionar
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={creditsMode === 'remove' ? 'destructive' : 'outline'}
+                        onClick={() => setCreditsMode('remove')}
+                      >
+                        <ArrowDownCircle className="mr-2 h-4 w-4" /> Remover
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Quantidade</Label>
                     <Input
                       type="number"
                       min={1}
+                      max={creditsMode === 'remove' && creditsCurrentBalance !== null ? creditsCurrentBalance : undefined}
                       value={creditsAmount}
                       onChange={e => setCreditsAmount(Number(e.target.value))}
                       placeholder="100"
                       autoFocus
                     />
+                    {creditsMode === 'remove' && creditsCurrentBalance !== null && creditsAmount > creditsCurrentBalance && (
+                      <p className="text-xs text-destructive">Valor maior que o saldo disponível ({creditsCurrentBalance}).</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>Descrição</Label>
@@ -1011,12 +1035,17 @@ const Admin = () => {
                   <Button variant="outline" onClick={() => setCreditsUser(null)}>Cancelar</Button>
                   <Button
                     onClick={handleAddCredits}
-                    disabled={creditsSaving}
+                    disabled={
+                      creditsSaving ||
+                      !creditsAmount ||
+                      creditsAmount <= 0 ||
+                      (creditsMode === 'remove' && creditsCurrentBalance !== null && creditsAmount > creditsCurrentBalance)
+                    }
                     variant={creditsMode === 'remove' ? 'destructive' : 'default'}
                     className={creditsMode === 'add' ? 'glow-primary' : ''}
                   >
                     {creditsSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Coins className="mr-2 h-4 w-4" />}
-                    {creditsMode === 'add' ? 'Adicionar' : 'Remover'}
+                    Confirmar {creditsMode === 'add' ? 'adição' : 'remoção'}
                   </Button>
                 </DialogFooter>
               </DialogContent>
