@@ -732,6 +732,21 @@ const GenerateContent = () => {
                             </div>
                           ))}
                         </div>
+                        {c.slides.some(s => s.image_url) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full border-primary/40 hover:bg-primary/10"
+                            onClick={() => downloadCarouselZip(c)}
+                            disabled={zipDownloadingId === c.id}
+                          >
+                            {zipDownloadingId === c.id ? (
+                              <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Compactando...</>
+                            ) : (
+                              <><Download className="h-3.5 w-3.5 mr-1" /> Baixar todas as imagens (ZIP) — {c.slides.filter(s => s.image_url).length}/{c.slides.length}</>
+                            )}
+                          </Button>
+                        )}
                       </div>
                     )}
                     {/* AI Image (capa) */}
