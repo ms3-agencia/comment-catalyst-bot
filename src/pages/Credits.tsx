@@ -144,7 +144,12 @@ const Credits = () => {
                     <li className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> Recargas avulsas disponíveis</li>
                     <li className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> Suporte e análise IA</li>
                   </ul>
-                  <Button className="w-full mt-5" variant={current ? 'outline' : popular ? 'default' : 'outline'} disabled={current}>
+                  <Button
+                    className="w-full mt-5"
+                    variant={current ? 'outline' : popular ? 'default' : 'outline'}
+                    disabled={current}
+                    onClick={() => !current && handleUpgrade(p)}
+                  >
                     {current ? 'Plano ativo' : 'Fazer upgrade'}
                   </Button>
                 </Card>
