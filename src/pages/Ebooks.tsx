@@ -308,6 +308,9 @@ export default function EbooksPage() {
                     </span>
                   </Button>
                 </div>
+                    </>
+                  );
+                })()}
                 {selectedConfig && (
                   <p className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
                     <span>
