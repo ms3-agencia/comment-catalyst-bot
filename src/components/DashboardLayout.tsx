@@ -6,6 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { CreditsWidget } from '@/components/CreditsWidget';
 import { useUserAddons } from '@/hooks/useUserAddons';
 import { Badge } from '@/components/ui/badge';
+import { NotificationsBell } from '@/components/NotificationsBell';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -209,6 +210,7 @@ export const DashboardLayout = ({ children }: { children: ReactNode }) => {
           </button>
           <Link to="/dashboard" className="lg:hidden font-heading text-base font-bold gradient-text">YCaptura</Link>
           <div className="flex-1" />
+          <NotificationsBell />
         </header>
         <div className="p-4 sm:p-6 lg:p-8 max-w-full overflow-x-hidden">{children}</div>
       </main>

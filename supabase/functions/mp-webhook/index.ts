@@ -7,6 +7,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "*",
 };
 
+async function fireSystemEmail(payload: Record<string, unknown>) {
+  try {
+    const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-system-email`;
+    await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    console.warn("fireSystemEmail failed", e);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -84,6 +100,17 @@ Deno.serve(async (req) => {
               monthly_reset_at: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
             }, { onConflict: "user_id" });
         }
+        // Plan upgrade email
+        const { data: planFull } = await admin.from("plan_configs").select("display_name,monthly_credits,description").eq("plan", order.target_plan).maybeSingle();
+        await fireSystemEmail({
+          templateKey: "plan_upgrade",
+          userId: order.user_id,
+          variables: {
+            plan_name: planFull?.display_name || order.target_plan,
+            monthly_credits: planFull?.monthly_credits ?? "",
+            plan_description: planFull?.description || "",
+          },
+        });
       } else if (order.order_type === "addon" && order.addon_id) {
         // Activate add-on
         const { data: addon } = await admin.from("addons").select("*").eq("id", order.addon_id).maybeSingle();
@@ -100,6 +127,15 @@ Deno.serve(async (req) => {
             status: "active",
             activated_at: new Date().toISOString(),
           }, { onConflict: "user_id,addon_id" });
+          await fireSystemEmail({
+            templateKey: "addon_purchase",
+            userId: order.user_id,
+            variables: {
+              addon_name: addon.name,
+              addon_description: addon.description || "",
+              expires_at: expiresAt ? new Date(expiresAt).toLocaleDateString("pt-BR") : "permanente",
+            },
+          });
         }
       } else {
         // Credit user
@@ -126,6 +162,22 @@ Deno.serve(async (req) => {
           type: "purchase",
           description: `Pagamento aprovado MP #${dataId}`,
           reference_id: order.id,
+        });
+
+        // Package purchase email
+        let packageName = "Pacote de créditos";
+        if (order.package_id) {
+          const { data: pkg } = await admin.from("credit_packages").select("name").eq("id", order.package_id).maybeSingle();
+          if (pkg?.name) packageName = pkg.name;
+        }
+        await fireSystemEmail({
+          templateKey: "package_purchase",
+          userId: order.user_id,
+          variables: {
+            package_name: packageName,
+            credits: order.credits,
+            amount: Number(order.amount_brl).toFixed(2).replace(".", ","),
+          },
         });
       }
     }

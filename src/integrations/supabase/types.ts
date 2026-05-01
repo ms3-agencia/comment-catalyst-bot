@@ -343,6 +343,81 @@ export type Database = {
         }
         Relationships: []
       }
+      email_send_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          recipient_email: string
+          recipient_user_id: string | null
+          status: string
+          subject: string | null
+          template_key: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          recipient_email: string
+          recipient_user_id?: string | null
+          status?: string
+          subject?: string | null
+          template_key?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          recipient_email?: string
+          recipient_user_id?: string | null
+          status?: string
+          subject?: string | null
+          template_key?: string | null
+        }
+        Relationships: []
+      }
+      email_templates: {
+        Row: {
+          body_html: string
+          created_at: string
+          enabled: boolean
+          id: string
+          key: string
+          name: string
+          send_email: boolean
+          send_inapp: boolean
+          subject: string
+          updated_at: string
+          variables: string[]
+        }
+        Insert: {
+          body_html: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          key: string
+          name: string
+          send_email?: boolean
+          send_inapp?: boolean
+          subject: string
+          updated_at?: string
+          variables?: string[]
+        }
+        Update: {
+          body_html?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          key?: string
+          name?: string
+          send_email?: boolean
+          send_inapp?: boolean
+          subject?: string
+          updated_at?: string
+          variables?: string[]
+        }
+        Relationships: []
+      }
       generated_contents: {
         Row: {
           caption: string | null
@@ -770,6 +845,42 @@ export type Database = {
           updated_at?: string
           user_id?: string
           video_urls?: string[]
+        }
+        Relationships: []
+      }
+      system_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          link: string | null
+          message: string
+          read: boolean
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          link?: string | null
+          message: string
+          read?: boolean
+          read_at?: string | null
+          title: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          link?: string | null
+          message?: string
+          read?: boolean
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
         }
         Relationships: []
       }

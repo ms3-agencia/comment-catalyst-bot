@@ -18,7 +18,7 @@ const Register = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: fullName }, emailRedirectTo: window.location.origin },
@@ -27,6 +27,17 @@ const Register = () => {
     if (error) {
       toast({ title: 'Erro ao criar conta', description: error.message, variant: 'destructive' });
     } else {
+      const newUserId = data.user?.id;
+      if (newUserId) {
+        supabase.functions.invoke('send-system-email', {
+          body: {
+            templateKey: 'welcome',
+            userId: newUserId,
+            recipientEmail: email,
+            variables: { user_name: fullName, free_credits: 50 },
+          },
+        }).catch((err) => console.warn('welcome email failed', err));
+      }
       toast({ title: 'Conta criada!', description: 'Você já pode fazer login.' });
       navigate('/login');
     }
