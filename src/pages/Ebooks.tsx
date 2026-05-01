@@ -313,7 +313,7 @@ export default function EbooksPage() {
                       Este template foi criado pelos administradores e <strong>não pode ser editado</strong>. Você pode:
                     </p>
                     <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
-                      <li><strong>Sobrescrever</strong> estilo, profundidade, público-alvo e observações em <em>Ajustes opcionais</em> (vale só para suas gerações).</li>
+                      <li><strong>Usá-lo como base</strong> para suas gerações de eBook.</li>
                       <li><strong>Definir como padrão</strong> para novos eBooks.</li>
                     </ul>
                     <p className="text-muted-foreground">
