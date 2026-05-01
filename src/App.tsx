@@ -24,8 +24,14 @@ import ContentHistory from "./pages/ContentHistory";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 import ConfirmEmail from "./pages/ConfirmEmail";
+import { usePwaManifest } from "@/hooks/usePwaManifest";
 
 const queryClient = new QueryClient();
+
+const PwaManifestLoader = () => {
+  usePwaManifest();
+  return null;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -34,6 +40,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <PwaManifestLoader />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/install" element={<Install />} />
