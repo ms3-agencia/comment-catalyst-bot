@@ -133,8 +133,13 @@ export default function EbooksPage() {
             <TabsTrigger value="chat" disabled={!hasPremium}>
               <MessageSquare className="h-4 w-4 mr-1" />Chat IA {!hasPremium && <Lock className="h-3 w-3 ml-1" />}
             </TabsTrigger>
-            
             <TabsTrigger value="mine">Meus eBooks ({ebooks.length})</TabsTrigger>
+            {hasCustomization && (
+              <TabsTrigger value="templates">
+                <Crown className="h-4 w-4 mr-1 text-amber-400" />Personalizar Template
+                {!hasPremium && <Badge className="ml-2 bg-cyan-500/20 text-cyan-400 border-cyan-500/30 text-[10px]">Add-on</Badge>}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="avatar" className="mt-4">
