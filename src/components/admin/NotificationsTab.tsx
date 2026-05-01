@@ -33,11 +33,14 @@ type EmailTemplate = {
   trigger_type: string;
   is_system: boolean;
   description?: string;
+  signature_id?: string | null;
 };
+
+type SignatureOption = { id: string; name: string; is_default: boolean };
 
 const SMTP_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password', 'smtp_from_email', 'smtp_from_name', 'smtp_secure'];
 
-const COMMON_VARS = ['user_name', 'user_email', 'site_name', 'app_url', 'plans_url', 'payment_link', 'credits_balance', 'plan_name', 'days_left', 'renewal_date'];
+const COMMON_VARS = ['user_name', 'user_email', 'site_name', 'logo_url', 'app_url', 'plans_url', 'payment_link', 'credits_balance', 'plan_name', 'days_left', 'renewal_date'];
 
 export function NotificationsTab() {
   const { toast } = useToast();
