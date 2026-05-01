@@ -304,11 +304,32 @@ export default function EbooksPage() {
                     )}
                   </p>
                 )}
-                {hasCustomization ? (
-                  <p className="text-xs text-muted-foreground">Você pode escolher entre os templates da equipe ou criar/editar os seus na aba <strong>Personalizar Template</strong>.</p>
-                ) : (
+                {selectedConfig && user && selectedConfig.user_id !== user.id && (
+                  <div className="text-xs rounded-md border border-cyan-500/30 bg-cyan-500/5 p-3 space-y-1">
+                    <p className="font-medium text-cyan-300 flex items-center gap-1.5">
+                      <Lock className="h-3.5 w-3.5" /> Template da equipe
+                    </p>
+                    <p className="text-muted-foreground">
+                      Este template foi criado pelos administradores e <strong>não pode ser editado</strong>. Você pode:
+                    </p>
+                    <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
+                      <li><strong>Sobrescrever</strong> estilo, profundidade, público-alvo e observações em <em>Ajustes opcionais</em> (vale só para suas gerações).</li>
+                      <li><strong>Definir como padrão</strong> para novos eBooks.</li>
+                    </ul>
+                    <p className="text-muted-foreground">
+                      Não é possível alterar nº de capítulos, prompt base, modelo de IA ou Modo Produto Premium do template da equipe.
+                      {!hasCustomization && (
+                        <> Para criar templates próprios, ative o add-on <Link to="/dashboard/addons" className="text-primary underline">Personalizar Template</Link> ou <Link to="/dashboard/addons" className="text-primary underline">eBooks Premium</Link>.</>
+                      )}
+                      {hasCustomization && (
+                        <> Para edição completa, crie/duplique seu próprio template na aba <strong>Personalizar Template</strong>.</>
+                      )}
+                    </p>
+                  </div>
+                )}
+                {selectedConfig && user && selectedConfig.user_id === user.id && (
                   <p className="text-xs text-muted-foreground">
-                    Use os templates disponibilizados pela equipe. Para criar/editar templates personalizados, ative o add-on <Link to="/dashboard/addons" className="text-primary underline">Personalizar Template</Link> ou <Link to="/dashboard/addons" className="text-primary underline">eBooks Premium</Link>.
+                    Este é um template seu — edite-o livremente na aba <strong>Personalizar Template</strong>.
                   </p>
                 )}
               </div>
