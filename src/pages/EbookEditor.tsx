@@ -26,7 +26,7 @@ export default function EbookEditor() {
   const [busy, setBusy] = useState<string | null>(null);
   const [activeChapter, setActiveChapter] = useState<number | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [overlay, setOverlay] = useState<{ stage: EbookGenStage; title: string; subtitle?: string; current?: number; total?: number } | null>(null);
+  const [overlay, setOverlay] = useState<{ stage: EbookGenStage; title: string; subtitle?: string; current?: number; total?: number; progress?: number } | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
