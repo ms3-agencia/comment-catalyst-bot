@@ -77,6 +77,7 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
   const load = async () => {
     setLoading(true);
     const { data: u } = await supabase.auth.getUser();
+    setCurrentUserId(u.user?.id || null);
     let query = supabase.from('ebook_configs').select('*').order('created_at', { ascending: false });
     if (mode === 'user' && u.user) {
       // Em modo user, lista os templates dele + globais (admins). RLS permite ler ambos.
@@ -85,7 +86,9 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
     const { data } = await query;
     const list = (data || []) as EbookConfig[];
     setConfigs(list);
-    const def = list.find(c => c.is_default) || list[0];
+    // Preferência: padrão do próprio usuário > primeiro próprio > qualquer padrão > primeiro
+    const own = u.user ? list.filter(c => c.user_id === u.user!.id) : [];
+    const def = own.find(c => c.is_default) || own[0] || list.find(c => c.is_default) || list[0];
     if (def) {
       setCurrent(def);
       onSelect?.(def);
