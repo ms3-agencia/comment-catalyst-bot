@@ -627,11 +627,13 @@ const Admin = () => {
   const openCreditsDialog = async (u: UserProfile, mode: 'add' | 'remove') => {
     setCreditsUser(u);
     setCreditsMode(mode);
-    setCreditsAmount(100);
+    setCreditsAmount(mode === 'add' ? 100 : 0);
     setCreditsDescription(mode === 'add' ? 'Ajuste manual (crédito)' : 'Ajuste manual (débito)');
     setCreditsCurrentBalance(null);
     const { data } = await supabase.from('user_credits').select('balance').eq('user_id', u.user_id).maybeSingle();
-    setCreditsCurrentBalance(data?.balance ?? 0);
+    const bal = data?.balance ?? 0;
+    setCreditsCurrentBalance(bal);
+    if (mode === 'remove') setCreditsAmount(bal);
   };
 
   const handleAddCredits = async () => {
@@ -1028,7 +1030,20 @@ const Admin = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Quantidade</Label>
+                    <div className="flex items-center justify-between">
+                      <Label>Quantidade</Label>
+                      {creditsMode === 'remove' && creditsCurrentBalance !== null && creditsCurrentBalance > 0 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => setCreditsAmount(creditsCurrentBalance)}
+                        >
+                          Usar saldo total ({creditsCurrentBalance})
+                        </Button>
+                      )}
+                    </div>
                     <Input
                       type="number"
                       min={1}
