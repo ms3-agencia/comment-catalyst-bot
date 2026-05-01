@@ -295,11 +295,19 @@ Deno.serve(async (req) => {
     }
 
     const logoUrl = signature?.logo_url || branding?.logo_url || "";
+    const siteName = branding?.site_name || "YCaptura";
+    // Tag <img> pronta para ser injetada quando o usuário usa {{logo_url}} no corpo/assinatura
+    const logoImgTag = logoUrl
+      ? `<img src="${logoUrl}" alt="${siteName}" style="max-height:60px;max-width:220px;display:inline-block;border:0;outline:none;text-decoration:none;" />`
+      : "";
 
     const allVars: Record<string, any> = {
-      site_name: branding?.site_name || "YCaptura",
+      site_name: siteName,
       app_url: appUrlSetting?.value || "",
-      logo_url: logoUrl,
+      // {{logo_url}} agora renderiza a imagem completa (não a URL crua)
+      logo_url: logoImgTag,
+      // Caso alguém precise da URL pura (ex: src="{{logo_src}}"), disponibilizamos como variável separada
+      logo_src: logoUrl,
       ...variables,
     };
 
@@ -321,8 +329,11 @@ Deno.serve(async (req) => {
     }
 
     // Wrapper com logo no topo (se disponível e não já incluído pelo template)
-    const html = logoUrl && !tpl.body_html.includes("{{logo_url}}")
-      ? `<div style="text-align:center;padding:24px 0;"><img src="${logoUrl}" alt="${allVars.site_name}" style="max-height:48px;max-width:200px;" /></div>${bodyHtml}`
+    // Wrapper com logo no topo somente se nem o template nem a assinatura já usam {{logo_url}}
+    const templateHasLogoVar = tpl.body_html.includes("{{logo_url}}") || tpl.body_html.includes("{{ logo_url }}");
+    const signatureHasLogoVar = !!signature?.body_html && (signature.body_html.includes("{{logo_url}}") || signature.body_html.includes("{{ logo_url }}"));
+    const html = logoUrl && !templateHasLogoVar && !signatureHasLogoVar
+      ? `<div style="text-align:center;padding:24px 0;">${logoImgTag}</div>${bodyHtml}`
       : bodyHtml;
 
     const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
