@@ -1351,6 +1351,7 @@ export type Database = {
           full_name: string | null
           id: string
           plan: Database["public"]["Enums"]["app_plan"]
+          preferred_ebook_config_id: string | null
           status: string
           updated_at: string
           user_id: string
@@ -1362,6 +1363,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           plan?: Database["public"]["Enums"]["app_plan"]
+          preferred_ebook_config_id?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -1373,6 +1375,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           plan?: Database["public"]["Enums"]["app_plan"]
+          preferred_ebook_config_id?: string | null
           status?: string
           updated_at?: string
           user_id?: string

@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, BookOpen, Sparkles, MessageSquare, Crown, Send, Lock, FileText, ArrowRight } from 'lucide-react';
+import { Loader2, BookOpen, Sparkles, MessageSquare, Crown, Send, Lock, FileText, ArrowRight, Save, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserAddons } from '@/hooks/useUserAddons';
 import { useAuth } from '@/hooks/useAuth';
@@ -40,15 +40,22 @@ export default function EbooksPage() {
   const [projectId, setProjectId] = useState<string>('none');
   const [generating, setGenerating] = useState(false);
   const [genDone, setGenDone] = useState(false);
+  const [savedConfigId, setSavedConfigId] = useState<string | null>(null);
+  const [savingPref, setSavingPref] = useState(false);
 
-  const loadConfigs = async () => {
+  const loadConfigs = async (preferredId?: string | null) => {
     // RLS permite ler templates globais (admin) + do próprio usuário
     const { data } = await supabase.from('ebook_configs').select('*')
       .order('is_default', { ascending: false })
       .order('created_at', { ascending: false });
     const list = (data || []) as EbookConfig[];
     setAvailableConfigs(list);
-    setSelectedConfig(prev => prev || list.find(c => c.is_default) || list[0] || null);
+    const pick =
+      (preferredId && list.find(c => c.id === preferredId)) ||
+      list.find(c => c.is_default) ||
+      list[0] ||
+      null;
+    setSelectedConfig(prev => prev || pick);
   };
 
   useEffect(() => {
@@ -57,8 +64,31 @@ export default function EbooksPage() {
       .then(({ data }) => setProjects((data || []) as any));
     supabase.from('ebooks').select('id, title, subtitle, status, created_at').eq('user_id', user.id).order('created_at', { ascending: false })
       .then(({ data }) => setEbooks(data || []));
-    loadConfigs();
+    // Carrega preferência salva do usuário e templates
+    supabase.from('profiles').select('preferred_ebook_config_id').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => {
+        const pref = (data as any)?.preferred_ebook_config_id || null;
+        setSavedConfigId(pref);
+        loadConfigs(pref);
+      });
   }, [user]);
+
+  const savePreference = async () => {
+    if (!user || !selectedConfig?.id) return;
+    setSavingPref(true);
+    try {
+      const { error } = await supabase.from('profiles')
+        .update({ preferred_ebook_config_id: selectedConfig.id } as any)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      setSavedConfigId(selectedConfig.id);
+      toast({ title: 'Preferência salva!', description: `Template "${selectedConfig.name}" será usado por padrão.` });
+    } catch (e: any) {
+      toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+    } finally {
+      setSavingPref(false);
+    }
+  };
 
   const refreshEbooks = async () => {
     const { data } = await supabase.from('ebooks').select('id, title, subtitle, status, created_at').order('created_at', { ascending: false });
@@ -173,29 +203,43 @@ export default function EbooksPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Template de configuração</Label>
-                <Select
-                  value={selectedConfig?.id || ''}
-                  onValueChange={(v) => {
-                    const cfg = availableConfigs.find(c => c.id === v);
-                    if (cfg) setSelectedConfig(cfg);
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um template" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableConfigs.length === 0 && (
-                      <SelectItem value="__none__" disabled>Nenhum template disponível</SelectItem>
-                    )}
-                    {availableConfigs.map(c => (
-                      <SelectItem key={c.id} value={c.id!}>
-                        {c.name}
-                        {c.user_id && user && c.user_id === user.id ? ' (meu)' : ' (equipe)'}
-                        {c.is_default ? ' · padrão' : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex gap-2">
+                  <Select
+                    value={selectedConfig?.id || ''}
+                    onValueChange={(v) => {
+                      const cfg = availableConfigs.find(c => c.id === v);
+                      if (cfg) setSelectedConfig(cfg);
+                    }}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Selecione um template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableConfigs.length === 0 && (
+                        <SelectItem value="__none__" disabled>Nenhum template disponível</SelectItem>
+                      )}
+                      {availableConfigs.map(c => (
+                        <SelectItem key={c.id} value={c.id!}>
+                          {c.name}
+                          {c.user_id && user && c.user_id === user.id ? ' (meu)' : ' (equipe)'}
+                          {c.is_default ? ' · padrão' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={savePreference}
+                    disabled={savingPref || !selectedConfig?.id || savedConfigId === selectedConfig?.id}
+                    title="Salvar como meu template padrão"
+                  >
+                    {savingPref ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : savedConfigId === selectedConfig?.id ? <Check className="h-4 w-4" />
+                      : <Save className="h-4 w-4" />}
+                    <span className="ml-1">{savedConfigId === selectedConfig?.id ? 'Salvo' : 'Salvar'}</span>
+                  </Button>
+                </div>
                 {selectedConfig && (
                   <p className="text-xs text-muted-foreground">
                     {selectedConfig.num_chapters || 8} capítulos · {selectedConfig.depth_level || 'intermediario'}
