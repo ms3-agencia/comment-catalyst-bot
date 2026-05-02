@@ -91,7 +91,17 @@ Deno.serve(async (req) => {
     const { data: settings } = await admin
       .from('app_settings')
       .select('key, value')
-      .in('key', [...PROVIDERS.map(p => p.settingKey), ...enabledKeys]);
+      .in('key', [...PROVIDERS.map(p => p.settingKey), ...enabledKeys, 'video_ai_auto_enabled']);
+
+    // Global kill-switch: when admin disables auto video generation, refuse the request.
+    const autoRow = (settings || []).find((s: any) => s.key === 'video_ai_auto_enabled');
+    const autoEnabled = autoRow ? autoRow.value === 'true' : true;
+    if (!autoEnabled) {
+      return new Response(JSON.stringify({
+        error: 'A geração automática de vídeo está desativada pelo administrador.',
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     const keyMap = new Map<string, string>();
     const enabledMap = new Map<string, boolean>();
     // default enabled = true when no row exists

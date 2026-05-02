@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useCredits } from '@/hooks/useCredits';
+import { useVideoAutoEnabled } from '@/hooks/useVideoAutoEnabled';
 import { usePlanUsage } from '@/hooks/usePlanUsage';
 import {
   Sparkles, Loader2, ArrowLeft, FolderOpen, Instagram, Youtube, Facebook, Linkedin,
@@ -135,6 +136,7 @@ const GenerateContent = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { credits, refresh: refreshCredits } = useCredits();
+  const { enabled: videoAutoEnabled } = useVideoAutoEnabled();
   const { usage, checkAffordable } = usePlanUsage();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -833,20 +835,22 @@ const GenerateContent = () => {
                           <summary className="cursor-pointer text-muted-foreground">Ver roteiro</summary>
                           <p className="whitespace-pre-wrap mt-2 text-foreground/90">{c.script}</p>
                         </details>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="w-full border-primary/40 hover:bg-primary/10"
-                          onClick={() => generateAiVideo(c)}
-                          disabled={generatingVideoId === c.id || balance <= 0}
-                          title={balance <= 0 ? 'Saldo insuficiente — adicione créditos' : undefined}
-                        >
-                          {generatingVideoId === c.id ? (
-                            <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Enviando para IA de vídeo...</>
-                          ) : (
-                            <><Clapperboard className="h-3.5 w-3.5 mr-1.5" /> Gerar vídeo automaticamente</>
-                          )}
-                        </Button>
+                        {videoAutoEnabled && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full border-primary/40 hover:bg-primary/10"
+                            onClick={() => generateAiVideo(c)}
+                            disabled={generatingVideoId === c.id || balance <= 0}
+                            title={balance <= 0 ? 'Saldo insuficiente — adicione créditos' : undefined}
+                          >
+                            {generatingVideoId === c.id ? (
+                              <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Enviando para IA de vídeo...</>
+                            ) : (
+                              <><Clapperboard className="h-3.5 w-3.5 mr-1.5" /> Gerar vídeo automaticamente</>
+                            )}
+                          </Button>
+                        )}
                       </div>
                     )}
                     {c.visual_idea && (

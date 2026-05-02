@@ -110,6 +110,8 @@ const VIDEO_AI_PROVIDERS: VideoProviderConfig[] = [
   },
 ];
 
+const GLOBAL_AUTO_KEY = 'video_ai_auto_enabled';
+
 export function VideoAiIntegrationsTab() {
   const { toast } = useToast();
   const [values, setValues] = useState<Record<string, string>>({});
@@ -118,6 +120,8 @@ export function VideoAiIntegrationsTab() {
   const [enabled, setEnabled] = useState<Record<string, boolean>>({});
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [autoEnabled, setAutoEnabled] = useState(true);
+  const [togglingAuto, setTogglingAuto] = useState(false);
 
   const enabledKeyFor = (id: string) => `video_ai_${id}_enabled`;
 
@@ -126,6 +130,7 @@ export function VideoAiIntegrationsTab() {
       const allKeys = [
         ...VIDEO_AI_PROVIDERS.map((p) => p.apiKeyField.key),
         ...VIDEO_AI_PROVIDERS.map((p) => enabledKeyFor(p.id)),
+        GLOBAL_AUTO_KEY,
       ];
       const { data } = await supabase.from('app_settings').select('key, value').in('key', allKeys);
       const v: Record<string, string> = {};
@@ -133,8 +138,11 @@ export function VideoAiIntegrationsTab() {
       const en: Record<string, boolean> = {};
       // default: enabled when value not set
       VIDEO_AI_PROVIDERS.forEach((p) => { en[p.id] = true; });
+      let auto = true;
       (data || []).forEach((row) => {
-        if (row.key.endsWith('_enabled')) {
+        if (row.key === GLOBAL_AUTO_KEY) {
+          auto = row.value === 'true';
+        } else if (row.key.endsWith('_enabled')) {
           const id = row.key.replace('video_ai_', '').replace('_enabled', '');
           en[id] = row.value === 'true';
         } else {
@@ -145,6 +153,7 @@ export function VideoAiIntegrationsTab() {
       setValues(v);
       setSaved(s);
       setEnabled(en);
+      setAutoEnabled(auto);
       setLoading(false);
     })();
   }, []);
@@ -184,6 +193,23 @@ export function VideoAiIntegrationsTab() {
     toast({ title: `${provider.name} ${next ? 'ativada' : 'desativada'}` });
   };
 
+  const toggleAuto = async (next: boolean) => {
+    setTogglingAuto(true);
+    const result = await upsert(GLOBAL_AUTO_KEY, next ? 'true' : 'false');
+    setTogglingAuto(false);
+    if ((result as any)?.error) {
+      toast({ title: 'Erro ao atualizar', description: (result as any).error.message, variant: 'destructive' });
+      return;
+    }
+    setAutoEnabled(next);
+    toast({
+      title: next ? 'Geração automática de vídeo ATIVADA' : 'Geração automática de vídeo DESATIVADA',
+      description: next
+        ? 'O botão "Gerar vídeo automaticamente" aparecerá em conteúdos com roteiro.'
+        : 'O botão "Gerar vídeo automaticamente" ficará oculto para os usuários.',
+    });
+  };
+
   const statusBadge = (key: string) => {
     if (saved[key]) {
       return (
@@ -216,6 +242,46 @@ export function VideoAiIntegrationsTab() {
           Configure as chaves dos provedores de geração de vídeo via IA. Cada provedor pode ser usado pelo sistema de roteamento em "Vídeo → Geração de vídeo". Credenciais são armazenadas com segurança e usadas apenas pelo servidor.
         </AlertDescription>
       </Alert>
+
+      <Card className={`p-5 border-2 transition-colors ${autoEnabled ? 'border-primary/40 bg-primary/5' : 'border-border bg-card/40'}`}>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-3 flex-1 min-w-[260px]">
+            <div className={`p-2 rounded-lg border ${autoEnabled ? 'bg-primary/15 border-primary/30' : 'bg-muted border-border'}`}>
+              <Wand2 className={autoEnabled ? 'text-primary' : 'text-muted-foreground'} size={22} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-semibold text-base">Geração automática de vídeo</h3>
+                {autoEnabled ? (
+                  <Badge className="bg-primary/15 text-primary border-primary/30">
+                    <Power size={12} className="mr-1" />Ativada
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-muted-foreground">
+                    <Power size={12} className="mr-1" />Desativada
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+                Quando ativada, o botão <strong>"Gerar vídeo automaticamente"</strong> aparece em todos os
+                conteúdos que possuam roteiro (Gerar Conteúdo e Histórico). Quando desativada, o botão
+                fica oculto para todos os usuários.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Label htmlFor="video-auto-global" className="text-xs text-muted-foreground">
+              {autoEnabled ? 'Ativada' : 'Desativada'}
+            </Label>
+            <Switch
+              id="video-auto-global"
+              checked={autoEnabled}
+              onCheckedChange={toggleAuto}
+              disabled={togglingAuto}
+            />
+          </div>
+        </div>
+      </Card>
 
       {VIDEO_AI_PROVIDERS.map((provider) => {
         const Icon = provider.icon;
