@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Plus, Trash2, Save, Star, Lock, Gem, Copy } from 'lucide-react';
+import { Loader2, Plus, Trash2, Save, Star, Lock, Gem, Copy, Pencil, Check, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUserAddons } from '@/hooks/useUserAddons';
 
@@ -69,6 +69,29 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  const startRename = (c: EbookConfig) => {
+    if (!c.id) return;
+    setRenamingId(c.id);
+    setRenameValue(c.name);
+  };
+  const cancelRename = () => { setRenamingId(null); setRenameValue(''); };
+  const commitRename = async (c: EbookConfig) => {
+    if (!c.id) return;
+    const newName = renameValue.trim();
+    if (!newName || newName === c.name) { cancelRename(); return; }
+    const { error, data } = await supabase.from('ebook_configs').update({ name: newName }).eq('id', c.id).select().single();
+    if (error) {
+      toast({ title: 'Erro ao renomear', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Template renomeado!' });
+    if (current.id === c.id) setCurrent(data as any);
+    cancelRename();
+    await load();
+  };
 
   // Em modo user, templates globais (criados por admin) NÃO podem ser editados aqui.
   const isGlobalTemplate = !!current.id && !!current.user_id && !!currentUserId && current.user_id !== currentUserId;
@@ -229,40 +252,84 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
         {configs.length === 0 && <p className="text-xs text-muted-foreground p-2">Nenhum template ainda. Crie o primeiro.</p>}
         {configs.map(c => {
           const isGlobal = mode === 'user' && c.user_id && currentUserId && c.user_id !== currentUserId;
+          const isRenaming = renamingId === c.id;
+          const canRename = !isGlobal && canEdit;
           return (
-            <button
+            <div
               key={c.id}
-              onClick={() => { setCurrent(c); onSelect?.(c); }}
-              className={`w-full text-left px-2.5 py-2 rounded-md text-sm hover:bg-accent flex items-center justify-between gap-2 ${current.id === c.id ? 'bg-accent' : ''}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => { if (!isRenaming) { setCurrent(c); onSelect?.(c); } }}
+              onKeyDown={(e) => { if (!isRenaming && (e.key === 'Enter' || e.key === ' ')) { setCurrent(c); onSelect?.(c); } }}
+              className={`w-full text-left px-2.5 py-2 rounded-md text-sm hover:bg-accent flex items-center justify-between gap-2 cursor-pointer ${current.id === c.id ? 'bg-accent' : ''}`}
             >
-              <span className="truncate flex items-center gap-1.5">
-                {c.is_default && <Star className="h-3 w-3 fill-amber-400 text-amber-400" />}
+              <span className="truncate flex items-center gap-1.5 flex-1 min-w-0">
+                {c.is_default && <Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0" />}
                 {c.premium_product_mode && (
-                  <Gem className="h-3 w-3 text-cyan-400" aria-label="Modo Premium ativo" />
+                  <Gem className="h-3 w-3 text-cyan-400 shrink-0" aria-label="Modo Premium ativo" />
                 )}
-                <span className="truncate">{c.name}</span>
-                {isGlobal && (
+                {isRenaming ? (
+                  <Input
+                    autoFocus
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === 'Enter') commitRename(c);
+                      if (e.key === 'Escape') cancelRename();
+                    }}
+                    className="h-7 text-sm px-1.5"
+                  />
+                ) : (
+                  <span className="truncate">{c.name}</span>
+                )}
+                {!isRenaming && isGlobal && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shrink-0">equipe</span>
                 )}
               </span>
               <span className="flex items-center gap-1.5 shrink-0">
-                {canEdit && (
-                  <Copy
-                    className="h-3.5 w-3.5 text-muted-foreground hover:text-cyan-400"
-                    aria-label="Duplicar template"
-                    onClick={(e) => { e.stopPropagation(); duplicateTemplate(c); }}
-                  />
-                )}
-                {!isGlobal ? (
-                  <Trash2
-                    className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive"
-                    onClick={(e) => { e.stopPropagation(); remove(c.id, c.user_id); }}
-                  />
+                {isRenaming ? (
+                  <>
+                    <Check
+                      className="h-3.5 w-3.5 text-emerald-400 hover:text-emerald-300 cursor-pointer"
+                      aria-label="Confirmar"
+                      onClick={(e) => { e.stopPropagation(); commitRename(c); }}
+                    />
+                    <X
+                      className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive cursor-pointer"
+                      aria-label="Cancelar"
+                      onClick={(e) => { e.stopPropagation(); cancelRename(); }}
+                    />
+                  </>
                 ) : (
-                  <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-label="Template da equipe (somente leitura)" />
+                  <>
+                    {canRename && (
+                      <Pencil
+                        className="h-3.5 w-3.5 text-muted-foreground hover:text-cyan-400 cursor-pointer"
+                        aria-label="Renomear template"
+                        onClick={(e) => { e.stopPropagation(); startRename(c); }}
+                      />
+                    )}
+                    {canEdit && (
+                      <Copy
+                        className="h-3.5 w-3.5 text-muted-foreground hover:text-cyan-400 cursor-pointer"
+                        aria-label="Duplicar template"
+                        onClick={(e) => { e.stopPropagation(); duplicateTemplate(c); }}
+                      />
+                    )}
+                    {!isGlobal ? (
+                      <Trash2
+                        className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive cursor-pointer"
+                        onClick={(e) => { e.stopPropagation(); remove(c.id, c.user_id); }}
+                      />
+                    ) : (
+                      <Lock className="h-3.5 w-3.5 text-muted-foreground" aria-label="Template da equipe (somente leitura)" />
+                    )}
+                  </>
                 )}
               </span>
-            </button>
+            </div>
           );
         })}
       </Card>
