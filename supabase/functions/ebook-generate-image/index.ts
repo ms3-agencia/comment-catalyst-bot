@@ -82,10 +82,15 @@ Deno.serve(async (req) => {
       }),
     });
 
+    const refund = async (desc: string) => {
+      try {
+        await admin.rpc("admin_add_credits", { _user_id: user.id, _amount: creditsCost, _description: desc } as any);
+      } catch (_) { /* noop */ }
+    };
+
     if (!aiResp.ok) {
       const txt = await aiResp.text();
-      // Refund on AI failure
-      await admin.rpc("admin_add_credits", { _user_id: user.id, _amount: creditsCost, _description: "Reembolso: falha ao gerar imagem do eBook" } as any).catch(() => {});
+      await refund("Reembolso: falha ao gerar imagem do eBook");
       if (aiResp.status === 429) {
         return new Response(JSON.stringify({ error: "rate_limited", message: "Limite de requisições. Aguarde." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
