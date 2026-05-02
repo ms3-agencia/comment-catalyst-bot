@@ -928,7 +928,7 @@ export async function exportEbookPdf(
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(FS_TITLE);
       setColor(COLOR_TITLE);
-      pdf.text('Sumário', marginX, y + 36);
+      pdf.text(tocTitle, marginX, y + 36);
 
       // Subtítulo (apenas na primeira página)
       if (pageIdx === 0) {
