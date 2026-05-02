@@ -714,6 +714,7 @@ export async function exportEbookPdf(
         activeChapterKind = 'intro';
         activeChapterOrder = 0;
         activeSubSeq = 0;
+        const anchorY = drawSectionAnchor(1);
         pushTocEntry({
           label: 'Introdução',
           page: pageNum,
@@ -722,6 +723,7 @@ export async function exportEbookPdf(
           order: 0,
           parentOrder: 0,
           subSeq: 0,
+          anchorY,
         });
         await renderHtmlBlock('<h2>Introdução</h2>');
         await renderRichHtml(ebook.introduction!, true);
