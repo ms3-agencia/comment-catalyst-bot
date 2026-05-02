@@ -789,7 +789,8 @@ export async function exportEbookPdf(
   const pushTocEntry = (e: Omit<TocEntry, 'seq'>) => {
     toc.push({ ...e, seq: tocSeqCounter++ });
   };
-  let tocPageNum = 0; // primeira página reservada para o sumário
+  let tocPageNum = 0;   // última página usada pelo TOC (atualizada por drawToc)
+  let tocFirstPage = 0; // primeira página reservada do TOC (preservada)
 
   // Capa — sempre ocupa página inteira (A4). Se houver cover_url, usa como
   // background com gradiente; senão, layout centralizado limpo.
