@@ -792,8 +792,10 @@ export async function exportEbookPdf(
   let tocPageNum = 0;   // última página usada pelo TOC (atualizada por drawToc)
   let tocFirstPage = 0; // primeira página reservada do TOC (preservada)
 
-  // Capa — sempre ocupa página inteira (A4). Se houver cover_url, usa como
-  // background com gradiente; senão, layout centralizado limpo.
+  // Capa — sempre ocupa página inteira (A4) e NUNCA contém texto.
+  // Regra do projeto: a capa do ebook é exclusivamente visual; título,
+  // subtítulo, método e promessa só aparecem nas seções internas e no
+  // sumário, nunca sobre a imagem da capa.
   steps.push({
     label: 'Capa',
     run: async () => {
@@ -803,85 +805,33 @@ export async function exportEbookPdf(
         coverDataUrl = await loadImageAsDataUrl(ebook.cover_url).catch(() => null);
       }
 
-      const titleSafe = escapeHtml(ebook.title);
-      const subtitleSafe = ebook.subtitle ? escapeHtml(ebook.subtitle) : '';
-      const methodSafe = ebook.method_name ? escapeHtml(ebook.method_name) : '';
-      const promiseSafe = ebook.promise ? escapeHtml(ebook.promise) : '';
-
-      // Calcula altura "página inteira" no nó (em px) para preencher A4
-      // Proporção: pageH/pageW * RENDER_W
-      const fullPageH = Math.round((pageH / pageW) * RENDER_W);
-
-      let html = '';
       if (coverDataUrl) {
-        html = `
-          <div style="
-            position: relative;
-            width: ${RENDER_W}px;
-            height: ${fullPageH}px;
-            overflow: hidden;
-            background: #0f172a;
-            font-family: Inter, Arial, sans-serif;
-          ">
-            <img src="${coverDataUrl}" style="
-              position:absolute; inset:0; width:100%; height:100%;
-              object-fit: cover; display:block;
-            " />
-            <div style="
-              position:absolute; inset:0;
-              background: linear-gradient(to bottom, rgba(15,23,42,0.10) 0%, rgba(15,23,42,0.55) 60%, rgba(15,23,42,0.92) 100%);
-            "></div>
-            <div style="
-              position:absolute; left:0; right:0; bottom:0;
-              padding: 60px 56px 80px;
-              color:#ffffff;
-              text-align:left;
-            ">
-              <h1 style="
-                color:#ffffff !important;
-                font-size: 38pt; font-weight: 800; line-height:1.15;
-                margin: 0 0 14px; text-shadow: 0 2px 18px rgba(0,0,0,0.45);
-              ">${titleSafe}</h1>
-              ${subtitleSafe ? `<div style="
-                color:#e2e8f0 !important;
-                font-size: 18pt; font-weight: 500; line-height:1.35;
-                margin: 0 0 24px; text-shadow: 0 1px 10px rgba(0,0,0,0.5);
-              ">${subtitleSafe}</div>` : ''}
-              ${methodSafe ? `<div style="color:#cffafe !important; font-size: 12pt; margin: 6px 0;"><strong style="color:#ffffff !important;">Método:</strong> ${methodSafe}</div>` : ''}
-              ${promiseSafe ? `<div style="color:#e2e8f0 !important; font-size: 12pt; font-style:italic; margin: 6px 0;">${promiseSafe}</div>` : ''}
-            </div>
-          </div>
-        `;
+        // Caminho rápido: insere a imagem diretamente preenchendo A4 inteiro,
+        // sem precisar passar por html2canvas. Garante 0 texto na capa.
+        pdf.addImage(coverDataUrl, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
       } else {
-        html = `
+        // Sem imagem: capa neutra (somente gradiente cyan suave) — também
+        // sem qualquer texto.
+        const fullPageH = Math.round((pageH / pageW) * RENDER_W);
+        const html = `
           <div style="
             width: ${RENDER_W}px;
             height: ${fullPageH}px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            text-align: center; padding: 80px 60px;
             background: linear-gradient(180deg, #ffffff 0%, #ecfeff 70%, #cffafe 100%);
             box-sizing: border-box;
-          ">
-            <h1 style="color:#0f172a !important; font-size: 38pt; font-weight: 800; line-height:1.15; margin: 0 0 18px;">${titleSafe}</h1>
-            ${subtitleSafe ? `<div style="color:#475569 !important; font-size: 18pt; margin: 0 0 36px;">${subtitleSafe}</div>` : ''}
-            <div style="height:2px; width:120px; background:#0891b2; margin: 12px 0 28px;"></div>
-            ${methodSafe ? `<div style="font-size:12pt; color:#0f172a !important; margin: 6px 0;"><strong>Método:</strong> ${methodSafe}</div>` : ''}
-            ${promiseSafe ? `<div style="font-size:12pt; color:#334155 !important; font-style:italic; margin: 6px 0;">${promiseSafe}</div>` : ''}
-          </div>
+          "></div>
         `;
+        root.innerHTML = '';
+        const wrap = document.createElement('div');
+        wrap.innerHTML = html;
+        const coverEl = wrap.firstElementChild as HTMLElement;
+        root.appendChild(coverEl);
+        await new Promise((r) => requestAnimationFrame(() => r(null)));
+        const canvas = await renderElementToCanvas(coverEl);
+        const data = canvas.toDataURL('image/jpeg', 0.94);
+        pdf.addImage(data, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
       }
 
-      // Renderiza diretamente em página inteira (margem zero)
-      root.innerHTML = '';
-      const wrap = document.createElement('div');
-      wrap.innerHTML = html;
-      const coverEl = wrap.firstElementChild as HTMLElement;
-      root.appendChild(coverEl);
-      await new Promise((r) => requestAnimationFrame(() => r(null)));
-      const canvas = await renderElementToCanvas(coverEl);
-      const data = canvas.toDataURL('image/jpeg', 0.94);
-      // Preenche A4 inteiro (sem margens)
-      pdf.addImage(data, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
       // Marca essa página como capa (sem cabeçalho/rodapé nem numeração)
       skipChromePages.add(pageNum);
       // Próxima seção em nova página
