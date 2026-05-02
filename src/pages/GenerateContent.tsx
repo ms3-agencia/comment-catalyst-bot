@@ -136,6 +136,7 @@ const GenerateContent = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { credits, refresh: refreshCredits } = useCredits();
+  const { enabled: videoAutoEnabled } = useVideoAutoEnabled();
   const { usage, checkAffordable } = usePlanUsage();
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
