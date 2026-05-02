@@ -151,6 +151,46 @@ export default function EbookEpubExport() {
     })),
   });
 
+  const generateSynopsisAI = async () => {
+    if (!ebook?.id) return;
+    if (chapters.length === 0) {
+      toast({ title: 'Sem conteúdo', description: 'Gere ao menos um capítulo antes de criar a sinopse.', variant: 'destructive' });
+      return;
+    }
+    setGeneratingSynopsis(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ebook-generate-synopsis', {
+        body: {
+          ebook_id: ebook.id,
+          language: meta.language || 'pt-BR',
+          max_chars: 1800,
+        },
+      });
+      if (error) {
+        const status = (error as any).context?.status;
+        if (status === 402) {
+          toast({ title: 'Créditos de IA esgotados', description: 'Adicione saldo em Settings > Workspace > Usage.', variant: 'destructive' });
+        } else if (status === 429) {
+          toast({ title: 'Muitas requisições', description: 'Aguarde alguns segundos e tente de novo.', variant: 'destructive' });
+        } else {
+          toast({ title: 'Erro ao gerar sinopse', description: error.message, variant: 'destructive' });
+        }
+        return;
+      }
+      const synopsis = (data as any)?.synopsis as string | undefined;
+      if (!synopsis) {
+        toast({ title: 'Resposta vazia da IA', variant: 'destructive' });
+        return;
+      }
+      setMeta((m) => ({ ...m, description: synopsis }));
+      toast({ title: 'Sinopse gerada!', description: `${synopsis.length} caracteres` });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar sinopse', description: e?.message || 'Falha desconhecida', variant: 'destructive' });
+    } finally {
+      setGeneratingSynopsis(false);
+    }
+  };
+
   const doExport = async () => {
     const err = validate();
     if (err) {
