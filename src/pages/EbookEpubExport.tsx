@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, BookOpen, Download, ChevronLeft, Crown, AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { Loader2, BookOpen, Download, ChevronLeft, Crown, AlertCircle, CheckCircle2, Info, Sparkles, Wand2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { exportEbookEpub, type KdpMetadata } from '@/lib/ebookEpubExport';
 import type { EbookFull } from '@/lib/ebookExport';
@@ -38,6 +38,7 @@ export default function EbookEpubExport() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [generatingSynopsis, setGeneratingSynopsis] = useState(false);
   const [overlay, setOverlay] = useState<any>(null);
   const [ebook, setEbook] = useState<any>(null);
   const [chapters, setChapters] = useState<any[]>([]);
@@ -149,6 +150,46 @@ export default function EbookEpubExport() {
       content_html: c.content_html || '',
     })),
   });
+
+  const generateSynopsisAI = async () => {
+    if (!ebook?.id) return;
+    if (chapters.length === 0) {
+      toast({ title: 'Sem conteúdo', description: 'Gere ao menos um capítulo antes de criar a sinopse.', variant: 'destructive' });
+      return;
+    }
+    setGeneratingSynopsis(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ebook-generate-synopsis', {
+        body: {
+          ebook_id: ebook.id,
+          language: meta.language || 'pt-BR',
+          max_chars: 1800,
+        },
+      });
+      if (error) {
+        const status = (error as any).context?.status;
+        if (status === 402) {
+          toast({ title: 'Créditos de IA esgotados', description: 'Adicione saldo em Settings > Workspace > Usage.', variant: 'destructive' });
+        } else if (status === 429) {
+          toast({ title: 'Muitas requisições', description: 'Aguarde alguns segundos e tente de novo.', variant: 'destructive' });
+        } else {
+          toast({ title: 'Erro ao gerar sinopse', description: error.message, variant: 'destructive' });
+        }
+        return;
+      }
+      const synopsis = (data as any)?.synopsis as string | undefined;
+      if (!synopsis) {
+        toast({ title: 'Resposta vazia da IA', variant: 'destructive' });
+        return;
+      }
+      setMeta((m) => ({ ...m, description: synopsis }));
+      toast({ title: 'Sinopse gerada!', description: `${synopsis.length} caracteres` });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar sinopse', description: e?.message || 'Falha desconhecida', variant: 'destructive' });
+    } finally {
+      setGeneratingSynopsis(false);
+    }
+  };
 
   const doExport = async () => {
     const err = validate();
@@ -358,16 +399,33 @@ export default function EbookEpubExport() {
         <Card className="p-5 space-y-4">
           <h2 className="font-heading text-lg font-bold">Descrição e marketing</h2>
           <div className="space-y-2">
-            <Label>Sinopse / descrição (será exibida na página da Amazon)</Label>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <Label>Sinopse / descrição (será exibida na página da Amazon)</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={generateSynopsisAI}
+                disabled={generatingSynopsis}
+                className="gap-1"
+              >
+                {generatingSynopsis ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Wand2 className="h-4 w-4 text-primary" />
+                )}
+                {generatingSynopsis ? 'Gerando...' : 'Gerar com IA'}
+              </Button>
+            </div>
             <Textarea
               value={meta.description || ''}
               onChange={(e) => setMeta({ ...meta, description: e.target.value })}
-              placeholder="Em até 4000 caracteres, descreva o que o leitor vai ganhar com este ebook."
-              rows={5}
+              placeholder="Em até 4000 caracteres, descreva o que o leitor vai ganhar com este ebook. Ou clique em 'Gerar com IA' para criar uma sinopse persuasiva baseada no conteúdo."
+              rows={6}
               maxLength={4000}
             />
             <p className="text-xs text-muted-foreground">
-              {(meta.description || '').length} / 4000 caracteres
+              {(meta.description || '').length} / 4000 caracteres · A IA gera com base no conteúdo dos capítulos, com tom persuasivo e gatilhos mentais para despertar o desejo de compra.
             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-4">
