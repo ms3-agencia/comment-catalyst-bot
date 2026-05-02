@@ -493,6 +493,18 @@ export default function ContentHistory() {
                   Baixar imagem
                 </Button>
               )}
+              {activePost.video_url && (
+                <a
+                  href={activePost.video_url}
+                  download={`${activePost.title || 'video'}-${activePost.id.slice(0, 8)}.mp4`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button className="bg-primary/90 hover:bg-primary">
+                    <Download className="h-4 w-4" /> Baixar vídeo
+                  </Button>
+                </a>
+              )}
               <Button variant="outline" onClick={() => copyContent(activePost)}>
                 {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
                 {copied ? 'Copiado!' : 'Copiar conteúdo'}
