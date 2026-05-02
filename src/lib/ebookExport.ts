@@ -335,8 +335,13 @@ export async function exportEbookPdf(
   };
 
   // ===== Montagem das seções =====
-  type Step = { label: string; run: () => Promise<void> };
+  type Step = { label: string; tocLabel?: string; isToc?: boolean; run: () => Promise<void> };
   const steps: Step[] = [];
+
+  // Registro do TOC: capturado durante a renderização
+  type TocEntry = { label: string; page: number; level: 1 | 2 };
+  const toc: TocEntry[] = [];
+  let tocPageNum = 0; // página onde o TOC será desenhado (reservada)
 
   // Capa
   steps.push({
@@ -350,19 +355,30 @@ export async function exportEbookPdf(
           ${ebook.promise ? `<div class="meta" style="font-style:italic; color:#334155 !important;">${escapeHtml(ebook.promise)}</div>` : ''}
         </div>
       `;
-      // Capa ocupa página inteira e centralizada — adiciona padding vertical extra
       cursorY = contentTop;
       await renderHtmlBlock(html);
-      // força próxima seção em nova página
       if (cursorY > contentTop) newPage();
+    },
+  });
+
+  // Reserva página(s) para o sumário — preenchemos depois
+  steps.push({
+    label: 'Sumário',
+    isToc: true,
+    run: async () => {
+      tocPageNum = pageNum;
+      // Reserva: avança para próxima página deixando esta vazia para preencher no final
+      newPage();
     },
   });
 
   if (ebook.introduction) {
     steps.push({
       label: 'Introdução',
+      tocLabel: 'Introdução',
       run: async () => {
         startNewPageSection();
+        toc.push({ label: 'Introdução', page: pageNum, level: 1 });
         await renderHtmlBlock('<h2>Introdução</h2>');
         await renderRichHtml(ebook.introduction!);
       },
@@ -372,8 +388,10 @@ export async function exportEbookPdf(
   sortedChapters.forEach((c) => {
     steps.push({
       label: `Capítulo ${c.chapter_number}`,
+      tocLabel: `Capítulo ${c.chapter_number} — ${c.title}`,
       run: async () => {
         startNewPageSection();
+        toc.push({ label: `Capítulo ${c.chapter_number} — ${c.title}`, page: pageNum, level: 1 });
         await renderHtmlBlock(`<h2>Capítulo ${c.chapter_number} — ${escapeHtml(c.title)}</h2>`);
         await renderRichHtml(c.content_html || '<p><em>Capítulo ainda não gerado.</em></p>');
       },
@@ -383,8 +401,10 @@ export async function exportEbookPdf(
   if (ebook.conclusion) {
     steps.push({
       label: 'Conclusão',
+      tocLabel: 'Conclusão',
       run: async () => {
         startNewPageSection();
+        toc.push({ label: 'Conclusão', page: pageNum, level: 1 });
         await renderHtmlBlock('<h2>Conclusão</h2>');
         await renderRichHtml(ebook.conclusion!);
       },
@@ -401,6 +421,76 @@ export async function exportEbookPdf(
     });
   }
 
+  // Desenha o TOC na página reservada com links clicáveis
+  const drawToc = () => {
+    if (!tocPageNum || toc.length === 0) return;
+    pdf.setPage(tocPageNum);
+
+    // Título "Sumário"
+    let y = contentTop;
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(20);
+    pdf.setTextColor(8, 145, 178); // cyan #0891b2
+    pdf.text('Sumário', marginX, y + 14);
+    // Linha divisória
+    pdf.setDrawColor(8, 145, 178);
+    pdf.setLineWidth(1.2);
+    pdf.line(marginX, y + 22, pageW - marginX, y + 22);
+    y += 44;
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(11);
+    pdf.setTextColor(30, 41, 59);
+
+    const lineH = 22;
+    const dotSize = 9;
+
+    for (const entry of toc) {
+      if (y + lineH > contentBottom) {
+        // Se overflow, adiciona página extra (raro). Insere após tocPageNum.
+        pdf.insertPage(tocPageNum + 1);
+        pdf.setPage(tocPageNum + 1);
+        // Atualiza tocPageNum para continuar nessa
+        tocPageNum = tocPageNum + 1;
+        y = contentTop;
+      }
+
+      const pageStr = String(entry.page);
+      const labelMaxW = contentW - 60; // espaço para número de página
+      const labelText = pdf.splitTextToSize(entry.label, labelMaxW)[0];
+
+      // Desenha label
+      pdf.setTextColor(15, 23, 42);
+      pdf.setFontSize(11);
+      pdf.text(labelText, marginX, y);
+
+      // Desenha número da página alinhado à direita
+      pdf.setTextColor(8, 145, 178);
+      pdf.text(pageStr, pageW - marginX, y, { align: 'right' });
+
+      // Pontilhado entre label e número
+      const labelW = pdf.getTextWidth(labelText);
+      const pageW2 = pdf.getTextWidth(pageStr);
+      const dotsStartX = marginX + labelW + 6;
+      const dotsEndX = pageW - marginX - pageW2 - 6;
+      if (dotsEndX > dotsStartX) {
+        pdf.setTextColor(148, 163, 184);
+        pdf.setFontSize(dotSize);
+        const dots = '.'.repeat(Math.max(3, Math.floor((dotsEndX - dotsStartX) / 3)));
+        pdf.text(dots, dotsStartX, y);
+        pdf.setFontSize(11);
+      }
+
+      // Link clicável cobrindo a linha inteira
+      pdf.link(marginX, y - 12, contentW, lineH, { pageNumber: entry.page });
+
+      y += lineH;
+    }
+
+    // Restaura cor padrão
+    pdf.setTextColor(30, 41, 59);
+  };
+
   try {
     for (let i = 0; i < steps.length; i++) {
       const s = steps[i];
@@ -409,13 +499,14 @@ export async function exportEbookPdf(
     }
     // Desenha rodapé na última página
     drawPageChrome();
+    // Preenche o sumário na página reservada
+    drawToc();
   } finally {
     if (sandbox.parentNode) document.body.removeChild(sandbox);
   }
 
   const filename = `${(ebook.title || 'ebook').replace(/[^\w\s-]/g, '').slice(0, 80) || 'ebook'}.pdf`;
   pdf.save(filename);
-  // suprime aviso de variável não usada
   void totalPages;
 }
 
