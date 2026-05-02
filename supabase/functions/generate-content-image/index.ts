@@ -295,8 +295,10 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("generate-content-image error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    const msg = e instanceof Error ? e.message : "Erro desconhecido";
+    return new Response(JSON.stringify({
+      error: `Erro inesperado ao gerar imagem: ${msg}. Tente novamente em instantes.`,
+      code: "unexpected_error",
+    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
