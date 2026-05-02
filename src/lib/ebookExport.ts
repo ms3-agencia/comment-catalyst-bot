@@ -7,6 +7,7 @@ export type EbookFull = {
   id: string;
   title: string;
   subtitle?: string | null;
+  cover_url?: string | null;
   introduction?: string | null;
   conclusion?: string | null;
   cta?: string | null;
