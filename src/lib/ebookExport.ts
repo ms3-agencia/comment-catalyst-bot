@@ -683,52 +683,64 @@ export async function exportEbookPdf(
     pdf.setFontSize(11);
     pdf.setTextColor(30, 41, 59);
 
-    const lineH = 22;
-    const dotSize = 9;
+    const lineH1 = 22;
+    const lineH2 = 18;
+    const indent = 22;
 
     for (const entry of toc) {
+      const lineH = entry.level === 2 ? lineH2 : lineH1;
       if (y + lineH > contentBottom) {
-        // Se overflow, adiciona página extra (raro). Insere após tocPageNum.
+        // Overflow: insere nova página de TOC e continua
         pdf.insertPage(tocPageNum + 1);
         pdf.setPage(tocPageNum + 1);
-        // Atualiza tocPageNum para continuar nessa
         tocPageNum = tocPageNum + 1;
         y = contentTop;
       }
 
-      const pageStr = String(entry.page);
-      const labelMaxW = contentW - 60; // espaço para número de página
+      const xStart = marginX + (entry.level === 2 ? indent : 0);
+      const fontSize = entry.level === 2 ? 10 : 11;
+      const labelMaxW = (pageW - marginX) - xStart - 60;
       const labelText = pdf.splitTextToSize(entry.label, labelMaxW)[0];
 
-      // Desenha label
-      pdf.setTextColor(15, 23, 42);
-      pdf.setFontSize(11);
-      pdf.text(labelText, marginX, y);
+      // Label
+      if (entry.level === 1) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(15, 23, 42); // slate-900
+      } else {
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(71, 85, 105); // slate-600
+      }
+      pdf.setFontSize(fontSize);
+      pdf.text(labelText, xStart, y);
 
-      // Desenha número da página alinhado à direita
+      // Número da página alinhado à direita
+      pdf.setFont('helvetica', entry.level === 1 ? 'bold' : 'normal');
       pdf.setTextColor(8, 145, 178);
+      const pageStr = String(entry.page);
       pdf.text(pageStr, pageW - marginX, y, { align: 'right' });
 
-      // Pontilhado entre label e número
+      // Pontilhado
       const labelW = pdf.getTextWidth(labelText);
       const pageW2 = pdf.getTextWidth(pageStr);
-      const dotsStartX = marginX + labelW + 6;
+      const dotsStartX = xStart + labelW + 6;
       const dotsEndX = pageW - marginX - pageW2 - 6;
       if (dotsEndX > dotsStartX) {
-        pdf.setTextColor(148, 163, 184);
-        pdf.setFontSize(dotSize);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(entry.level === 2 ? 203 : 148, entry.level === 2 ? 213 : 163, entry.level === 2 ? 225 : 184);
+        pdf.setFontSize(9);
         const dots = '.'.repeat(Math.max(3, Math.floor((dotsEndX - dotsStartX) / 3)));
         pdf.text(dots, dotsStartX, y);
-        pdf.setFontSize(11);
+        pdf.setFontSize(fontSize);
       }
 
       // Link clicável cobrindo a linha inteira
-      pdf.link(marginX, y - 12, contentW, lineH, { pageNumber: entry.page });
+      pdf.link(marginX, y - lineH + 6, contentW, lineH, { pageNumber: entry.page });
 
       y += lineH;
     }
 
     // Restaura cor padrão
+    pdf.setFont('helvetica', 'normal');
     pdf.setTextColor(30, 41, 59);
   };
 
