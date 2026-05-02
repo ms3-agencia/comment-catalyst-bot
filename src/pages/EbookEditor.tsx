@@ -248,6 +248,12 @@ export default function EbookEditor() {
           {/* Sidebar capítulos */}
           <Card className="p-3 space-y-1 max-h-[700px] overflow-y-auto">
             <SidebarItem
+              active={activeChapter === -3}
+              onClick={() => setActiveChapter(-3)}
+              status={ebook.cover_url || ebook.subtitle ? 'completed' : 'pending'}
+              label="Capa"
+            />
+            <SidebarItem
               active={activeChapter === -1}
               onClick={() => setActiveChapter(-1)}
               status={ebook.introduction ? 'completed' : 'pending'}
