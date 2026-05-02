@@ -457,8 +457,13 @@ export async function exportEbookPdf(
     return { canvas, ratio, h: canvas.height * ratio };
   };
 
-  // Desenha um canvas inteiro na posição atual (assume que cabe)
+  // Desenha um canvas inteiro na posição atual (assume que cabe).
+  // Protege contra dimensões inválidas (canvas vazio/zerado) que causariam
+  // o erro "invalid argument passed to jspdf.scale" no addImage.
   const drawCanvasAt = (canvas: HTMLCanvasElement, h: number) => {
+    if (!canvas || !canvas.width || !canvas.height || !Number.isFinite(h) || h <= 0) {
+      return;
+    }
     const data = canvas.toDataURL('image/jpeg', 0.94);
     pdf.addImage(data, 'JPEG', marginX, cursorY, contentW, h, undefined, 'FAST');
     cursorY += h;
