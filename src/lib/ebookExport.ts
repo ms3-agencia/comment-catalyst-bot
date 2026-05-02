@@ -591,3 +591,17 @@ export async function exportEbookPdf(
 function escapeHtml(s: string) {
   return (s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 }
+
+async function loadImageAsDataUrl(url: string): Promise<string> {
+  // Carrega a imagem (com CORS) e converte para data URL para evitar problemas
+  // de tainted canvas no html2canvas.
+  const resp = await fetch(url, { mode: 'cors', cache: 'no-cache' });
+  if (!resp.ok) throw new Error(`Falha ao carregar imagem: ${resp.status}`);
+  const blob = await resp.blob();
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
