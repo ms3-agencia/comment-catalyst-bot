@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CopyIconButton } from '@/components/CopyIconButton';
 import { VideoEditor } from '@/components/VideoEditor';
 import { VideoEditorErrorBoundary } from '@/components/VideoEditorErrorBoundary';
+import { GenerationAnimation } from '@/components/GenerationAnimation';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -621,6 +622,14 @@ export default function ContentHistory() {
                     <><Sparkles className="h-4 w-4 mr-1" /> Gerar {genQuantity} imagem{genQuantity > 1 ? 'ns' : ''}</>
                   )}
                 </Button>
+
+                {genLoading && (
+                  <GenerationAnimation
+                    variant="image"
+                    title={`Gerando imagem ${genResults.length + 1} de ${genQuantity}`}
+                    subtitle="A IA está compondo sua imagem com base no conteúdo. Aguarde alguns instantes…"
+                  />
+                )}
 
                 {genResults.length > 0 && (
                   <div className="space-y-2 pt-2">
