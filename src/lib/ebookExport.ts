@@ -767,6 +767,7 @@ export async function exportEbookPdf(
         // Ordem alta para garantir que conclusão fique sempre por último.
         activeChapterOrder = Number.MAX_SAFE_INTEGER;
         activeSubSeq = 0;
+        const anchorY = drawSectionAnchor(1);
         pushTocEntry({
           label: 'Conclusão',
           page: pageNum,
@@ -775,6 +776,7 @@ export async function exportEbookPdf(
           order: Number.MAX_SAFE_INTEGER,
           parentOrder: Number.MAX_SAFE_INTEGER,
           subSeq: 0,
+          anchorY,
         });
         await renderHtmlBlock('<h2>Conclusão</h2>');
         await renderRichHtml(ebook.conclusion!, true);
