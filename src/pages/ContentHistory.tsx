@@ -119,6 +119,9 @@ type HistoryItem = {
   image_url?: string | null;
   image_prompt?: string | null;
   slides?: Slide[] | null;
+  video_url?: string | null;
+  video_provider?: string | null;
+  video_status?: string | null;
   created_at?: string;
 };
 
