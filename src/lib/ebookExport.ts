@@ -487,6 +487,8 @@ export async function exportEbookPdf(
       const data = canvas.toDataURL('image/jpeg', 0.94);
       // Preenche A4 inteiro (sem margens)
       pdf.addImage(data, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
+      // Marca essa página como capa (sem cabeçalho/rodapé nem numeração)
+      skipChromePages.add(pageNum);
       // Próxima seção em nova página
       newPage();
     },
