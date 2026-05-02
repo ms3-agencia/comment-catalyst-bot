@@ -27,6 +27,7 @@ import NotFound from "./pages/NotFound";
 import ConfirmEmail from "./pages/ConfirmEmail";
 import Ebooks from "./pages/Ebooks";
 import EbookEditor from "./pages/EbookEditor";
+import EbookEpubExport from "./pages/EbookEpubExport";
 import { usePwaManifest } from "@/hooks/usePwaManifest";
 
 const queryClient = new QueryClient();
@@ -65,6 +66,7 @@ const App = () => (
             <Route path="/dashboard/generate/history" element={<ProtectedRoute><ContentHistory /></ProtectedRoute>} />
             <Route path="/dashboard/ebooks" element={<ProtectedRoute><Ebooks /></ProtectedRoute>} />
             <Route path="/dashboard/ebooks/:id" element={<ProtectedRoute><EbookEditor /></ProtectedRoute>} />
+            <Route path="/dashboard/ebooks/:id/epub" element={<ProtectedRoute><EbookEpubExport /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
