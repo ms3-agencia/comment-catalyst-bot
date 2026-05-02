@@ -110,6 +110,8 @@ const VIDEO_AI_PROVIDERS: VideoProviderConfig[] = [
   },
 ];
 
+const GLOBAL_AUTO_KEY = 'video_ai_auto_enabled';
+
 export function VideoAiIntegrationsTab() {
   const { toast } = useToast();
   const [values, setValues] = useState<Record<string, string>>({});
@@ -118,6 +120,8 @@ export function VideoAiIntegrationsTab() {
   const [enabled, setEnabled] = useState<Record<string, boolean>>({});
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [autoEnabled, setAutoEnabled] = useState(true);
+  const [togglingAuto, setTogglingAuto] = useState(false);
 
   const enabledKeyFor = (id: string) => `video_ai_${id}_enabled`;
 
@@ -126,6 +130,7 @@ export function VideoAiIntegrationsTab() {
       const allKeys = [
         ...VIDEO_AI_PROVIDERS.map((p) => p.apiKeyField.key),
         ...VIDEO_AI_PROVIDERS.map((p) => enabledKeyFor(p.id)),
+        GLOBAL_AUTO_KEY,
       ];
       const { data } = await supabase.from('app_settings').select('key, value').in('key', allKeys);
       const v: Record<string, string> = {};
@@ -133,8 +138,11 @@ export function VideoAiIntegrationsTab() {
       const en: Record<string, boolean> = {};
       // default: enabled when value not set
       VIDEO_AI_PROVIDERS.forEach((p) => { en[p.id] = true; });
+      let auto = true;
       (data || []).forEach((row) => {
-        if (row.key.endsWith('_enabled')) {
+        if (row.key === GLOBAL_AUTO_KEY) {
+          auto = row.value === 'true';
+        } else if (row.key.endsWith('_enabled')) {
           const id = row.key.replace('video_ai_', '').replace('_enabled', '');
           en[id] = row.value === 'true';
         } else {
@@ -145,6 +153,7 @@ export function VideoAiIntegrationsTab() {
       setValues(v);
       setSaved(s);
       setEnabled(en);
+      setAutoEnabled(auto);
       setLoading(false);
     })();
   }, []);
