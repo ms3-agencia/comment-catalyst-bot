@@ -931,7 +931,7 @@ export async function exportEbookPdf(
       pdf.text(tocTitle, marginX, y + 36);
 
       // Subtítulo (apenas na primeira página)
-      if (pageIdx === 0) {
+      if (pageIdx === 0 && showSubtitle) {
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(FS_SUBTITLE);
         setColor(COLOR_MUTED);
