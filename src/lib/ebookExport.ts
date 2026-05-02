@@ -363,83 +363,11 @@ export async function exportEbookPdf(
   const contentBottom = pageH - marginBottom;
   const contentH = contentBottom - contentTop;
 
-  // Largura fixa do "papel" virtual em px (proporcional ao contentW em pt: 1pt ≈ 1.333px)
-  const RENDER_W = Math.round(contentW * 1.6); // ~760px → boa nitidez
-  const PX_TO_PT = contentW / RENDER_W;
-
-  // Sandbox onde montaremos os blocos para captura.
-  // IMPORTANTE: isolamos o sandbox do tema escuro do app (color-scheme: light
-  // + reset agressivo de CSS variables) para que o PDF saia sempre com texto
-  // escuro sobre fundo branco, independente do tema atual da página.
-  const sandbox = document.createElement('div');
-  sandbox.style.position = 'fixed';
-  sandbox.style.left = '-99999px';
-  sandbox.style.top = '0';
-  sandbox.style.width = `${RENDER_W}px`;
-  sandbox.style.background = '#ffffff';
-  sandbox.style.color = '#0f172a';
-  sandbox.style.fontFamily = 'Inter, Arial, sans-serif';
-  sandbox.style.fontSize = '11pt';
-  sandbox.style.lineHeight = '1.7';
-  sandbox.style.colorScheme = 'light';
-  sandbox.setAttribute('data-pdf-sandbox', 'true');
-  sandbox.innerHTML = `
-    <style id="ebook-pdf-styles">
-      /* Reset CSS variables that podem vazar do tema escuro do app */
-      [data-pdf-sandbox], [data-pdf-sandbox] * {
-        --background: 0 0% 100%;
-        --foreground: 222 47% 11%;
-        --primary: 190 90% 35%;
-        --muted: 210 40% 96%;
-        --muted-foreground: 215 16% 35%;
-        --border: 214 32% 91%;
-        color-scheme: light;
-      }
-      .ebk, .ebk * {
-        color: #1e293b !important;
-        background-color: transparent !important;
-        background-image: none !important;
-        box-shadow: none !important;
-        text-shadow: none !important;
-        filter: none !important;
-        mix-blend-mode: normal !important;
-        opacity: 1 !important;
-        font-family: Inter, Arial, sans-serif;
-      }
-      .ebk { background:#ffffff !important; box-sizing: border-box; width: ${RENDER_W}px; }
-      .ebk h1 { color:#0f172a !important; font-size: 28pt; font-weight: 800; line-height:1.25; margin: 0 0 14px; }
-      .ebk h2 { color:#0891b2 !important; font-size: 18pt; font-weight: 700; line-height:1.3; margin: 0 0 12px; padding-bottom:6px; border-bottom:2px solid #0891b2; }
-      .ebk h3 { color:#0e7490 !important; font-size: 14pt; font-weight: 700; line-height:1.35; margin: 0 0 10px; }
-      .ebk h4, .ebk h5, .ebk h6 { color:#0f172a !important; font-weight: 700; line-height:1.35; margin: 0 0 8px; }
-      .ebk p  { color:#1e293b !important; font-size: 11pt; line-height:1.7; margin: 0 0 10px; text-align: justify; hyphens: auto; }
-      .ebk ul, .ebk ol { margin: 0 0 10px 22px; padding: 0; color:#1e293b !important; }
-      .ebk li { font-size: 11pt; line-height:1.7; margin: 0 0 6px; color:#1e293b !important; }
-      .ebk blockquote { border-left: 3px solid #0891b2; background:#ecfeff !important; color:#155e75 !important; padding: 10px 14px; margin: 0 0 12px; border-radius: 4px; }
-      .ebk blockquote * { color:#155e75 !important; background-color: transparent !important; }
-      .ebk strong, .ebk b { color:#0f172a !important; font-weight: 700; }
-      .ebk em, .ebk i { font-style: italic; }
-      .ebk a { color:#0891b2 !important; text-decoration: underline; }
-      .ebk img { max-width: 100%; height: auto; display: block; margin: 8px 0; }
-      .ebk code { background:#f1f5f9 !important; color:#0f172a !important; padding:1px 4px; border-radius:3px; font-family: monospace; font-size: 10pt; }
-      .ebk pre { background:#f1f5f9 !important; color:#0f172a !important; padding: 12px; border-radius: 6px; margin: 0 0 12px; white-space: pre-wrap; word-break: break-word; font-size: 10pt; }
-      .ebk pre * { color:#0f172a !important; background-color: transparent !important; }
-      .ebk table { border-collapse: collapse; width: 100%; margin: 0 0 12px; font-size: 10pt; }
-      .ebk th, .ebk td { border: 1px solid #cbd5e1; padding: 6px 8px; color:#0f172a !important; }
-      .ebk th { background:#f1f5f9 !important; font-weight: 700; }
-      .ebk .cover { text-align:center; padding: 80px 20px 40px; }
-      .ebk .cover h1 { font-size: 32pt; margin-bottom: 14px; }
-      .ebk .cover .subtitle { font-size: 16pt; color:#475569 !important; margin: 0 0 32px; }
-      .ebk .cover .meta { font-size: 12pt; margin: 8px 0; }
-      .ebk .cta, .ebk .cta * { background:#0891b2 !important; color:#ffffff !important; }
-      .ebk .cta { padding: 18px 22px; border-radius: 8px; text-align: center; font-weight: 700; font-size: 13pt; }
-      .ebk .spacer-sm { height: 8px; }
-      .ebk .spacer-md { height: 16px; }
-      .ebk .spacer-lg { height: 28px; }
-    </style>
-    <div class="ebk" id="ebk-root"></div>
-  `;
-  document.body.appendChild(sandbox);
-  const root = sandbox.querySelector('#ebk-root') as HTMLElement;
+  // Renderização nativa: usamos as fontes built-in do jsPDF (helvetica) e
+  // desenhamos o texto vetorialmente. É ~50x mais rápido que html2canvas e
+  // produz PDFs muito menores, com texto pesquisável e copiável.
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(30, 41, 59);
 
   let cursorY = contentTop;
   let pageNum = 1;
