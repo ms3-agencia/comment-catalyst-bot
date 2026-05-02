@@ -216,26 +216,79 @@ export async function exportEbookPdf(
 
   let cursorY = contentTop;
   let pageNum = 1;
-  let totalPages = 1; // será corrigido no final
-
-  const drawPageChrome = () => {
-    // Rodapé com numeração
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(9);
-    pdf.setTextColor(120, 130, 145);
-    pdf.text(`${pageNum}`, pageW / 2, pageH - 28, { align: 'center' });
-    if (ebook.title) {
-      pdf.text(ebook.title.slice(0, 80), marginX, pageH - 28, { align: 'left' });
-    }
-    pdf.setTextColor(30, 41, 59);
-  };
+  // Conjunto de páginas que NÃO devem receber cabeçalho/rodapé (ex.: capa)
+  const skipChromePages = new Set<number>();
 
   const newPage = () => {
-    drawPageChrome();
     pdf.addPage();
     pageNum += 1;
     cursorY = contentTop;
   };
+
+  // Desenha cabeçalho + rodapé em todas as páginas no final (exceto as marcadas)
+  const drawAllChrome = () => {
+    const total = pdf.getNumberOfPages();
+    // Páginas numeradas para o leitor: ignoram a capa, então mostramos
+    // "página X de Y" considerando apenas as páginas com chrome.
+    const numberedPages: number[] = [];
+    for (let p = 1; p <= total; p++) {
+      if (!skipChromePages.has(p)) numberedPages.push(p);
+    }
+    const numberedTotal = numberedPages.length;
+
+    for (let p = 1; p <= total; p++) {
+      if (skipChromePages.has(p)) continue;
+      pdf.setPage(p);
+
+      // ===== Cabeçalho =====
+      const headerY = 32; // px do topo
+      const headerText = (ebook.title || '').trim();
+      if (headerText) {
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(9);
+        pdf.setTextColor(100, 116, 139); // slate-500
+        // Trunca se ultrapassar largura disponível (deixa espaço à direita p/ subtítulo curto)
+        const maxHeaderW = pageW - marginX * 2;
+        const lines = pdf.splitTextToSize(headerText, maxHeaderW);
+        pdf.text(lines[0], marginX, headerY);
+      }
+      // Linha divisória do header
+      pdf.setDrawColor(8, 145, 178); // cyan #0891b2
+      pdf.setLineWidth(0.6);
+      pdf.line(marginX, headerY + 6, pageW - marginX, headerY + 6);
+
+      // ===== Rodapé =====
+      const footerY = pageH - 24;
+      // Linha divisória do footer
+      pdf.setDrawColor(226, 232, 240); // slate-200
+      pdf.setLineWidth(0.4);
+      pdf.line(marginX, footerY - 12, pageW - marginX, footerY - 12);
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 116, 139);
+
+      // Esquerda: título (curto)
+      if (headerText) {
+        const left = pdf.splitTextToSize(headerText, (pageW - marginX * 2) * 0.6)[0];
+        pdf.text(left, marginX, footerY);
+      }
+
+      // Direita: paginação "Página X de Y"
+      const idx = numberedPages.indexOf(p);
+      if (idx !== -1) {
+        const label = `Página ${idx + 1} de ${numberedTotal}`;
+        pdf.text(label, pageW - marginX, footerY, { align: 'right' });
+      }
+
+      // Restaura cor padrão
+      pdf.setTextColor(30, 41, 59);
+    }
+  };
+
+  // Quando renderizamos blocos, queremos respeitar o espaço do header.
+  // Aumentamos o "topo de conteúdo" para não colidir com a faixa do header.
+  // (já configurado em contentTop = marginTop = 64 — espaço suficiente)
 
   const renderElementToCanvas = async (el: HTMLElement) => {
     return await html2canvas(el, {
@@ -434,6 +487,8 @@ export async function exportEbookPdf(
       const data = canvas.toDataURL('image/jpeg', 0.94);
       // Preenche A4 inteiro (sem margens)
       pdf.addImage(data, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
+      // Marca essa página como capa (sem cabeçalho/rodapé nem numeração)
+      skipChromePages.add(pageNum);
       // Próxima seção em nova página
       newPage();
     },
@@ -575,17 +630,16 @@ export async function exportEbookPdf(
       onProgress?.({ current: i + 1, total: steps.length, label: s.label });
       await s.run();
     }
-    // Desenha rodapé na última página
-    drawPageChrome();
     // Preenche o sumário na página reservada
     drawToc();
+    // Desenha cabeçalho/rodapé em todas as páginas (exceto capa)
+    drawAllChrome();
   } finally {
     if (sandbox.parentNode) document.body.removeChild(sandbox);
   }
 
   const filename = `${(ebook.title || 'ebook').replace(/[^\w\s-]/g, '').slice(0, 80) || 'ebook'}.pdf`;
   pdf.save(filename);
-  void totalPages;
 }
 
 function escapeHtml(s: string) {
