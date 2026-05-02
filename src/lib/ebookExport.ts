@@ -500,10 +500,34 @@ export async function exportEbookPdf(
   type Step = { label: string; tocLabel?: string; isToc?: boolean; run: () => Promise<void> };
   const steps: Step[] = [];
 
-  // Registro do TOC: capturado durante a renderização
-  type TocEntry = { label: string; page: number; level: 1 | 2 };
+  // Registro do TOC: capturado durante a renderização.
+  // - kind: agrupamento (intro / chapter / conclusion / sub).
+  // - order: ordem canônica dentro do grupo (ex.: chapter_number).
+  // - parentOrder: para subcapítulos, herda a ordem do capítulo pai para
+  //   garantir que fiquem ancorados ao pai mesmo se o array sofrer pushes
+  //   fora de ordem.
+  // - seq: índice de inserção, usado como desempate estável.
+  type TocKind = 'intro' | 'chapter' | 'conclusion' | 'sub';
+  type TocEntry = {
+    label: string;
+    page: number;
+    level: 1 | 2;
+    kind: TocKind;
+    order: number;
+    parentOrder: number;
+    subSeq: number;
+    seq: number;
+  };
   const toc: TocEntry[] = [];
-  let tocPageNum = 0; // página onde o TOC será desenhado (reservada)
+  let tocSeqCounter = 0;
+  // Contexto do capítulo "ativo" — usado para amarrar subcapítulos ao pai.
+  let activeChapterKind: TocKind = 'intro';
+  let activeChapterOrder = 0;
+  let activeSubSeq = 0;
+  const pushTocEntry = (e: Omit<TocEntry, 'seq'>) => {
+    toc.push({ ...e, seq: tocSeqCounter++ });
+  };
+  let tocPageNum = 0; // primeira página reservada para o sumário
 
   // Capa — sempre ocupa página inteira (A4). Se houver cover_url, usa como
   // background com gradiente; senão, layout centralizado limpo.
