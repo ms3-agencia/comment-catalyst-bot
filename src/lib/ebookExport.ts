@@ -603,6 +603,11 @@ export async function exportEbookPdf(
       pdf.setTextColor(30, 41, 59);
     }
 
+    // No modo "focus" reservamos um pequeno respiro abaixo do realce para
+    // que o título não se sobreponha ao conteúdo seguinte.
+    if (isFocus) {
+      cursorY += 6;
+    }
     return anchorY;
   };
 
