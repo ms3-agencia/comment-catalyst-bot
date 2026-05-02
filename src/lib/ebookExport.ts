@@ -1045,7 +1045,15 @@ export async function exportEbookPdf(
         }
 
         // ---- Link clicável cobrindo a linha inteira ----
-        pdf.link(marginX, y, contentW, lineH, { pageNumber: entry.page });
+        // Link clicável: aponta para a página E para a coordenada Y do
+        // destaque (badge cyan), garantindo que o leitor role exatamente
+        // até o marcador visual quando o usuário clica no item.
+        const linkTarget: { pageNumber: number; top?: number } = { pageNumber: entry.page };
+        if (typeof entry.anchorY === 'number') {
+          // pequena folga acima do destaque para o usuário enxergá-lo bem
+          linkTarget.top = Math.max(0, entry.anchorY - 12);
+        }
+        pdf.link(marginX, y, contentW, lineH, linkTarget);
 
         y += lineH;
         prevKind = entry.kind;
