@@ -895,6 +895,7 @@ export async function exportEbookPdf(
     isToc: true,
     run: async () => {
       tocPageNum = pageNum;
+      tocFirstPage = pageNum;
       // Reserva: avança para próxima página deixando esta vazia para preencher no final
       newPage();
     },
