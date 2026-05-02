@@ -453,8 +453,11 @@ export async function exportEbookPdf(
   const measureAndRender = async (el: HTMLElement) => {
     await new Promise((r) => requestAnimationFrame(() => r(null)));
     const canvas = await renderElementToCanvas(el);
-    const ratio = contentW / canvas.width;
-    return { canvas, ratio, h: canvas.height * ratio };
+    const safeW = canvas.width || 1;
+    const safeH = canvas.height || 1;
+    const ratio = contentW / safeW;
+    const h = safeH * ratio;
+    return { canvas, ratio, h: Number.isFinite(h) && h > 0 ? h : 0 };
   };
 
   // Desenha um canvas inteiro na posição atual (assume que cabe).
