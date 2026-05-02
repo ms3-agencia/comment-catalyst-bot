@@ -392,3 +392,189 @@ function SectionEditor({ title, subtitle, html, onChange, onGenerate, generating
     </div>
   );
 }
+
+function CoverEditor({ ebook, onSave, onToast }: { ebook: any; onSave: (patch: any) => Promise<void>; onToast: (t: any) => void; }) {
+  const [title, setTitle] = useState<string>(ebook.title || '');
+  const [subtitle, setSubtitle] = useState<string>(ebook.subtitle || '');
+  const [coverUrl, setCoverUrl] = useState<string | null>(ebook.cover_url || null);
+  const [aiPrompt, setAiPrompt] = useState<string>('');
+  const [generating, setGenerating] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [savingMeta, setSavingMeta] = useState(false);
+
+  useEffect(() => {
+    setTitle(ebook.title || '');
+    setSubtitle(ebook.subtitle || '');
+    setCoverUrl(ebook.cover_url || null);
+  }, [ebook.id, ebook.title, ebook.subtitle, ebook.cover_url]);
+
+  const saveMeta = async () => {
+    setSavingMeta(true);
+    try {
+      await onSave({ title: title.trim() || 'eBook sem título', subtitle: subtitle.trim() || null });
+      onToast({ title: 'Capa salva!' });
+    } finally { setSavingMeta(false); }
+  };
+
+  const handleUpload = async (file: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      onToast({ title: 'Arquivo inválido', description: 'Selecione uma imagem.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      onToast({ title: 'Imagem muito grande', description: 'Máximo 8MB.', variant: 'destructive' });
+      return;
+    }
+    setUploading(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const userId = userData.user?.id;
+      if (!userId) throw new Error('Não autenticado');
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const path = `ebooks/${userId}/${ebook.id}/cover-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('content-images').upload(path, file, {
+        cacheControl: '3600', upsert: false, contentType: file.type,
+      });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from('content-images').getPublicUrl(path);
+      const url = pub.publicUrl;
+      await onSave({ cover_url: url });
+      setCoverUrl(url);
+      onToast({ title: 'Capa atualizada!' });
+    } catch (e: any) {
+      onToast({ title: 'Falha no upload', description: e.message, variant: 'destructive' });
+    } finally { setUploading(false); }
+  };
+
+  const generateAI = async () => {
+    const prompt = aiPrompt.trim();
+    if (!prompt) {
+      onToast({ title: 'Descreva a imagem', description: 'Digite um prompt para gerar a capa.', variant: 'destructive' });
+      return;
+    }
+    setGenerating(true);
+    try {
+      const fullPrompt = `Book cover illustration. Title: "${title}". ${subtitle ? `Subtitle: "${subtitle}". ` : ''}Visual brief: ${prompt}. Composition leaves space at the bottom for overlaid title text. Cinematic, high quality, no embedded text or letters.`;
+      const { data, error } = await supabase.functions.invoke('ebook-generate-image', {
+        body: { prompt: fullPrompt, aspect_ratio: '3:4', ebook_id: ebook.id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).message || (data as any).error);
+      const url = (data as any)?.image_url;
+      if (!url) throw new Error('Imagem não retornada');
+      await onSave({ cover_url: url });
+      setCoverUrl(url);
+      onToast({ title: 'Capa gerada com IA!' });
+    } catch (e: any) {
+      onToast({ title: 'Erro ao gerar capa', description: e.message, variant: 'destructive' });
+    } finally { setGenerating(false); }
+  };
+
+  const removeCover = async () => {
+    await onSave({ cover_url: null });
+    setCoverUrl(null);
+    onToast({ title: 'Imagem removida' });
+  };
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="font-heading text-xl font-bold flex items-center gap-2">
+          <ImageIcon className="h-5 w-5 text-primary" />Capa do eBook
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Personalize título, subtítulo e imagem da capa. Tudo será aplicado automaticamente no PDF exportado.
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-[280px_1fr] gap-5">
+        {/* Preview */}
+        <div className="space-y-2">
+          <div className="text-xs font-medium text-muted-foreground">Pré-visualização</div>
+          <div
+            className="relative aspect-[3/4] rounded-lg overflow-hidden border border-border bg-gradient-to-b from-slate-100 to-cyan-100 dark:from-slate-800 dark:to-cyan-950 shadow-lg"
+          >
+            {coverUrl && (
+              <img src={coverUrl} alt="Capa" className="absolute inset-0 w-full h-full object-cover" />
+            )}
+            <div className={`absolute inset-0 ${coverUrl ? 'bg-gradient-to-b from-black/0 via-black/30 to-black/85' : ''}`} />
+            <div className={`absolute left-0 right-0 bottom-0 p-4 ${coverUrl ? 'text-white' : 'text-slate-900 dark:text-slate-100'}`}>
+              <div className="font-heading font-bold text-lg leading-tight line-clamp-3 drop-shadow">
+                {title || 'Título do eBook'}
+              </div>
+              {subtitle && (
+                <div className="text-xs mt-1 opacity-90 line-clamp-2 drop-shadow">{subtitle}</div>
+              )}
+            </div>
+          </div>
+          {coverUrl && (
+            <Button variant="ghost" size="sm" className="w-full text-destructive" onClick={removeCover}>
+              <Trash2 className="h-4 w-4" />Remover imagem
+            </Button>
+          )}
+        </div>
+
+        {/* Controles */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Título</label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título do eBook" />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Subtítulo</label>
+            <Input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="Subtítulo (opcional)" />
+          </div>
+          <Button onClick={saveMeta} disabled={savingMeta} size="sm">
+            {savingMeta ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+            Salvar título e subtítulo
+          </Button>
+
+          <div className="border-t border-border pt-4 space-y-3">
+            <div className="text-sm font-semibold flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />Gerar imagem com IA
+            </div>
+            <Textarea
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder="Ex: ilustração minimalista de um livro aberto com luz dourada, paleta cyan e roxo, estilo cinematográfico"
+              rows={3}
+            />
+            <Button onClick={generateAI} disabled={generating} size="sm">
+              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {generating ? 'Gerando...' : 'Gerar capa com IA'}
+            </Button>
+            <p className="text-xs text-muted-foreground">Consome créditos da ação "ebook_image".</p>
+          </div>
+
+          <div className="border-t border-border pt-4 space-y-3">
+            <div className="text-sm font-semibold flex items-center gap-2">
+              <Upload className="h-4 w-4 text-primary" />Enviar imagem
+            </div>
+            <input
+              id="cover-upload"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleUpload(f);
+                e.target.value = '';
+              }}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={uploading}
+              onClick={() => document.getElementById('cover-upload')?.click()}
+            >
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              {uploading ? 'Enviando...' : 'Selecionar arquivo'}
+            </Button>
+            <p className="text-xs text-muted-foreground">JPG, PNG ou WebP. Recomendado 3:4 (ex: 1200x1600). Máx 8MB.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
