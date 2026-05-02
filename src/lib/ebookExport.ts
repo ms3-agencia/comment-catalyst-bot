@@ -136,155 +136,133 @@ export async function exportEbookPdf(
   ebook: EbookFull,
   onProgress?: (info: { current: number; total: number; label: string }) => void,
 ) {
-  // Estratégia robusta: renderizar CADA seção (capa, intro, capítulos, conclusão, CTA)
-  // como um nó HTML offscreen, capturar com html2canvas e adicionar páginas A4 ao jsPDF
-  // fatiando a imagem alta em múltiplas páginas. Evita o PDF em branco do jsPDF.html()
-  // com autoPaging em conteúdos longos.
+  // Estratégia bloco-a-bloco: cada elemento (h2, p, li, blockquote, img...) é
+  // renderizado individualmente em um canvas. Se o bloco não couber no espaço
+  // restante da página, criamos nova página. Isso garante margens, espaçamento
+  // e quebras consistentes para qualquer tamanho de texto.
   const html2canvas = (await import('html2canvas')).default;
 
   const sortedChapters = [...ebook.chapters].sort((a, b) => a.chapter_number - b.chapter_number);
 
-  type Section = { label: string; html: string; isCover?: boolean };
-  const sections: Section[] = [];
-
-  sections.push({
-    label: 'Capa',
-    isCover: true,
-    html: `
-      <div style="text-align:center; padding:160px 32px 60px; min-height:1000px;">
-        <h1 style="font-size:36pt; margin:0 0 16px; color:#0f172a; line-height:1.2; font-weight:800;">${escapeHtml(ebook.title)}</h1>
-        ${ebook.subtitle ? `<p style="font-size:18pt; color:#475569; margin:0 0 40px;">${escapeHtml(ebook.subtitle)}</p>` : ''}
-        ${ebook.method_name ? `<p style="margin-top:32px; font-size:13pt;"><strong>Método:</strong> ${escapeHtml(ebook.method_name)}</p>` : ''}
-        ${ebook.promise ? `<p style="font-style:italic; font-size:13pt; color:#334155;">${escapeHtml(ebook.promise)}</p>` : ''}
-      </div>
-    `,
-  });
-
-  if (ebook.introduction) {
-    sections.push({
-      label: 'Introdução',
-      html: `
-        <h2 style="color:#0891b2; border-bottom:2px solid #0891b2; padding-bottom:6px; font-size:22pt; margin:0 0 16px;">Introdução</h2>
-        <div class="ebook-prose">${ebook.introduction}</div>
-      `,
-    });
-  }
-
-  sortedChapters.forEach((c) => {
-    sections.push({
-      label: `Capítulo ${c.chapter_number}`,
-      html: `
-        <h2 style="color:#0891b2; border-bottom:2px solid #0891b2; padding-bottom:6px; font-size:22pt; margin:0 0 16px;">Capítulo ${c.chapter_number} — ${escapeHtml(c.title)}</h2>
-        <div class="ebook-prose">${c.content_html || '<p><em>Capítulo ainda não gerado.</em></p>'}</div>
-      `,
-    });
-  });
-
-  if (ebook.conclusion) {
-    sections.push({
-      label: 'Conclusão',
-      html: `
-        <h2 style="color:#0891b2; border-bottom:2px solid #0891b2; padding-bottom:6px; font-size:22pt; margin:0 0 16px;">Conclusão</h2>
-        <div class="ebook-prose">${ebook.conclusion}</div>
-      `,
-    });
-  }
-
-  if (ebook.cta) {
-    sections.push({
-      label: 'Chamada Final',
-      html: `
-        <div style="margin-top:24px; padding:20px; background:#0891b2; color:#fff; text-align:center; font-weight:bold; border-radius:8px; font-size:14pt;">${escapeHtml(ebook.cta)}</div>
-      `,
-    });
-  }
-
   const pdf = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
   const pageW = pdf.internal.pageSize.getWidth();   // 595.28
   const pageH = pdf.internal.pageSize.getHeight();  // 841.89
-  const margin = 36;
-  const contentW = pageW - margin * 2;
-  const contentH = pageH - margin * 2;
+  const marginX = 56;
+  const marginTop = 64;
+  const marginBottom = 64;
+  const contentW = pageW - marginX * 2;
+  const contentTop = marginTop;
+  const contentBottom = pageH - marginBottom;
+  const contentH = contentBottom - contentTop;
 
-  const total = sections.length;
-  let firstPage = true;
+  // Largura fixa do "papel" virtual em px (proporcional ao contentW em pt: 1pt ≈ 1.333px)
+  const RENDER_W = Math.round(contentW * 1.6); // ~760px → boa nitidez
+  const PX_TO_PT = contentW / RENDER_W;
 
-  for (let i = 0; i < total; i++) {
-    const sec = sections[i];
-    onProgress?.({ current: i + 1, total, label: sec.label });
+  // Sandbox onde montaremos os blocos para captura
+  const sandbox = document.createElement('div');
+  sandbox.style.position = 'fixed';
+  sandbox.style.left = '-99999px';
+  sandbox.style.top = '0';
+  sandbox.style.width = `${RENDER_W}px`;
+  sandbox.style.background = '#ffffff';
+  sandbox.style.color = '#0f172a';
+  sandbox.style.fontFamily = 'Inter, Arial, sans-serif';
+  sandbox.style.fontSize = '11pt';
+  sandbox.style.lineHeight = '1.7';
+  sandbox.innerHTML = `
+    <style id="ebook-pdf-styles">
+      .ebk, .ebk * {
+        color: #1e293b !important;
+        background-color: transparent;
+        box-shadow: none !important;
+        text-shadow: none !important;
+        font-family: Inter, Arial, sans-serif;
+      }
+      .ebk { background:#ffffff !important; box-sizing: border-box; width: ${RENDER_W}px; }
+      .ebk h1 { color:#0f172a !important; font-size: 28pt; font-weight: 800; line-height:1.25; margin: 0 0 14px; }
+      .ebk h2 { color:#0891b2 !important; font-size: 18pt; font-weight: 700; line-height:1.3; margin: 0 0 12px; padding-bottom:6px; border-bottom:2px solid #0891b2; }
+      .ebk h3 { color:#0e7490 !important; font-size: 14pt; font-weight: 700; line-height:1.35; margin: 0 0 10px; }
+      .ebk p  { color:#1e293b !important; font-size: 11pt; line-height:1.7; margin: 0 0 10px; text-align: justify; hyphens: auto; }
+      .ebk ul, .ebk ol { margin: 0 0 10px 22px; padding: 0; color:#1e293b !important; }
+      .ebk li { font-size: 11pt; line-height:1.7; margin: 0 0 6px; color:#1e293b !important; }
+      .ebk blockquote { border-left: 3px solid #0891b2; background:#ecfeff !important; color:#155e75 !important; padding: 10px 14px; margin: 0 0 12px; border-radius: 4px; }
+      .ebk blockquote * { color:#155e75 !important; }
+      .ebk strong, .ebk b { color:#0f172a !important; font-weight: 700; }
+      .ebk em, .ebk i { font-style: italic; }
+      .ebk a { color:#0891b2 !important; text-decoration: underline; }
+      .ebk img { max-width: 100%; height: auto; display: block; margin: 8px 0; }
+      .ebk code { background:#f1f5f9 !important; color:#0f172a !important; padding:1px 4px; border-radius:3px; font-family: monospace; font-size: 10pt; }
+      .ebk pre { background:#f1f5f9 !important; color:#0f172a !important; padding: 12px; border-radius: 6px; margin: 0 0 12px; white-space: pre-wrap; word-break: break-word; font-size: 10pt; }
+      .ebk pre * { color:#0f172a !important; }
+      .ebk table { border-collapse: collapse; width: 100%; margin: 0 0 12px; font-size: 10pt; }
+      .ebk th, .ebk td { border: 1px solid #cbd5e1; padding: 6px 8px; color:#0f172a !important; }
+      .ebk th { background:#f1f5f9 !important; font-weight: 700; }
+      .ebk .cover { text-align:center; padding: 80px 20px 40px; }
+      .ebk .cover h1 { font-size: 32pt; margin-bottom: 14px; }
+      .ebk .cover .subtitle { font-size: 16pt; color:#475569 !important; margin: 0 0 32px; }
+      .ebk .cover .meta { font-size: 12pt; margin: 8px 0; }
+      .ebk .cta { background:#0891b2 !important; color:#ffffff !important; padding: 18px 22px; border-radius: 8px; text-align: center; font-weight: 700; font-size: 13pt; }
+      .ebk .cta * { color:#ffffff !important; }
+      .ebk .spacer-sm { height: 8px; }
+      .ebk .spacer-md { height: 16px; }
+      .ebk .spacer-lg { height: 28px; }
+    </style>
+    <div class="ebk" id="ebk-root"></div>
+  `;
+  document.body.appendChild(sandbox);
+  const root = sandbox.querySelector('#ebk-root') as HTMLElement;
 
-    // Nó offscreen com largura fixa (A4-like) para captura
-    const node = document.createElement('div');
-    node.style.position = 'fixed';
-    node.style.left = '-99999px';
-    node.style.top = '0';
-    node.style.width = '794px';
-    node.style.padding = '40px';
-    node.style.background = '#ffffff';
-    node.style.color = '#0f172a';
-    node.style.fontFamily = 'Inter, Arial, sans-serif';
-    node.style.fontSize = '12pt';
-    node.style.lineHeight = '1.65';
-    node.innerHTML = `
-      <style>
-        .ebook-export, .ebook-export * {
-          color: #0f172a !important;
-          background-color: transparent;
-          border-color: #cbd5e1;
-          box-shadow: none !important;
-          text-shadow: none !important;
-        }
-        .ebook-export { background:#ffffff !important; }
-        .ebook-export h1 { color:#0f172a !important; font-weight:800; }
-        .ebook-export h2 { color:#0891b2 !important; font-size:18pt; margin:18px 0 10px; font-weight:700; }
-        .ebook-export h3 { color:#0e7490 !important; font-size:14pt; margin:14px 0 8px; font-weight:700; }
-        .ebook-export p { color:#1e293b !important; margin:0 0 12px; text-align:justify; }
-        .ebook-export ul, .ebook-export ol { margin:0 0 12px 22px; color:#1e293b !important; }
-        .ebook-export li { color:#1e293b !important; margin-bottom:6px; }
-        .ebook-export blockquote { border-left:3px solid #0891b2; padding:6px 12px; margin:12px 0; background:#ecfeff !important; color:#155e75 !important; }
-        .ebook-export blockquote * { color:#155e75 !important; }
-        .ebook-export strong, .ebook-export b { color:#0f172a !important; font-weight:700; }
-        .ebook-export em, .ebook-export i { color:#1e293b !important; font-style: italic; }
-        .ebook-export a { color:#0891b2 !important; text-decoration: underline; }
-        .ebook-export img { max-width:100%; height:auto; }
-        .ebook-export code { background:#f1f5f9 !important; color:#0f172a !important; padding:1px 4px; border-radius:3px; font-family: monospace; }
-        .ebook-export pre { background:#f1f5f9 !important; color:#0f172a !important; padding:12px; border-radius:6px; overflow:auto; }
-        .ebook-export pre * { color:#0f172a !important; }
-        .ebook-export table { border-collapse: collapse; width:100%; margin:12px 0; }
-        .ebook-export th, .ebook-export td { border:1px solid #cbd5e1; padding:6px 8px; color:#0f172a !important; }
-        .ebook-export th { background:#f1f5f9 !important; font-weight:700; }
-      </style>
-      <div class="ebook-export">${sec.html}</div>
-    `;
-    document.body.appendChild(node);
+  let cursorY = contentTop;
+  let pageNum = 1;
+  let totalPages = 1; // será corrigido no final
 
-    try {
-      // Aguarda fontes/imagens
-      await new Promise((r) => requestAnimationFrame(() => r(null)));
-      const canvas = await html2canvas(node, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        windowWidth: 794,
-      });
+  const drawPageChrome = () => {
+    // Rodapé com numeração
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    pdf.setTextColor(120, 130, 145);
+    pdf.text(`${pageNum}`, pageW / 2, pageH - 28, { align: 'center' });
+    if (ebook.title) {
+      pdf.text(ebook.title.slice(0, 80), marginX, pageH - 28, { align: 'left' });
+    }
+    pdf.setTextColor(30, 41, 59);
+  };
 
-      const imgW = contentW;
-      const ratio = imgW / canvas.width;
-      const imgFullH = canvas.height * ratio;
+  const newPage = () => {
+    drawPageChrome();
+    pdf.addPage();
+    pageNum += 1;
+    cursorY = contentTop;
+  };
 
-      if (!firstPage) pdf.addPage();
-      firstPage = false;
+  const renderElementToCanvas = async (el: HTMLElement) => {
+    return await html2canvas(el, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      windowWidth: RENDER_W,
+    });
+  };
 
-      // Se a imagem cabe em uma página, adiciona direto
-      if (imgFullH <= contentH) {
-        const imgData = canvas.toDataURL('image/jpeg', 0.92);
-        pdf.addImage(imgData, 'JPEG', margin, margin, imgW, imgFullH, undefined, 'FAST');
-      } else {
-        // Fatiar: cada página recebe um pedaço do canvas correspondente a contentH
-        const pageCanvasH = Math.floor(contentH / ratio); // altura em px do canvas que cabe numa página
+  const placeBlock = async (el: HTMLElement, opts?: { keepWithNext?: boolean }) => {
+    // Aguarda layout
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    const canvas = await renderElementToCanvas(el);
+    const blockH = canvas.height * (contentW / canvas.width); // em pt
+    const remaining = contentBottom - cursorY;
+
+    // Se não cabe, vai para próxima página
+    if (blockH > remaining) {
+      // Se o bloco é maior que uma página inteira, fatiamos
+      if (blockH > contentH) {
+        // Quebra a imagem em fatias do tamanho da página
+        const ratio = contentW / canvas.width;
+        const pageCanvasH = Math.floor(contentH / ratio);
         let offsetY = 0;
-        let isFirstSlice = true;
+        // Garante que começa em página nova se já houver conteúdo
+        if (cursorY > contentTop) newPage();
         while (offsetY < canvas.height) {
           const sliceH = Math.min(pageCanvasH, canvas.height - offsetY);
           const sliceCanvas = document.createElement('canvas');
@@ -294,20 +272,151 @@ export async function exportEbookPdf(
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
           ctx.drawImage(canvas, 0, offsetY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-          const sliceData = sliceCanvas.toDataURL('image/jpeg', 0.92);
-          if (!isFirstSlice) pdf.addPage();
-          pdf.addImage(sliceData, 'JPEG', margin, margin, imgW, sliceH * ratio, undefined, 'FAST');
+          const data = sliceCanvas.toDataURL('image/jpeg', 0.92);
+          const drawH = sliceH * ratio;
+          pdf.addImage(data, 'JPEG', marginX, cursorY, contentW, drawH, undefined, 'FAST');
+          cursorY += drawH;
           offsetY += sliceH;
-          isFirstSlice = false;
+          if (offsetY < canvas.height) newPage();
         }
+        return;
       }
-    } finally {
-      if (node.parentNode) document.body.removeChild(node);
+      newPage();
     }
+
+    const data = canvas.toDataURL('image/jpeg', 0.94);
+    pdf.addImage(data, 'JPEG', marginX, cursorY, contentW, blockH, undefined, 'FAST');
+    cursorY += blockH;
+  };
+
+  const addSpacer = (pt: number) => {
+    if (cursorY + pt > contentBottom) {
+      newPage();
+      return;
+    }
+    cursorY += pt;
+  };
+
+  const startNewPageSection = () => {
+    if (cursorY > contentTop + 0.5) newPage();
+  };
+
+  // Renderiza um bloco isolado: cria div temporário com o HTML, mede e desenha
+  const renderHtmlBlock = async (html: string, wrapperClass = '') => {
+    root.innerHTML = '';
+    const wrap = document.createElement('div');
+    if (wrapperClass) wrap.className = wrapperClass;
+    wrap.innerHTML = html;
+    root.appendChild(wrap);
+    await placeBlock(wrap);
+  };
+
+  // Renderiza HTML rico desmembrando os filhos diretos para permitir quebras
+  const renderRichHtml = async (html: string) => {
+    root.innerHTML = '';
+    const holder = document.createElement('div');
+    holder.innerHTML = html;
+    // Move cada filho para o root e renderiza um por vez
+    const children = Array.from(holder.children) as HTMLElement[];
+    if (children.length === 0) {
+      // Sem filhos estruturais — renderiza como bloco único parágrafo
+      const p = document.createElement('p');
+      p.textContent = holder.textContent || '';
+      root.appendChild(p);
+      await placeBlock(p);
+      return;
+    }
+    for (const child of children) {
+      root.innerHTML = '';
+      root.appendChild(child);
+      await placeBlock(child);
+      // pequeno espaçamento entre blocos já está no margin do CSS, não adicionar extra
+    }
+  };
+
+  // ===== Montagem das seções =====
+  type Step = { label: string; run: () => Promise<void> };
+  const steps: Step[] = [];
+
+  // Capa
+  steps.push({
+    label: 'Capa',
+    run: async () => {
+      const html = `
+        <div class="cover">
+          <h1>${escapeHtml(ebook.title)}</h1>
+          ${ebook.subtitle ? `<div class="subtitle">${escapeHtml(ebook.subtitle)}</div>` : ''}
+          ${ebook.method_name ? `<div class="meta"><strong>Método:</strong> ${escapeHtml(ebook.method_name)}</div>` : ''}
+          ${ebook.promise ? `<div class="meta" style="font-style:italic; color:#334155 !important;">${escapeHtml(ebook.promise)}</div>` : ''}
+        </div>
+      `;
+      // Capa ocupa página inteira e centralizada — adiciona padding vertical extra
+      cursorY = contentTop;
+      await renderHtmlBlock(html);
+      // força próxima seção em nova página
+      if (cursorY > contentTop) newPage();
+    },
+  });
+
+  if (ebook.introduction) {
+    steps.push({
+      label: 'Introdução',
+      run: async () => {
+        startNewPageSection();
+        await renderHtmlBlock('<h2>Introdução</h2>');
+        await renderRichHtml(ebook.introduction!);
+      },
+    });
+  }
+
+  sortedChapters.forEach((c) => {
+    steps.push({
+      label: `Capítulo ${c.chapter_number}`,
+      run: async () => {
+        startNewPageSection();
+        await renderHtmlBlock(`<h2>Capítulo ${c.chapter_number} — ${escapeHtml(c.title)}</h2>`);
+        await renderRichHtml(c.content_html || '<p><em>Capítulo ainda não gerado.</em></p>');
+      },
+    });
+  });
+
+  if (ebook.conclusion) {
+    steps.push({
+      label: 'Conclusão',
+      run: async () => {
+        startNewPageSection();
+        await renderHtmlBlock('<h2>Conclusão</h2>');
+        await renderRichHtml(ebook.conclusion!);
+      },
+    });
+  }
+
+  if (ebook.cta) {
+    steps.push({
+      label: 'Chamada Final',
+      run: async () => {
+        addSpacer(20);
+        await renderHtmlBlock(`<div class="cta">${escapeHtml(ebook.cta!)}</div>`);
+      },
+    });
+  }
+
+  try {
+    for (let i = 0; i < steps.length; i++) {
+      const s = steps[i];
+      onProgress?.({ current: i + 1, total: steps.length, label: s.label });
+      await s.run();
+    }
+    // Desenha rodapé na última página
+    drawPageChrome();
+  } finally {
+    if (sandbox.parentNode) document.body.removeChild(sandbox);
   }
 
   const filename = `${(ebook.title || 'ebook').replace(/[^\w\s-]/g, '').slice(0, 80) || 'ebook'}.pdf`;
   pdf.save(filename);
+  // suprime aviso de variável não usada
+  void totalPages;
 }
 
 function escapeHtml(s: string) {
