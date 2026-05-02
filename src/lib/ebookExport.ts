@@ -133,9 +133,39 @@ export async function exportEbookDocx(ebook: EbookFull) {
   saveAs(blob, `${ebook.title.replace(/[^\w\s-]/g, '').slice(0, 80)}.docx`);
 }
 
+/**
+ * Opções de personalização do sumário (TOC) no PDF.
+ * - `truncate`: corta títulos longos e adiciona o sufixo (default '…').
+ *               Pode ser por caracteres (`maxChars`) e/ou ajustado para caber
+ *               em uma única linha do TOC (`fitToLine`, default true).
+ * - `showSubchapters`: liga/desliga o nível 2 (h2/h3 dentro do conteúdo).
+ * - `showSubtitle`: mostra o subtítulo "Toque em qualquer item…".
+ * - `title`: título exibido no topo do sumário.
+ * - `labels`: permite renomear/transformar rótulos (ex.: traduzir "Capítulo").
+ *             Recebe a entrada e devolve a string a desenhar. Retornar null
+ *             oculta a entrada — o link continua válido para as outras.
+ */
+export type TocOptions = {
+  truncate?: {
+    enabled?: boolean;       // default: true
+    maxChars?: number;       // default: undefined (sem limite por caracteres)
+    suffix?: string;         // default: '…'
+    fitToLine?: boolean;     // default: true — encurta para caber na largura
+  };
+  showSubchapters?: boolean; // default: true
+  showSubtitle?: boolean;    // default: true
+  title?: string;            // default: 'Sumário'
+  formatLabel?: (entry: {
+    label: string;
+    level: 1 | 2;
+    kind: 'intro' | 'chapter' | 'sub' | 'conclusion';
+  }) => string | null;
+};
+
 export async function exportEbookPdf(
   ebook: EbookFull,
   onProgress?: (info: { current: number; total: number; label: string }) => void,
+  tocOptions?: TocOptions,
 ) {
   // Estratégia bloco-a-bloco: cada elemento (h2, p, li, blockquote, img...) é
   // renderizado individualmente em um canvas. Se o bloco não couber no espaço
