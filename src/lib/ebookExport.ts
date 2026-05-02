@@ -241,16 +241,114 @@ export type TocVerificationReport = {
   issues: TocVerificationIssue[];
 };
 
+/**
+ * Converte HTML rico em uma lista linear de blocos de texto que serão
+ * renderizados nativamente pelo jsPDF (texto vetorial, sem html2canvas).
+ * Isso é dezenas de vezes mais rápido que rasterizar bloco a bloco e
+ * gera PDFs muito menores e com texto pesquisável/copiável.
+ */
+type RichRun = { text: string; bold?: boolean; italic?: boolean };
+type RichBlock =
+  | { kind: 'h2'; runs: RichRun[] }
+  | { kind: 'h3'; runs: RichRun[] }
+  | { kind: 'p'; runs: RichRun[] }
+  | { kind: 'li'; runs: RichRun[]; ordered: boolean; index: number }
+  | { kind: 'quote'; runs: RichRun[] }
+  | { kind: 'spacer'; pt: number };
+
+const parseRichHtml = (html: string): RichBlock[] => {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html || '';
+  const blocks: RichBlock[] = [];
+
+  const collectRuns = (node: Node, ctx: { bold?: boolean; italic?: boolean } = {}): RichRun[] => {
+    const runs: RichRun[] = [];
+    node.childNodes.forEach((child) => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        const text = (child.textContent || '').replace(/\s+/g, ' ');
+        if (text) runs.push({ text, bold: ctx.bold, italic: ctx.italic });
+        return;
+      }
+      if (child.nodeType !== Node.ELEMENT_NODE) return;
+      const el = child as HTMLElement;
+      const tag = el.tagName.toUpperCase();
+      const next = { ...ctx };
+      if (tag === 'STRONG' || tag === 'B') next.bold = true;
+      if (tag === 'EM' || tag === 'I') next.italic = true;
+      if (tag === 'BR') {
+        runs.push({ text: '\n' });
+        return;
+      }
+      runs.push(...collectRuns(el, next));
+    });
+    return runs;
+  };
+
+  const walk = (node: Node) => {
+    node.childNodes.forEach((child) => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        const text = (child.textContent || '').trim();
+        if (text) blocks.push({ kind: 'p', runs: [{ text }] });
+        return;
+      }
+      if (child.nodeType !== Node.ELEMENT_NODE) return;
+      const el = child as HTMLElement;
+      const tag = el.tagName.toUpperCase();
+      switch (tag) {
+        case 'H1':
+        case 'H2':
+          blocks.push({ kind: 'h2', runs: collectRuns(el) });
+          break;
+        case 'H3':
+        case 'H4':
+        case 'H5':
+        case 'H6':
+          blocks.push({ kind: 'h3', runs: collectRuns(el) });
+          break;
+        case 'P':
+          {
+            const runs = collectRuns(el);
+            if (runs.some((r) => r.text.trim())) blocks.push({ kind: 'p', runs });
+          }
+          break;
+        case 'BLOCKQUOTE':
+          blocks.push({ kind: 'quote', runs: collectRuns(el) });
+          break;
+        case 'UL':
+        case 'OL': {
+          const ordered = tag === 'OL';
+          const items = Array.from(el.children).filter((c) => c.tagName.toUpperCase() === 'LI');
+          items.forEach((li, i) => {
+            blocks.push({ kind: 'li', runs: collectRuns(li), ordered, index: i + 1 });
+          });
+          break;
+        }
+        case 'BR':
+          blocks.push({ kind: 'spacer', pt: 6 });
+          break;
+        case 'HR':
+          blocks.push({ kind: 'spacer', pt: 12 });
+          break;
+        default:
+          // Containers genéricos: continua descendo
+          walk(el);
+      }
+    });
+  };
+
+  walk(tmp);
+  return blocks;
+};
+
 export async function exportEbookPdf(
   ebook: EbookFull,
   onProgress?: (info: { current: number; total: number; label: string }) => void,
   tocOptions?: TocOptions,
 ) {
-  // Estratégia bloco-a-bloco: cada elemento (h2, p, li, blockquote, img...) é
-  // renderizado individualmente em um canvas. Se o bloco não couber no espaço
-  // restante da página, criamos nova página. Isso garante margens, espaçamento
-  // e quebras consistentes para qualquer tamanho de texto.
-  const html2canvas = (await import('html2canvas')).default;
+  // Estratégia: texto vetorial nativo do jsPDF (rápido, leve e pesquisável).
+  // Apenas a capa usa imagem. Conteúdo é parseado de HTML para blocos e
+  // renderizado com `pdf.text` + quebra de linha automática. Isso evita o
+  // gargalo do html2canvas (que era O(n) em chamadas de rasterização).
 
   const sortedChapters = [...ebook.chapters].sort((a, b) => a.chapter_number - b.chapter_number);
 
