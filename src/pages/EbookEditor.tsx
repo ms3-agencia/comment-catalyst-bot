@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,8 @@ export default function EbookEditor() {
   const { toast } = useToast();
   const { hasAddon } = useUserAddons();
   const hasPremium = hasAddon('ebook-premium');
+  const hasEpubAddon = hasAddon('epub-export');
+  const navigate = useNavigate();
 
   const [ebook, setEbook] = useState<any>(null);
   const [chapters, setChapters] = useState<any[]>([]);
@@ -222,6 +224,17 @@ export default function EbookEditor() {
                 <DropdownMenuItem onClick={() => doExport('docx')}>DOCX</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => doExport('md')}>Markdown</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => doExport('txt')}>TXT</DropdownMenuItem>
+                {hasEpubAddon ? (
+                  <DropdownMenuItem onClick={() => navigate(`/dashboard/ebooks/${id}/epub`)}>
+                    EPUB (Amazon KDP)
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/addons" className="opacity-70">
+                      EPUB (KDP) — ative o add-on
+                    </Link>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
