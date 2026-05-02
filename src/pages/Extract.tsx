@@ -14,6 +14,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Youtube, Plus, X, Loader2, MessageSquare, ThumbsUp, Sparkles, AlertTriangle } from 'lucide-react';
 import { AiProfileCard } from '@/components/AiProfileCard';
+import { ExtractionAnimation } from '@/components/ExtractionAnimation';
 import { useCredits } from '@/hooks/useCredits';
 import { usePlanUsage } from '@/hooks/usePlanUsage';
 
