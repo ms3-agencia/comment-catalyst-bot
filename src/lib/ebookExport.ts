@@ -710,53 +710,40 @@ export async function exportEbookPdf(
     return anchorY;
   };
 
-  // Renderiza um bloco isolado: cria div temporário com o HTML, mede e desenha
-  const renderHtmlBlock = async (html: string, wrapperClass = '') => {
-    const wrap = document.createElement('div');
-    if (wrapperClass) wrap.className = wrapperClass;
-    wrap.innerHTML = html;
-    await placeBlock(wrap);
+  // Renderiza um HTML simples como blocos nativos (não quebra para subcapítulos).
+  const renderHtmlBlock = async (html: string) => {
+    const blocks = parseRichHtml(html);
+    for (const b of blocks) drawBlock(b);
   };
 
-  // Renderiza HTML rico desmembrando os filhos diretos para permitir quebras
+  // Renderiza HTML rico bloco-a-bloco. Quando `registerSubheadings`, h2/h3 são
+  // âncoras para o sumário (nível 2).
   const renderRichHtml = async (html: string, registerSubheadings = false) => {
-    const holder = document.createElement('div');
-    holder.innerHTML = html;
-    const children = Array.from(holder.children) as HTMLElement[];
-    if (children.length === 0) {
-      const p = document.createElement('p');
-      p.textContent = holder.textContent || '';
-      await placeBlock(p);
-      return;
-    }
-    for (const child of children) {
-      // Registra h2/h3 como subentradas do sumário (nível 2)
-      if (registerSubheadings) {
-        const tag = child.tagName.toUpperCase();
-        if (tag === 'H2' || tag === 'H3') {
-          const text = (child.textContent || '').trim();
-          if (text) {
-            // Garante que o cabeçalho não vá partir entre páginas: se não
-            // couber, força nova página antes de ancorar.
-            const subAnchorY = drawSectionAnchor(2);
-            const subAnchorPage = pageNum;
-            await placeBlock(child.cloneNode(true) as HTMLElement);
-            // Subcapítulo herda o agrupamento do capítulo pai ativo.
-            pushTocEntry({
-              label: text,
-              page: subAnchorPage,
-              level: 2,
-              kind: 'sub',
-              order: activeChapterOrder,
-              parentOrder: activeChapterOrder,
-              subSeq: activeSubSeq++,
-              anchorY: subAnchorY,
-            });
-            continue;
-          }
+    const blocks = parseRichHtml(html);
+    if (blocks.length === 0) return;
+    for (const b of blocks) {
+      if (registerSubheadings && (b.kind === 'h2' || b.kind === 'h3')) {
+        const text = runsToText(b.runs);
+        if (text) {
+          // Garante espaço para o subtítulo + algumas linhas
+          ensureSpace(80);
+          const subAnchorY = drawSectionAnchor(2);
+          const subAnchorPage = pageNum;
+          drawBlock(b);
+          pushTocEntry({
+            label: text,
+            page: subAnchorPage,
+            level: 2,
+            kind: 'sub',
+            order: activeChapterOrder,
+            parentOrder: activeChapterOrder,
+            subSeq: activeSubSeq++,
+            anchorY: subAnchorY,
+          });
+          continue;
         }
       }
-      await placeBlock(child.cloneNode(true) as HTMLElement);
+      drawBlock(b);
     }
   };
 
