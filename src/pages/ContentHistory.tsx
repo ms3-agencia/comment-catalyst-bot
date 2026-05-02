@@ -868,8 +868,20 @@ export default function ContentHistory() {
                       className="text-left w-full"
                     >
                       {h.image_url ? (
-                        <div className="mb-2 rounded-lg overflow-hidden border border-border aspect-video bg-muted">
+                        <div className="mb-2 rounded-lg overflow-hidden border border-border aspect-video bg-muted relative">
                           <img src={h.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                          {h.video_url && (
+                            <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary text-primary-foreground shadow">
+                              <Clapperboard className="h-3 w-3" /> Vídeo
+                            </span>
+                          )}
+                        </div>
+                      ) : h.video_url ? (
+                        <div className="mb-2 rounded-lg overflow-hidden border border-primary/40 aspect-video bg-black relative">
+                          <video src={h.video_url} className="w-full h-full object-cover" preload="metadata" muted />
+                          <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary text-primary-foreground shadow">
+                            <Clapperboard className="h-3 w-3" /> Vídeo
+                          </span>
                         </div>
                       ) : (
                         <div className="mb-2 rounded-lg border border-dashed border-border aspect-video bg-muted/30 flex items-center justify-center">
