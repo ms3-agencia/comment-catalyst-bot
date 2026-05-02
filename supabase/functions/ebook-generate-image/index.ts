@@ -144,17 +144,17 @@ Deno.serve(async (req) => {
         // Service-role direct refund (admin_add_credits requires admin caller, which service role isn't).
         const { data: cur, error: selErr } = await admin
           .from("user_credits")
-          .select("credits_balance")
+          .select("balance")
           .eq("user_id", userId)
           .maybeSingle();
         if (selErr) {
           console.error("[ebook-generate-image] refund select error", selErr.message);
           return;
         }
-        const newBalance = (cur?.credits_balance ?? 0) + creditsCost;
+        const newBalance = (cur?.balance ?? 0) + creditsCost;
         const { error: upErr } = await admin
           .from("user_credits")
-          .update({ credits_balance: newBalance, updated_at: new Date().toISOString() })
+          .update({ balance: newBalance })
           .eq("user_id", userId);
         if (upErr) {
           console.error("[ebook-generate-image] refund update error", upErr.message);
@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
         await admin.from("credit_transactions").insert({
           user_id: userId,
           amount: creditsCost,
-          transaction_type: "refund",
+          type: "refund",
           description: desc,
         } as any);
         console.info("[ebook-generate-image] refund ok", { userId, creditsCost, desc });
