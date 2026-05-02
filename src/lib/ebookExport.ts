@@ -1273,8 +1273,127 @@ export async function exportEbookPdf(
     if (sandbox.parentNode) document.body.removeChild(sandbox);
   }
 
+  // ===== Verificação automática dos links do sumário =====
+  // Percorre toda entrada do TOC e confirma:
+  //  1. `page` está dentro do intervalo de páginas do PDF.
+  //  2. `top` (anchorY) está dentro dos limites verticais da página.
+  //  3. O destino não é a capa nem uma das próprias páginas do TOC
+  //     (auto-link inválido).
+  //  4. Não há entradas duplicadas com mesma (page, top) — pode indicar
+  //     anchors sobrepostas em seções diferentes.
+  // O relatório é logado no console como warning quando há problemas e é
+  // sempre devolvido para o chamador inspecionar/exibir na UI.
+  const verifyTocLinks = (): TocVerificationReport => {
+    const totalPages = pdf.getNumberOfPages();
+    const issues: TocVerificationIssue[] = [];
+    const seenTargets = new Map<string, number>(); // key → primeiro index
+    const tocPageRange = new Set<number>();
+    if (tocFirstPage > 0) {
+      for (let p = tocFirstPage; p <= tocPageNum; p++) tocPageRange.add(p);
+    }
+
+    toc.forEach((entry, idx) => {
+      const base = {
+        index: idx,
+        label: entry.label,
+        level: entry.level,
+        page: entry.page,
+        top: entry.anchorY,
+      };
+
+      // 1) Página fora do intervalo
+      if (!Number.isInteger(entry.page) || entry.page < 1 || entry.page > totalPages) {
+        issues.push({
+          ...base,
+          reason: 'page-out-of-range',
+          message: `Entrada "${entry.label}" aponta para a página ${entry.page}, mas o PDF tem ${totalPages} páginas.`,
+        });
+        return;
+      }
+
+      // 2) `top` (anchorY) fora dos limites verticais
+      if (typeof entry.anchorY === 'number') {
+        if (entry.anchorY < 0 || entry.anchorY > pageH) {
+          issues.push({
+            ...base,
+            reason: 'top-out-of-range',
+            message: `Entrada "${entry.label}" tem âncora Y=${entry.anchorY.toFixed(1)}pt fora da página (0–${pageH.toFixed(1)}pt).`,
+          });
+          return;
+        }
+      } else {
+        // Anchor ausente: o link funciona (cai no topo), mas avisamos.
+        issues.push({
+          ...base,
+          reason: 'missing-anchor',
+          message: `Entrada "${entry.label}" não tem coordenada Y registrada — o salto vai para o topo da página ${entry.page}.`,
+        });
+      }
+
+      // 3) Aponta para capa (skipChromePages contém pages com chrome
+      //    suprimido — a capa é a única na prática) ou para uma página do
+      //    próprio TOC.
+      if (skipChromePages.has(entry.page)) {
+        issues.push({
+          ...base,
+          reason: 'page-points-to-cover',
+          message: `Entrada "${entry.label}" aponta para a capa (página ${entry.page}).`,
+        });
+        return;
+      }
+      if (tocPageRange.has(entry.page)) {
+        issues.push({
+          ...base,
+          reason: 'page-points-to-toc',
+          message: `Entrada "${entry.label}" aponta para uma página do próprio sumário (página ${entry.page}).`,
+        });
+        return;
+      }
+
+      // 4) Duplicatas (mesma page+top arredondado a 1pt)
+      const key = `${entry.page}:${typeof entry.anchorY === 'number' ? Math.round(entry.anchorY) : 'top'}`;
+      if (seenTargets.has(key)) {
+        const firstIdx = seenTargets.get(key)!;
+        issues.push({
+          ...base,
+          reason: 'duplicate-target',
+          message: `Entrada "${entry.label}" tem o mesmo destino da entrada "${toc[firstIdx].label}" (página ${entry.page}).`,
+        });
+      } else {
+        seenTargets.set(key, idx);
+      }
+    });
+
+    const report: TocVerificationReport = {
+      ok: issues.length === 0,
+      total: toc.length,
+      valid: toc.length - issues.length,
+      totalPages,
+      issues,
+    };
+
+    if (!report.ok) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[ebookExport] Verificação do sumário encontrou ${issues.length} problema(s) em ${toc.length} entradas.`,
+        issues,
+      );
+    } else if (toc.length > 0) {
+      // eslint-disable-next-line no-console
+      console.info(
+        `[ebookExport] Sumário verificado: ${toc.length}/${toc.length} links apontam para âncoras válidas.`,
+      );
+    }
+
+    return report;
+  };
+
+  const verification = verifyTocLinks();
+
   const filename = `${(ebook.title || 'ebook').replace(/[^\w\s-]/g, '').slice(0, 80) || 'ebook'}.pdf`;
   pdf.save(filename);
+
+  return verification;
 }
 
 function escapeHtml(s: string) {
