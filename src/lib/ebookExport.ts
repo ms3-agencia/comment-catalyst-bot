@@ -248,12 +248,15 @@ export type TocVerificationReport = {
  * gera PDFs muito menores e com texto pesquisável/copiável.
  */
 type RichRun = { text: string; bold?: boolean; italic?: boolean };
+type TableCell = { text: string; header?: boolean };
+type TableRow = TableCell[];
 type RichBlock =
   | { kind: 'h2'; runs: RichRun[] }
   | { kind: 'h3'; runs: RichRun[] }
   | { kind: 'p'; runs: RichRun[] }
   | { kind: 'li'; runs: RichRun[]; ordered: boolean; index: number }
   | { kind: 'quote'; runs: RichRun[] }
+  | { kind: 'table'; head: TableRow; body: TableRow[] }
   | { kind: 'spacer'; pt: number };
 
 const parseRichHtml = (html: string): RichBlock[] => {
