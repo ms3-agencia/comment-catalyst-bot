@@ -468,7 +468,7 @@ export async function exportEbookPdf(
   };
 
   // Renderiza HTML rico desmembrando os filhos diretos para permitir quebras
-  const renderRichHtml = async (html: string) => {
+  const renderRichHtml = async (html: string, registerSubheadings = false) => {
     const holder = document.createElement('div');
     holder.innerHTML = html;
     const children = Array.from(holder.children) as HTMLElement[];
@@ -479,6 +479,23 @@ export async function exportEbookPdf(
       return;
     }
     for (const child of children) {
+      // Registra h2/h3 como subentradas do sumário (nível 2)
+      if (registerSubheadings) {
+        const tag = child.tagName.toUpperCase();
+        if (tag === 'H2' || tag === 'H3') {
+          const text = (child.textContent || '').trim();
+          if (text) {
+            // Antes de renderizar: precisamos saber em qual página o cabeçalho cairá.
+            // Como placeBlock pode pular para nova página, registramos APÓS render.
+            const before = pageNum;
+            await placeBlock(child.cloneNode(true) as HTMLElement);
+            // Se mudou de página durante a colocação do cabeçalho, a entrada
+            // aponta para a nova página onde o título realmente está.
+            toc.push({ label: text, page: pageNum >= before ? pageNum : before, level: 2 });
+            continue;
+          }
+        }
+      }
       await placeBlock(child.cloneNode(true) as HTMLElement);
     }
   };
