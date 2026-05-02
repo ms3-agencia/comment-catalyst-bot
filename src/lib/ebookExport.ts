@@ -740,6 +740,7 @@ export async function exportEbookPdf(
         activeChapterKind = 'chapter';
         activeChapterOrder = c.chapter_number;
         activeSubSeq = 0;
+        const anchorY = drawSectionAnchor(1);
         pushTocEntry({
           label: `Capítulo ${c.chapter_number} — ${c.title}`,
           page: pageNum,
@@ -748,6 +749,7 @@ export async function exportEbookPdf(
           order: c.chapter_number,
           parentOrder: c.chapter_number,
           subSeq: 0,
+          anchorY,
         });
         await renderHtmlBlock(`<h2>Capítulo ${c.chapter_number} — ${escapeHtml(c.title)}</h2>`);
         await renderRichHtml(c.content_html || '<p><em>Capítulo ainda não gerado.</em></p>', true);
