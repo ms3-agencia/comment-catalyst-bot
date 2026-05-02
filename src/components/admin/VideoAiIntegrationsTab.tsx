@@ -193,6 +193,23 @@ export function VideoAiIntegrationsTab() {
     toast({ title: `${provider.name} ${next ? 'ativada' : 'desativada'}` });
   };
 
+  const toggleAuto = async (next: boolean) => {
+    setTogglingAuto(true);
+    const result = await upsert(GLOBAL_AUTO_KEY, next ? 'true' : 'false');
+    setTogglingAuto(false);
+    if ((result as any)?.error) {
+      toast({ title: 'Erro ao atualizar', description: (result as any).error.message, variant: 'destructive' });
+      return;
+    }
+    setAutoEnabled(next);
+    toast({
+      title: next ? 'Geração automática de vídeo ATIVADA' : 'Geração automática de vídeo DESATIVADA',
+      description: next
+        ? 'O botão "Gerar vídeo automaticamente" aparecerá em conteúdos com roteiro.'
+        : 'O botão "Gerar vídeo automaticamente" ficará oculto para os usuários.',
+    });
+  };
+
   const statusBadge = (key: string) => {
     if (saved[key]) {
       return (
