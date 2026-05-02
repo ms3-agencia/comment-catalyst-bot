@@ -769,6 +769,56 @@ export async function exportEbookPdf(
   const drawToc = () => {
     if (!tocPageNum || toc.length === 0) return;
 
+    // ---- 0) Normaliza opções de personalização ----
+    const opts = tocOptions ?? {};
+    const truncEnabled = opts.truncate?.enabled ?? true;
+    const truncMaxChars = opts.truncate?.maxChars;
+    const truncSuffix = opts.truncate?.suffix ?? '…';
+    const truncFitToLine = opts.truncate?.fitToLine ?? true;
+    const showSubchapters = opts.showSubchapters ?? true;
+    const showSubtitle = opts.showSubtitle ?? true;
+    const tocTitle = opts.title ?? 'Sumário';
+
+    // Aplica `formatLabel` (se houver) e truncamento por caracteres.
+    // O label é só visual — `entry.page` (e portanto o link clicável) não muda.
+    const computeDisplayLabel = (entry: TocEntry): string | null => {
+      const raw =
+        opts.formatLabel?.({
+          label: entry.label,
+          level: entry.level,
+          kind: entry.kind,
+        }) ?? entry.label;
+      if (raw === null) return null;
+      let s = String(raw);
+      if (truncEnabled && truncMaxChars && s.length > truncMaxChars) {
+        s = s.slice(0, Math.max(0, truncMaxChars - truncSuffix.length)) + truncSuffix;
+      }
+      return s;
+    };
+
+    // Trunca para caber em uma única linha do TOC (pixel-perfect via jsPDF).
+    // Usa busca binária para preservar o máximo de texto possível.
+    const fitLabelToWidth = (text: string, maxW: number, fontSize: number): string => {
+      if (!truncEnabled || !truncFitToLine) {
+        // Sem ajuste de largura: ainda assim corta na primeira linha
+        // calculada pelo splitTextToSize para não sangrar nos números.
+        return pdf.splitTextToSize(text, maxW)[0] ?? text;
+      }
+      pdf.setFontSize(fontSize);
+      if (pdf.getTextWidth(text) <= maxW) return text;
+      const suffixW = pdf.getTextWidth(truncSuffix);
+      if (suffixW >= maxW) return truncSuffix;
+      let lo = 0;
+      let hi = text.length;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        const w = pdf.getTextWidth(text.slice(0, mid)) + suffixW;
+        if (w <= maxW) lo = mid;
+        else hi = mid - 1;
+      }
+      return text.slice(0, lo).trimEnd() + truncSuffix;
+    };
+
     // ---- 1) Ordenação canônica ----
     const kindOrder: Record<TocKind, number> = {
       intro: 0,
@@ -776,18 +826,18 @@ export async function exportEbookPdf(
       sub: 1, // mesmo grupo do capítulo pai (desempate via parentOrder/subSeq)
       conclusion: 2,
     };
-    const sortedToc = [...toc].sort((a, b) => {
-      const ka = kindOrder[a.kind];
-      const kb = kindOrder[b.kind];
-      if (ka !== kb) return ka - kb;
-      // Dentro do bloco "chapters": ordena pelo capítulo pai
-      if (a.parentOrder !== b.parentOrder) return a.parentOrder - b.parentOrder;
-      // Mesmo capítulo: o nível 1 (capítulo) vem antes dos seus subs
-      if (a.level !== b.level) return a.level - b.level;
-      // Subs dentro do mesmo capítulo: ordem em que apareceram
-      if (a.subSeq !== b.subSeq) return a.subSeq - b.subSeq;
-      return a.seq - b.seq;
-    });
+    const sortedToc = [...toc]
+      .filter((e) => (showSubchapters ? true : e.kind !== 'sub'))
+      .filter((e) => computeDisplayLabel(e) !== null)
+      .sort((a, b) => {
+        const ka = kindOrder[a.kind];
+        const kb = kindOrder[b.kind];
+        if (ka !== kb) return ka - kb;
+        if (a.parentOrder !== b.parentOrder) return a.parentOrder - b.parentOrder;
+        if (a.level !== b.level) return a.level - b.level;
+        if (a.subSeq !== b.subSeq) return a.subSeq - b.subSeq;
+        return a.seq - b.seq;
+      });
 
     // ---- 2) Layout / paginação do sumário ----
     // Todas as medidas em pt (unidade do jsPDF). Tamanhos pensados para
