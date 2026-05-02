@@ -553,6 +553,26 @@ export async function exportEbookPdf(
    * consomem espaço da coluna de texto principal.
    */
   const focusMode = tocOptions?.focusMode ?? 'subtle';
+  const userStyle = tocOptions?.highlightStyle ?? {};
+
+  // Converte hex/tupla para [r,g,b] (0–255). Aceita '#abc', '#aabbcc' e
+  // '#aabbccdd' (alpha é descartado — jsPDF não suporta alpha em fill).
+  const toRgb = (
+    c: string | [number, number, number] | undefined,
+    fallback: [number, number, number],
+  ): [number, number, number] => {
+    if (!c) return fallback;
+    if (Array.isArray(c)) return [c[0] | 0, c[1] | 0, c[2] | 0];
+    let s = c.trim().replace(/^#/, '');
+    if (s.length === 3) s = s.split('').map((ch) => ch + ch).join('');
+    if (s.length === 8) s = s.slice(0, 6);
+    if (s.length !== 6 || /[^0-9a-fA-F]/.test(s)) return fallback;
+    return [
+      parseInt(s.slice(0, 2), 16),
+      parseInt(s.slice(2, 4), 16),
+      parseInt(s.slice(4, 6), 16),
+    ];
+  };
 
   const drawSectionAnchor = (level: 1 | 2 = 1): number => {
     const anchorY = cursorY;
@@ -560,24 +580,41 @@ export async function exportEbookPdf(
 
     const isFocus = focusMode === 'focus';
 
-    // No modo "focus" o realce é mais alto e mais largo para "respirar"
-    // ao redor do título e ficar imediatamente visível após o salto.
-    const highlightH = level === 2
-      ? (isFocus ? 28 : 22)
-      : (isFocus ? 46 : 34);
-    const barW = level === 2
-      ? (isFocus ? 4 : 2)
-      : (isFocus ? 6 : 3);
+    // ===== Defaults por modo =====
+    const defaults = {
+      bg: isFocus ? ([207, 250, 254] as [number, number, number]) : ([236, 254, 255] as [number, number, number]),
+      border: [34, 211, 238] as [number, number, number],
+      bar: [8, 145, 178] as [number, number, number],
+      bullet: [34, 211, 238] as [number, number, number],
+      chipBg: isFocus ? ([8, 145, 178] as [number, number, number]) : ([207, 250, 254] as [number, number, number]),
+      chipText: isFocus ? ([255, 255, 255] as [number, number, number]) : ([14, 116, 144] as [number, number, number]),
+      chipBorder: [165, 243, 252] as [number, number, number],
+    };
+
+    // ===== Resolve estilo final (user > defaults) =====
+    const bg = toRgb(userStyle.backgroundColor, defaults.bg);
+    const border = toRgb(userStyle.borderColor, defaults.border);
+    const bar = toRgb(userStyle.barColor, defaults.bar);
+    const bullet = toRgb(userStyle.bulletColor, defaults.bullet);
+    const chipBg = toRgb(userStyle.chipBackgroundColor, defaults.chipBg);
+    const chipTextColor = toRgb(userStyle.chipTextColor, defaults.chipText);
+
+    const showBorder = userStyle.showBorder ?? isFocus;
+    const showChip = userStyle.showChip ?? true;
+    const chipText = userStyle.chipText ?? (isFocus ? '◉ VOCÊ ESTÁ AQUI' : '↳ alvo do sumário');
+
+    const defaultBarW = level === 2 ? (isFocus ? 4 : 2) : (isFocus ? 6 : 3);
+    const barW = Math.max(0.5, userStyle.barWidth ?? defaultBarW);
+    const defaultBulletR = isFocus ? 4 : 2.6;
+    const bulletR = Math.max(0, userStyle.bulletRadius ?? defaultBulletR);
+
+    const highlightH = level === 2 ? (isFocus ? 28 : 22) : (isFocus ? 46 : 34);
+    const padX = userStyle.paddingX ?? (isFocus ? 10 : 6);
+    const padY = userStyle.paddingY ?? (isFocus ? 4 : 2);
     const barX = marginX - (isFocus ? 14 : 10);
 
-    // 1) Caixa de fundo
-    const padX = isFocus ? 10 : 6;
-    const padY = isFocus ? 4 : 2;
-    if (isFocus) {
-      pdf.setFillColor(207, 250, 254); // cyan-100
-    } else {
-      pdf.setFillColor(236, 254, 255); // cyan-50
-    }
+    // ===== 1) Caixa de fundo =====
+    pdf.setFillColor(bg[0], bg[1], bg[2]);
     pdf.rect(
       marginX - padX,
       anchorY - padY,
@@ -586,10 +623,9 @@ export async function exportEbookPdf(
       'F',
     );
 
-    // Borda da caixa apenas no modo foco (contraste extra)
-    if (isFocus) {
-      pdf.setDrawColor(34, 211, 238); // cyan-400
-      pdf.setLineWidth(0.8);
+    if (showBorder) {
+      pdf.setDrawColor(border[0], border[1], border[2]);
+      pdf.setLineWidth(isFocus ? 0.8 : 0.5);
       pdf.rect(
         marginX - padX,
         anchorY - padY,
@@ -599,21 +635,21 @@ export async function exportEbookPdf(
       );
     }
 
-    // 2) Barra lateral cyan + bullet
-    pdf.setFillColor(8, 145, 178); // cyan-600
-    pdf.rect(barX, anchorY + 2, barW, highlightH - 4, 'F');
-    if (level === 1) {
-      pdf.setFillColor(34, 211, 238); // cyan-400
-      pdf.circle(barX + barW / 2, anchorY, isFocus ? 4 : 2.6, 'F');
-      // Bullet inferior também no modo foco para "abraçar" o título
+    // ===== 2) Barra lateral + bullet =====
+    if (barW > 0) {
+      pdf.setFillColor(bar[0], bar[1], bar[2]);
+      pdf.rect(barX, anchorY + 2, barW, highlightH - 4, 'F');
+    }
+    if (level === 1 && bulletR > 0) {
+      pdf.setFillColor(bullet[0], bullet[1], bullet[2]);
+      pdf.circle(barX + barW / 2, anchorY, bulletR, 'F');
       if (isFocus) {
-        pdf.circle(barX + barW / 2, anchorY + highlightH, 4, 'F');
+        pdf.circle(barX + barW / 2, anchorY + highlightH, bulletR, 'F');
       }
     }
 
-    // 3) Chip indicador no canto direito (apenas nível 1)
-    if (level === 1) {
-      const chipText = isFocus ? '◉ VOCÊ ESTÁ AQUI' : '↳ alvo do sumário';
+    // ===== 3) Chip indicador =====
+    if (level === 1 && showChip && chipText) {
       pdf.setFont('helvetica', isFocus ? 'bold' : 'normal');
       pdf.setFontSize(isFocus ? 9 : 7.5);
       const chipW = pdf.getTextWidth(chipText) + (isFocus ? 16 : 10);
@@ -621,30 +657,20 @@ export async function exportEbookPdf(
       const chipX = pageW - marginX - chipW;
       const chipY = anchorY + (isFocus ? 4 : 2);
 
-      if (isFocus) {
-        // Chip sólido, alto contraste
-        pdf.setFillColor(8, 145, 178); // cyan-600
-        pdf.roundedRect(chipX, chipY, chipW, chipH, 4, 4, 'F');
-        pdf.setTextColor(255, 255, 255);
-        pdf.text(chipText, chipX + 8, chipY + 11);
-      } else {
-        pdf.setFillColor(207, 250, 254); // cyan-100
-        pdf.roundedRect(chipX, chipY, chipW, chipH, 3, 3, 'F');
-        pdf.setDrawColor(165, 243, 252); // cyan-200
+      pdf.setFillColor(chipBg[0], chipBg[1], chipBg[2]);
+      pdf.roundedRect(chipX, chipY, chipW, chipH, isFocus ? 4 : 3, isFocus ? 4 : 3, 'F');
+      if (!isFocus) {
+        pdf.setDrawColor(defaults.chipBorder[0], defaults.chipBorder[1], defaults.chipBorder[2]);
         pdf.setLineWidth(0.4);
         pdf.roundedRect(chipX, chipY, chipW, chipH, 3, 3, 'S');
-        pdf.setTextColor(14, 116, 144); // cyan-700
-        pdf.text(chipText, chipX + 5, chipY + 7.5);
       }
-      // Restaura cor padrão de texto
+      pdf.setTextColor(chipTextColor[0], chipTextColor[1], chipTextColor[2]);
+      pdf.text(chipText, chipX + (isFocus ? 8 : 5), chipY + (isFocus ? 11 : 7.5));
+      // Restaura cor padrão
       pdf.setTextColor(30, 41, 59);
     }
 
-    // No modo "focus" reservamos um pequeno respiro abaixo do realce para
-    // que o título não se sobreponha ao conteúdo seguinte.
-    if (isFocus) {
-      cursorY += 6;
-    }
+    if (isFocus) cursorY += 6;
     return anchorY;
   };
 
