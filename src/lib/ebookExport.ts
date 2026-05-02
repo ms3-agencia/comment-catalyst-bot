@@ -784,40 +784,162 @@ export async function exportEbookPdf(
   let tocPageNum = 0;   // última página usada pelo TOC (atualizada por drawToc)
   let tocFirstPage = 0; // primeira página reservada do TOC (preservada)
 
-  // Capa — sempre ocupa página inteira (A4) e NUNCA contém texto.
-  // Regra do projeto: a capa do ebook é exclusivamente visual; título,
-  // subtítulo, método e promessa só aparecem nas seções internas e no
-  // sumário, nunca sobre a imagem da capa.
+  // Capa — sempre ocupa página inteira (A4). A imagem é renderizada em modo
+  // "cover" (preserva proporção, corta o excesso) e o título/subtítulo são
+  // desenhados sobre a imagem, espelhando o preview do editor.
   steps.push({
     label: 'Capa',
     run: async () => {
-      // Pré-carrega imagem (se houver) para evitar capa em branco
       let coverDataUrl: string | null = null;
       if (ebook.cover_url) {
         coverDataUrl = await loadImageAsDataUrl(ebook.cover_url).catch(() => null);
       }
 
+      // Renderizamos a capa toda em um canvas offscreen no tamanho A4
+      // (em pixels com escala 2x para nitidez) e adicionamos como JPEG.
+      const SCALE = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(pageW * SCALE);
+      canvas.height = Math.round(pageH * SCALE);
+      const ctx = canvas.getContext('2d')!;
+
       if (coverDataUrl) {
-        // Caminho rápido: insere a imagem diretamente preenchendo A4 inteiro,
-        // sem precisar passar por html2canvas. Garante 0 texto na capa.
-        pdf.addImage(coverDataUrl, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
-      } else {
-        // Sem imagem: capa neutra com gradiente cyan suave desenhado nativamente.
-        // Aproximamos o gradiente com várias faixas horizontais (rápido).
-        const bands = 60;
-        const start = [255, 255, 255];
-        const end = [207, 250, 254]; // cyan-100
-        const bandH = pageH / bands;
-        for (let i = 0; i < bands; i++) {
-          const t = i / (bands - 1);
-          const r = Math.round(start[0] + (end[0] - start[0]) * t);
-          const g = Math.round(start[1] + (end[1] - start[1]) * t);
-          const b = Math.round(start[2] + (end[2] - start[2]) * t);
-          pdf.setFillColor(r, g, b);
-          pdf.rect(0, i * bandH, pageW, bandH + 1, 'F');
+        // Carrega a imagem para descobrir dimensões reais
+        const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+          const im = new Image();
+          im.crossOrigin = 'anonymous';
+          im.onload = () => resolve(im);
+          im.onerror = reject;
+          im.src = coverDataUrl!;
+        }).catch(() => null);
+
+        if (img) {
+          // Modo cover: escala para cobrir A4 e corta o excesso (sem distorcer)
+          const cw = canvas.width;
+          const ch = canvas.height;
+          const ir = img.width / img.height;
+          const cr = cw / ch;
+          let dw: number, dh: number, dx: number, dy: number;
+          if (ir > cr) {
+            // imagem mais larga: ajusta altura, corta laterais
+            dh = ch;
+            dw = ch * ir;
+            dx = (cw - dw) / 2;
+            dy = 0;
+          } else {
+            // imagem mais alta: ajusta largura, corta topo/rodapé
+            dw = cw;
+            dh = cw / ir;
+            dx = 0;
+            dy = (ch - dh) / 2;
+          }
+          ctx.drawImage(img, dx, dy, dw, dh);
+        } else {
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
+      } else {
+        // Sem imagem: gradiente cyan suave
+        const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(1, '#cffafe');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
+      // Overlay gradiente (preto, transparente no topo → opaco embaixo)
+      // só quando há imagem, igual ao preview.
+      const hasImage = !!coverDataUrl;
+      if (hasImage) {
+        const overlay = ctx.createLinearGradient(0, canvas.height * 0.35, 0, canvas.height);
+        overlay.addColorStop(0, 'rgba(0,0,0,0)');
+        overlay.addColorStop(0.55, 'rgba(0,0,0,0.35)');
+        overlay.addColorStop(1, 'rgba(0,0,0,0.85)');
+        ctx.fillStyle = overlay;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      // Título e subtítulo sobre a capa (parte inferior, igual ao preview)
+      const title = (ebook.title || '').trim();
+      const subtitle = (ebook.subtitle || '').trim();
+      if (title || subtitle) {
+        const padX = 48 * SCALE;
+        const padBottom = 56 * SCALE;
+        const maxTextW = canvas.width - padX * 2;
+        const textColor = hasImage ? '#ffffff' : '#0f172a';
+        ctx.fillStyle = textColor;
+        ctx.textBaseline = 'alphabetic';
+
+        // Helper: quebra texto em linhas usando o canvas
+        const wrap = (text: string, font: string, maxW: number, maxLines: number) => {
+          ctx.font = font;
+          const words = text.split(/\s+/);
+          const lines: string[] = [];
+          let cur = '';
+          for (const w of words) {
+            const test = cur ? cur + ' ' + w : w;
+            if (ctx.measureText(test).width <= maxW) cur = test;
+            else {
+              if (cur) lines.push(cur);
+              cur = w;
+              if (lines.length >= maxLines) break;
+            }
+          }
+          if (cur && lines.length < maxLines) lines.push(cur);
+          // Trunca última linha se necessário
+          if (lines.length === maxLines && words.length) {
+            let last = lines[maxLines - 1];
+            while (ctx.measureText(last + '…').width > maxW && last.length > 0) {
+              last = last.slice(0, -1);
+            }
+            // Mantém apenas se sobrou tudo (heurística simples)
+          }
+          return lines;
+        };
+
+        // Sombra suave para legibilidade extra quando há imagem
+        if (hasImage) {
+          ctx.shadowColor = 'rgba(0,0,0,0.55)';
+          ctx.shadowBlur = 6 * SCALE;
+          ctx.shadowOffsetY = 1 * SCALE;
+        }
+
+        // Subtítulo (desenhado primeiro para calcular posição do título acima)
+        let cursorY = canvas.height - padBottom;
+        if (subtitle) {
+          const subSize = 16 * SCALE;
+          const subFont = `400 ${subSize}px "Inter", "Helvetica", sans-serif`;
+          const subLines = wrap(subtitle, subFont, maxTextW, 2);
+          ctx.font = subFont;
+          const lineH = subSize * 1.3;
+          // desenha de baixo para cima
+          for (let i = subLines.length - 1; i >= 0; i--) {
+            ctx.fillText(subLines[i], padX, cursorY);
+            cursorY -= lineH;
+          }
+          cursorY -= 8 * SCALE; // espaço entre título e subtítulo
+        }
+
+        if (title) {
+          const titleSize = 36 * SCALE;
+          const titleFont = `700 ${titleSize}px "Space Grotesk", "Helvetica", sans-serif`;
+          const titleLines = wrap(title, titleFont, maxTextW, 4);
+          ctx.font = titleFont;
+          const lineH = titleSize * 1.15;
+          for (let i = titleLines.length - 1; i >= 0; i--) {
+            ctx.fillText(titleLines[i], padX, cursorY);
+            cursorY -= lineH;
+          }
+        }
+
+        // Reset shadow
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetY = 0;
+      }
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      pdf.addImage(dataUrl, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
 
       // Marca essa página como capa (sem cabeçalho/rodapé nem numeração)
       skipChromePages.add(pageNum);
