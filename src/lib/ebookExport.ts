@@ -515,18 +515,32 @@ export async function exportEbookPdf(
    * `top` no `pdf.link`. Os elementos extras na margem/lateral não
    * consomem espaço da coluna de texto principal.
    */
+  const focusMode = tocOptions?.focusMode ?? 'subtle';
+
   const drawSectionAnchor = (level: 1 | 2 = 1): number => {
     const anchorY = cursorY;
-    // Altura aproximada do bloco do título (h2 ≈ 28pt + respiro)
-    const highlightH = level === 2 ? 22 : 34;
-    const barW = level === 2 ? 2 : 3;
-    const barX = marginX - 10;
+    if (focusMode === 'off') return anchorY;
 
-    // 1) Caixa de fundo (highlight) — cyan-50 muito sutil, do início da
-    //    coluna de texto até a margem direita. Não interfere na leitura.
-    const padX = 6;
-    const padY = 2;
-    pdf.setFillColor(236, 254, 255); // cyan-50
+    const isFocus = focusMode === 'focus';
+
+    // No modo "focus" o realce é mais alto e mais largo para "respirar"
+    // ao redor do título e ficar imediatamente visível após o salto.
+    const highlightH = level === 2
+      ? (isFocus ? 28 : 22)
+      : (isFocus ? 46 : 34);
+    const barW = level === 2
+      ? (isFocus ? 4 : 2)
+      : (isFocus ? 6 : 3);
+    const barX = marginX - (isFocus ? 14 : 10);
+
+    // 1) Caixa de fundo
+    const padX = isFocus ? 10 : 6;
+    const padY = isFocus ? 4 : 2;
+    if (isFocus) {
+      pdf.setFillColor(207, 250, 254); // cyan-100
+    } else {
+      pdf.setFillColor(236, 254, 255); // cyan-50
+    }
     pdf.rect(
       marginX - padX,
       anchorY - padY,
@@ -535,34 +549,56 @@ export async function exportEbookPdf(
       'F',
     );
 
-    // 2) Borda esquerda cyan + bullet (marcador clássico de "âncora ativa")
+    // Borda da caixa apenas no modo foco (contraste extra)
+    if (isFocus) {
+      pdf.setDrawColor(34, 211, 238); // cyan-400
+      pdf.setLineWidth(0.8);
+      pdf.rect(
+        marginX - padX,
+        anchorY - padY,
+        contentW + padX * 2,
+        highlightH,
+        'S',
+      );
+    }
+
+    // 2) Barra lateral cyan + bullet
     pdf.setFillColor(8, 145, 178); // cyan-600
     pdf.rect(barX, anchorY + 2, barW, highlightH - 4, 'F');
     if (level === 1) {
       pdf.setFillColor(34, 211, 238); // cyan-400
-      pdf.circle(barX + barW / 2, anchorY, 2.6, 'F');
+      pdf.circle(barX + barW / 2, anchorY, isFocus ? 4 : 2.6, 'F');
+      // Bullet inferior também no modo foco para "abraçar" o título
+      if (isFocus) {
+        pdf.circle(barX + barW / 2, anchorY + highlightH, 4, 'F');
+      }
     }
 
-    // 3) Chip "↳ alvo do sumário" no canto direito (apenas nível 1)
-    //    Pequeno, baixa hierarquia visual; confirma que o link funcionou.
+    // 3) Chip indicador no canto direito (apenas nível 1)
     if (level === 1) {
-      const chipText = '↳ alvo do sumário';
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(7.5);
-      const chipW = pdf.getTextWidth(chipText) + 10;
-      const chipH = 11;
+      const chipText = isFocus ? '◉ VOCÊ ESTÁ AQUI' : '↳ alvo do sumário';
+      pdf.setFont('helvetica', isFocus ? 'bold' : 'normal');
+      pdf.setFontSize(isFocus ? 9 : 7.5);
+      const chipW = pdf.getTextWidth(chipText) + (isFocus ? 16 : 10);
+      const chipH = isFocus ? 16 : 11;
       const chipX = pageW - marginX - chipW;
-      const chipY = anchorY + 2;
-      // Fundo do chip
-      pdf.setFillColor(207, 250, 254); // cyan-100
-      pdf.roundedRect(chipX, chipY, chipW, chipH, 3, 3, 'F');
-      // Borda do chip
-      pdf.setDrawColor(165, 243, 252); // cyan-200
-      pdf.setLineWidth(0.4);
-      pdf.roundedRect(chipX, chipY, chipW, chipH, 3, 3, 'S');
-      // Texto do chip
-      pdf.setTextColor(14, 116, 144); // cyan-700
-      pdf.text(chipText, chipX + 5, chipY + 7.5);
+      const chipY = anchorY + (isFocus ? 4 : 2);
+
+      if (isFocus) {
+        // Chip sólido, alto contraste
+        pdf.setFillColor(8, 145, 178); // cyan-600
+        pdf.roundedRect(chipX, chipY, chipW, chipH, 4, 4, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.text(chipText, chipX + 8, chipY + 11);
+      } else {
+        pdf.setFillColor(207, 250, 254); // cyan-100
+        pdf.roundedRect(chipX, chipY, chipW, chipH, 3, 3, 'F');
+        pdf.setDrawColor(165, 243, 252); // cyan-200
+        pdf.setLineWidth(0.4);
+        pdf.roundedRect(chipX, chipY, chipW, chipH, 3, 3, 'S');
+        pdf.setTextColor(14, 116, 144); // cyan-700
+        pdf.text(chipText, chipX + 5, chipY + 7.5);
+      }
       // Restaura cor padrão de texto
       pdf.setTextColor(30, 41, 59);
     }
