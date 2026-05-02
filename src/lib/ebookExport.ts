@@ -227,16 +227,34 @@ export async function exportEbookPdf(
     node.style.lineHeight = '1.65';
     node.innerHTML = `
       <style>
-        .ebook-prose h2 { color:#0891b2; font-size:18pt; margin:18px 0 10px; }
-        .ebook-prose h3 { color:#0e7490; font-size:14pt; margin:14px 0 8px; }
-        .ebook-prose p { margin:0 0 12px; text-align:justify; }
-        .ebook-prose ul, .ebook-prose ol { margin:0 0 12px 22px; }
-        .ebook-prose li { margin-bottom:6px; }
-        .ebook-prose blockquote { border-left:3px solid #0891b2; padding:6px 12px; margin:12px 0; background:#ecfeff; color:#155e75; }
-        .ebook-prose strong { color:#0f172a; }
-        .ebook-prose img { max-width:100%; height:auto; }
+        .ebook-export, .ebook-export * {
+          color: #0f172a !important;
+          background-color: transparent;
+          border-color: #cbd5e1;
+          box-shadow: none !important;
+          text-shadow: none !important;
+        }
+        .ebook-export { background:#ffffff !important; }
+        .ebook-export h1 { color:#0f172a !important; font-weight:800; }
+        .ebook-export h2 { color:#0891b2 !important; font-size:18pt; margin:18px 0 10px; font-weight:700; }
+        .ebook-export h3 { color:#0e7490 !important; font-size:14pt; margin:14px 0 8px; font-weight:700; }
+        .ebook-export p { color:#1e293b !important; margin:0 0 12px; text-align:justify; }
+        .ebook-export ul, .ebook-export ol { margin:0 0 12px 22px; color:#1e293b !important; }
+        .ebook-export li { color:#1e293b !important; margin-bottom:6px; }
+        .ebook-export blockquote { border-left:3px solid #0891b2; padding:6px 12px; margin:12px 0; background:#ecfeff !important; color:#155e75 !important; }
+        .ebook-export blockquote * { color:#155e75 !important; }
+        .ebook-export strong, .ebook-export b { color:#0f172a !important; font-weight:700; }
+        .ebook-export em, .ebook-export i { color:#1e293b !important; font-style: italic; }
+        .ebook-export a { color:#0891b2 !important; text-decoration: underline; }
+        .ebook-export img { max-width:100%; height:auto; }
+        .ebook-export code { background:#f1f5f9 !important; color:#0f172a !important; padding:1px 4px; border-radius:3px; font-family: monospace; }
+        .ebook-export pre { background:#f1f5f9 !important; color:#0f172a !important; padding:12px; border-radius:6px; overflow:auto; }
+        .ebook-export pre * { color:#0f172a !important; }
+        .ebook-export table { border-collapse: collapse; width:100%; margin:12px 0; }
+        .ebook-export th, .ebook-export td { border:1px solid #cbd5e1; padding:6px 8px; color:#0f172a !important; }
+        .ebook-export th { background:#f1f5f9 !important; font-weight:700; }
       </style>
-      ${sec.html}
+      <div class="ebook-export">${sec.html}</div>
     `;
     document.body.appendChild(node);
 
