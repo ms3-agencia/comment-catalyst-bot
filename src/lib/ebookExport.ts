@@ -634,7 +634,7 @@ export async function exportEbookPdf(
         startNewPageSection();
         toc.push({ label: `Capítulo ${c.chapter_number} — ${c.title}`, page: pageNum, level: 1 });
         await renderHtmlBlock(`<h2>Capítulo ${c.chapter_number} — ${escapeHtml(c.title)}</h2>`);
-        await renderRichHtml(c.content_html || '<p><em>Capítulo ainda não gerado.</em></p>');
+        await renderRichHtml(c.content_html || '<p><em>Capítulo ainda não gerado.</em></p>', true);
       },
     });
   });
