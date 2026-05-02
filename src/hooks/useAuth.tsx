@@ -35,6 +35,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const currentUserRef = useRef<User | null>(null);
   const explicitSignOutRef = useRef(false);
   const recoveringSessionRef = useRef(false);
   const recoveryTimerRef = useRef<number | null>(null);
@@ -94,6 +95,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const clearAuthState = () => {
+    currentUserRef.current = null;
     setSession(null);
     setUser(null);
     setProfile(null);
@@ -101,6 +103,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const applyAuthSession = (nextSession: Session | null, event?: string) => {
+    currentUserRef.current = nextSession?.user ?? null;
     setSession(nextSession);
     setUser(nextSession?.user ?? null);
 
@@ -142,7 +145,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      if (explicitSignOutRef.current || !user) {
+      if (explicitSignOutRef.current || !currentUserRef.current) {
         clearAuthState();
         setLoading(false);
         return;
@@ -151,11 +154,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
       scheduleSessionRecovery();
     } catch {
-      if (explicitSignOutRef.current || !user) {
+      if (explicitSignOutRef.current || !currentUserRef.current) {
         clearAuthState();
       }
       setLoading(false);
-      if (!explicitSignOutRef.current && user) scheduleSessionRecovery();
+      if (!explicitSignOutRef.current && currentUserRef.current) scheduleSessionRecovery();
     } finally {
       recoveringSessionRef.current = false;
     }
