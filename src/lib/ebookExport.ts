@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import 'jspdf/dist/polyfills.es.js';
 import { Document, Packer, Paragraph, HeadingLevel, AlignmentType, TextRun } from 'docx';
 import { saveAs } from 'file-saver';
 
