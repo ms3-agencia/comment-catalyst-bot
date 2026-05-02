@@ -907,7 +907,14 @@ const GenerateContent = () => {
                     )}
                     {/* AI Image (capa) */}
                     <div className="border-t border-border pt-3 space-y-2">
-                      {c.image_url ? (
+                      {imagingId === c.id && !c.image_url ? (
+                        <GenerationAnimation
+                          variant="image"
+                          subtitle={c.content_type === 'carrossel' && c.slides?.length
+                            ? `Gerando ${c.slides.length} imagens em sequência para o carrossel…`
+                            : 'Compondo pixels, luz e cor para criar sua imagem…'}
+                        />
+                      ) : c.image_url ? (
                         <div className="space-y-2">
                           <div className="relative rounded-lg overflow-hidden border border-border bg-muted">
                             <img
