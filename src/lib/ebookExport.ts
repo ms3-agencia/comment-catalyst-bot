@@ -300,47 +300,151 @@ export async function exportEbookPdf(
     });
   };
 
-  const placeBlock = async (el: HTMLElement, opts?: { keepWithNext?: boolean }) => {
-    // Aguarda layout
+  // Renderiza um elemento isolado em canvas e devolve dimensões
+  const measureAndRender = async (el: HTMLElement) => {
     await new Promise((r) => requestAnimationFrame(() => r(null)));
     const canvas = await renderElementToCanvas(el);
-    const blockH = canvas.height * (contentW / canvas.width); // em pt
+    const ratio = contentW / canvas.width;
+    return { canvas, ratio, h: canvas.height * ratio };
+  };
+
+  // Desenha um canvas inteiro na posição atual (assume que cabe)
+  const drawCanvasAt = (canvas: HTMLCanvasElement, h: number) => {
+    const data = canvas.toDataURL('image/jpeg', 0.94);
+    pdf.addImage(data, 'JPEG', marginX, cursorY, contentW, h, undefined, 'FAST');
+    cursorY += h;
+  };
+
+  // Último recurso: fatia uma imagem grande (bloco atômico maior que uma página)
+  // entre páginas. Usado apenas para imagens/tabelas/pre que não podem ser
+  // quebrados em sub-elementos textuais.
+  const sliceCanvasAcrossPages = (canvas: HTMLCanvasElement) => {
+    const ratio = contentW / canvas.width;
+    const pageCanvasH = Math.floor(contentH / ratio);
+    let offsetY = 0;
+    if (cursorY > contentTop) newPage();
+    while (offsetY < canvas.height) {
+      const sliceH = Math.min(pageCanvasH, canvas.height - offsetY);
+      const sliceCanvas = document.createElement('canvas');
+      sliceCanvas.width = canvas.width;
+      sliceCanvas.height = sliceH;
+      const ctx = sliceCanvas.getContext('2d')!;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+      ctx.drawImage(canvas, 0, offsetY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+      const data = sliceCanvas.toDataURL('image/jpeg', 0.92);
+      const drawH = sliceH * ratio;
+      pdf.addImage(data, 'JPEG', marginX, cursorY, contentW, drawH, undefined, 'FAST');
+      cursorY += drawH;
+      offsetY += sliceH;
+      if (offsetY < canvas.height) newPage();
+    }
+  };
+
+  const isAtomicTag = (tag: string) =>
+    tag === 'IMG' || tag === 'TABLE' || tag === 'PRE' || tag === 'FIGURE' || tag === 'HR' || tag === 'CANVAS' || tag === 'VIDEO';
+
+  // Quebra um parágrafo em pedaços menores agrupando sentenças, para evitar
+  // cortar linha no meio. Cada pedaço vira um <p> próprio respeitando o estilo.
+  const splitParagraphIntoChunks = (p: HTMLElement): HTMLElement[] => {
+    const text = p.textContent || '';
+    if (!text.trim()) return [p];
+    // Quebra por sentenças (pt/en) — mantém pontuação
+    const sentences = text.match(/[^.!?…]+[.!?…]+\s*|[^.!?…]+$/g) || [text];
+    if (sentences.length <= 1) return [p];
+    // Agrupa em ~3 sentenças por chunk para manter parágrafos coerentes
+    const groupSize = 3;
+    const chunks: HTMLElement[] = [];
+    for (let i = 0; i < sentences.length; i += groupSize) {
+      const part = sentences.slice(i, i + groupSize).join('').trim();
+      if (!part) continue;
+      const np = document.createElement(p.tagName.toLowerCase());
+      // copia className/style básicos
+      if (p.className) np.className = p.className;
+      np.textContent = part;
+      chunks.push(np);
+    }
+    return chunks.length > 1 ? chunks : [p];
+  };
+
+  // Coloca um elemento na página, recursivamente quebrando se necessário.
+  const placeBlock = async (el: HTMLElement) => {
+    // Renderiza o elemento isolado no root
+    root.innerHTML = '';
+    root.appendChild(el);
+    const { canvas, h } = await measureAndRender(el);
     const remaining = contentBottom - cursorY;
 
-    // Se não cabe, vai para próxima página
-    if (blockH > remaining) {
-      // Se o bloco é maior que uma página inteira, fatiamos
-      if (blockH > contentH) {
-        // Quebra a imagem em fatias do tamanho da página
-        const ratio = contentW / canvas.width;
-        const pageCanvasH = Math.floor(contentH / ratio);
-        let offsetY = 0;
-        // Garante que começa em página nova se já houver conteúdo
-        if (cursorY > contentTop) newPage();
-        while (offsetY < canvas.height) {
-          const sliceH = Math.min(pageCanvasH, canvas.height - offsetY);
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = canvas.width;
-          sliceCanvas.height = sliceH;
-          const ctx = sliceCanvas.getContext('2d')!;
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-          ctx.drawImage(canvas, 0, offsetY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-          const data = sliceCanvas.toDataURL('image/jpeg', 0.92);
-          const drawH = sliceH * ratio;
-          pdf.addImage(data, 'JPEG', marginX, cursorY, contentW, drawH, undefined, 'FAST');
-          cursorY += drawH;
-          offsetY += sliceH;
-          if (offsetY < canvas.height) newPage();
+    // Cabe na página atual: desenha
+    if (h <= remaining) {
+      drawCanvasAt(canvas, h);
+      return;
+    }
+
+    const tag = el.tagName.toUpperCase();
+
+    // Bloco não cabe E ainda há conteúdo na página → tenta nova página primeiro
+    // (talvez caiba inteiro na próxima página)
+    if (cursorY > contentTop && h <= contentH) {
+      newPage();
+      // Recoloca na nova página (cabe)
+      root.innerHTML = '';
+      root.appendChild(el);
+      const re = await measureAndRender(el);
+      drawCanvasAt(re.canvas, re.h);
+      return;
+    }
+
+    // Bloco maior que uma página inteira: precisa quebrar
+    // 1) Listas: quebra item-a-item
+    if (tag === 'UL' || tag === 'OL') {
+      const items = Array.from(el.children) as HTMLElement[];
+      if (items.length > 1) {
+        for (const li of items) {
+          // Cria uma lista nova com um único item para preservar marcador/estilo
+          const wrapper = document.createElement(tag.toLowerCase()) as HTMLElement;
+          if (el.className) wrapper.className = el.className;
+          if (tag === 'OL') {
+            // Mantém numeração contínua aproximadamente — não perfeito, mas legível
+            const idx = items.indexOf(li) + 1;
+            (wrapper as HTMLOListElement).start = idx;
+          }
+          wrapper.appendChild(li.cloneNode(true) as HTMLElement);
+          await placeBlock(wrapper);
         }
         return;
       }
-      newPage();
     }
 
-    const data = canvas.toDataURL('image/jpeg', 0.94);
-    pdf.addImage(data, 'JPEG', marginX, cursorY, contentW, blockH, undefined, 'FAST');
-    cursorY += blockH;
+    // 2) Containers genéricos com filhos: quebra filho-a-filho
+    if ((tag === 'DIV' || tag === 'BLOCKQUOTE' || tag === 'SECTION' || tag === 'ARTICLE') && el.children.length > 1) {
+      const children = Array.from(el.children) as HTMLElement[];
+      for (const child of children) {
+        await placeBlock(child.cloneNode(true) as HTMLElement);
+      }
+      return;
+    }
+
+    // 3) Parágrafo/cabeçalho longo: quebra por sentenças
+    if (tag === 'P' || tag === 'BLOCKQUOTE') {
+      const chunks = splitParagraphIntoChunks(el);
+      if (chunks.length > 1) {
+        for (const c of chunks) {
+          await placeBlock(c);
+        }
+        return;
+      }
+    }
+
+    // 4) Atômico (imagem/tabela/pre) ou indivisível: fatia o canvas como último recurso
+    if (isAtomicTag(tag) || h > contentH) {
+      sliceCanvasAcrossPages(canvas);
+      return;
+    }
+
+    // Fallback: desenha o que sobrou (não deveria chegar aqui)
+    if (cursorY > contentTop) newPage();
+    drawCanvasAt(canvas, Math.min(h, contentBottom - cursorY));
   };
 
   const addSpacer = (pt: number) => {
@@ -357,34 +461,25 @@ export async function exportEbookPdf(
 
   // Renderiza um bloco isolado: cria div temporário com o HTML, mede e desenha
   const renderHtmlBlock = async (html: string, wrapperClass = '') => {
-    root.innerHTML = '';
     const wrap = document.createElement('div');
     if (wrapperClass) wrap.className = wrapperClass;
     wrap.innerHTML = html;
-    root.appendChild(wrap);
     await placeBlock(wrap);
   };
 
   // Renderiza HTML rico desmembrando os filhos diretos para permitir quebras
   const renderRichHtml = async (html: string) => {
-    root.innerHTML = '';
     const holder = document.createElement('div');
     holder.innerHTML = html;
-    // Move cada filho para o root e renderiza um por vez
     const children = Array.from(holder.children) as HTMLElement[];
     if (children.length === 0) {
-      // Sem filhos estruturais — renderiza como bloco único parágrafo
       const p = document.createElement('p');
       p.textContent = holder.textContent || '';
-      root.appendChild(p);
       await placeBlock(p);
       return;
     }
     for (const child of children) {
-      root.innerHTML = '';
-      root.appendChild(child);
-      await placeBlock(child);
-      // pequeno espaçamento entre blocos já está no margin do CSS, não adicionar extra
+      await placeBlock(child.cloneNode(true) as HTMLElement);
     }
   };
 
