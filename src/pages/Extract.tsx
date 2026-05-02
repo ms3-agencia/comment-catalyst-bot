@@ -401,6 +401,11 @@ const Extract = () => {
         )}
 
         {!comments.length ? (
+          loading ? (
+            <Card className="glass p-6">
+              <ExtractionAnimation />
+            </Card>
+          ) : (
           <Card className="glass p-6">
             <form onSubmit={handleExtract} className="space-y-5">
               <div className="space-y-2">
@@ -432,6 +437,7 @@ const Extract = () => {
               </Button>
             </form>
           </Card>
+          )
         ) : (
           <div className="space-y-6">
             {/* Stats */}
