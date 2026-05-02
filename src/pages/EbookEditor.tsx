@@ -131,6 +131,7 @@ export default function EbookEditor() {
     id: ebook.id,
     title: ebook.title,
     subtitle: ebook.subtitle,
+    cover_url: ebook.cover_url,
     introduction: ebook.introduction,
     conclusion: ebook.conclusion,
     cta: ebook.cta,
