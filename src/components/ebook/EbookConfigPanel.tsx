@@ -93,6 +93,61 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
     await load();
   };
 
+  // Drag & drop reorder (apenas templates próprios)
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  const isOwn = (c: EbookConfig) => !!currentUserId && c.user_id === currentUserId;
+
+  const onDragStart = (e: React.DragEvent, c: EbookConfig) => {
+    if (!c.id || !isOwn(c)) { e.preventDefault(); return; }
+    setDragId(c.id);
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', c.id); } catch {}
+  };
+  const onDragOver = (e: React.DragEvent, c: EbookConfig) => {
+    if (!dragId || !c.id || !isOwn(c) || c.id === dragId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverId !== c.id) setDragOverId(c.id);
+  };
+  const onDragEnd = () => { setDragId(null); setDragOverId(null); };
+
+  const onDrop = async (e: React.DragEvent, target: EbookConfig) => {
+    e.preventDefault();
+    const sourceId = dragId;
+    setDragId(null);
+    setDragOverId(null);
+    if (!sourceId || !target.id || sourceId === target.id || !isOwn(target)) return;
+
+    // Reordena localmente apenas dentro dos templates do próprio usuário
+    const ownList = configs.filter(isOwn);
+    const otherList = configs.filter(c => !isOwn(c));
+    const fromIdx = ownList.findIndex(c => c.id === sourceId);
+    const toIdx = ownList.findIndex(c => c.id === target.id);
+    if (fromIdx < 0 || toIdx < 0) return;
+
+    const reordered = [...ownList];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+
+    // Otimista: atualiza UI
+    setConfigs([...otherList, ...reordered]);
+
+    // Persiste sort_order para os afetados (apenas próprios)
+    try {
+      await Promise.all(
+        reordered.map((c, idx) =>
+          supabase.from('ebook_configs').update({ sort_order: idx + 1 }).eq('id', c.id!)
+        )
+      );
+      await load();
+    } catch (err: any) {
+      toast({ title: 'Erro ao reordenar', description: err?.message || 'Tente novamente', variant: 'destructive' });
+      load();
+    }
+  };
+
   // Em modo user, templates globais (criados por admin) NÃO podem ser editados aqui.
   const isGlobalTemplate = !!current.id && !!current.user_id && !!currentUserId && current.user_id !== currentUserId;
   const editingLocked = !canEdit || (mode === 'user' && isGlobalTemplate);
