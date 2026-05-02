@@ -486,8 +486,16 @@ export async function exportEbookPdf(
           const text = (child.textContent || '').trim();
           if (text) {
             await placeBlock(child.cloneNode(true) as HTMLElement);
-            // pageNum reflete a página onde o cabeçalho foi efetivamente desenhado
-            toc.push({ label: text, page: pageNum, level: 2 });
+            // Subcapítulo herda o agrupamento do capítulo pai ativo.
+            pushTocEntry({
+              label: text,
+              page: pageNum,
+              level: 2,
+              kind: 'sub',
+              order: activeChapterOrder,
+              parentOrder: activeChapterOrder,
+              subSeq: activeSubSeq++,
+            });
             continue;
           }
         }
