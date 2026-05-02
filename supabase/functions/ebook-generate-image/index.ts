@@ -131,9 +131,33 @@ Deno.serve(async (req) => {
     });
 
     const refund = async (desc: string) => {
+      const userId = user?.id;
+      if (!userId) {
+        console.warn("[ebook-generate-image] refund skipped: missing user.id", { desc });
+        return;
+      }
+      if (!creditsCost || creditsCost <= 0) {
+        console.warn("[ebook-generate-image] refund skipped: invalid creditsCost", { creditsCost, desc });
+        return;
+      }
       try {
-        await admin.rpc("admin_add_credits", { _user_id: user.id, _amount: creditsCost, _description: desc } as any);
-      } catch (_) { /* noop */ }
+        const { data, error } = await admin.rpc("admin_add_credits", {
+          _user_id: userId,
+          _amount: creditsCost,
+          _description: desc,
+        } as any);
+        if (error) {
+          console.error("[ebook-generate-image] refund rpc error", { userId, creditsCost, desc, error: error.message });
+          return;
+        }
+        if (data && (data as any).success === false) {
+          console.error("[ebook-generate-image] refund rpc failed", { userId, creditsCost, desc, data });
+          return;
+        }
+        console.info("[ebook-generate-image] refund ok", { userId, creditsCost, desc });
+      } catch (e: any) {
+        console.error("[ebook-generate-image] refund threw", { userId, creditsCost, desc, message: e?.message });
+      }
     };
 
     if (!aiResp.ok) {
