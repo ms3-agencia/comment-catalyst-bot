@@ -459,6 +459,30 @@ export default function ContentHistory() {
               </div>
             )}
 
+            {activePost.video_url && (
+              <div className="rounded-xl overflow-hidden border border-primary/40 bg-black">
+                <video
+                  src={activePost.video_url}
+                  controls
+                  className="w-full max-h-[480px] bg-black"
+                  preload="metadata"
+                />
+                <div className="px-3 py-2 text-[11px] text-muted-foreground flex items-center justify-between bg-card/40">
+                  <span className="flex items-center gap-1.5">
+                    <Clapperboard className="h-3.5 w-3.5 text-primary" />
+                    Vídeo gerado por IA{activePost.video_provider ? ` · ${activePost.video_provider}` : ''}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {!activePost.video_url && activePost.video_status && activePost.video_status !== 'completed' && activePost.video_status !== 'failed' && (
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs text-muted-foreground flex items-center gap-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                Vídeo {activePost.video_status === 'queued' ? 'na fila do provedor' : activePost.video_status}. Atualize esta página em alguns minutos.
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-2">
               {activePost.image_url && (
                 <Button
