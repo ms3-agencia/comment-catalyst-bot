@@ -636,8 +636,8 @@ export async function exportEbookPdf(
     const chipTextColor = toRgb(userStyle.chipTextColor, defaults.chipText);
 
     const showBorder = userStyle.showBorder ?? isFocus;
-    const showChip = userStyle.showChip ?? true;
-    const chipText = userStyle.chipText ?? (isFocus ? '◉ VOCÊ ESTÁ AQUI' : '↳ alvo do sumário');
+    const showChip = userStyle.showChip ?? false;
+    const chipText = userStyle.chipText ?? '';
 
     const defaultBarW = level === 2 ? (isFocus ? 4 : 2) : (isFocus ? 6 : 3);
     const barW = Math.max(0.5, userStyle.barWidth ?? defaultBarW);
