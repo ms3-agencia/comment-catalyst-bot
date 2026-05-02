@@ -490,29 +490,72 @@ export async function exportEbookPdf(
   };
 
   /**
-   * Desenha um marcador visual de "destaque" no início de uma seção: uma
-   * barra vertical cyan + bullet, à esquerda da margem. Funciona como alvo
-   * de navegação do sumário — quando o leitor pula até a seção, o usuário
-   * vê imediatamente o realce confirmando que a navegação funcionou.
+   * Desenha um marcador visual de "destaque" no início de uma seção:
+   *  - Caixa de fundo cyan-claro atrás do título (efeito :target).
+   *  - Borda esquerda cyan com bullet no topo (lembra um "marcador").
+   *  - Pequeno chip "↳ alvo do sumário" do lado direito (apenas nível 1)
+   *    para reforçar visualmente que esse é o alvo da navegação.
+   *
+   * O destaque é desenhado ANTES do título: como o título é renderizado em
+   * cima como uma imagem (html2canvas) com fundo transparente, o
+   * sombreamento aparece "atrás" do texto sem afetar a tipografia.
    *
    * Retorna a coordenada Y do topo do destaque (em pt), para usar como
-   * `top` no `pdf.link`. Não consome espaço vertical no fluxo: o marcador
-   * é desenhado na margem esquerda, fora da coluna de texto.
+   * `top` no `pdf.link`. Os elementos extras na margem/lateral não
+   * consomem espaço da coluna de texto principal.
    */
   const drawSectionAnchor = (level: 1 | 2 = 1): number => {
     const anchorY = cursorY;
-    // Altura aproximada do bloco do título da seção (h2 ≈ 28pt + respiro)
-    const barH = level === 2 ? 18 : 28;
+    // Altura aproximada do bloco do título (h2 ≈ 28pt + respiro)
+    const highlightH = level === 2 ? 22 : 34;
     const barW = level === 2 ? 2 : 3;
-    const barX = marginX - 10; // dentro da margem, à esquerda do texto
-    // Barra vertical cyan
-    pdf.setFillColor(8, 145, 178);
-    pdf.rect(barX, anchorY + 2, barW, barH, 'F');
-    // Bullet circular cyan no topo
+    const barX = marginX - 10;
+
+    // 1) Caixa de fundo (highlight) — cyan-50 muito sutil, do início da
+    //    coluna de texto até a margem direita. Não interfere na leitura.
+    const padX = 6;
+    const padY = 2;
+    pdf.setFillColor(236, 254, 255); // cyan-50
+    pdf.rect(
+      marginX - padX,
+      anchorY - padY,
+      contentW + padX * 2,
+      highlightH,
+      'F',
+    );
+
+    // 2) Borda esquerda cyan + bullet (marcador clássico de "âncora ativa")
+    pdf.setFillColor(8, 145, 178); // cyan-600
+    pdf.rect(barX, anchorY + 2, barW, highlightH - 4, 'F');
     if (level === 1) {
-      pdf.setFillColor(34, 211, 238); // cyan-400 — mais luminoso
+      pdf.setFillColor(34, 211, 238); // cyan-400
       pdf.circle(barX + barW / 2, anchorY, 2.6, 'F');
     }
+
+    // 3) Chip "↳ alvo do sumário" no canto direito (apenas nível 1)
+    //    Pequeno, baixa hierarquia visual; confirma que o link funcionou.
+    if (level === 1) {
+      const chipText = '↳ alvo do sumário';
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(7.5);
+      const chipW = pdf.getTextWidth(chipText) + 10;
+      const chipH = 11;
+      const chipX = pageW - marginX - chipW;
+      const chipY = anchorY + 2;
+      // Fundo do chip
+      pdf.setFillColor(207, 250, 254); // cyan-100
+      pdf.roundedRect(chipX, chipY, chipW, chipH, 3, 3, 'F');
+      // Borda do chip
+      pdf.setDrawColor(165, 243, 252); // cyan-200
+      pdf.setLineWidth(0.4);
+      pdf.roundedRect(chipX, chipY, chipW, chipH, 3, 3, 'S');
+      // Texto do chip
+      pdf.setTextColor(14, 116, 144); // cyan-700
+      pdf.text(chipText, chipX + 5, chipY + 7.5);
+      // Restaura cor padrão de texto
+      pdf.setTextColor(30, 41, 59);
+    }
+
     return anchorY;
   };
 
