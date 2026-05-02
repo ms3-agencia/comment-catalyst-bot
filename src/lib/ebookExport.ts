@@ -269,7 +269,10 @@ export async function exportEbookPdf(
   const RENDER_W = Math.round(contentW * 1.6); // ~760px → boa nitidez
   const PX_TO_PT = contentW / RENDER_W;
 
-  // Sandbox onde montaremos os blocos para captura
+  // Sandbox onde montaremos os blocos para captura.
+  // IMPORTANTE: isolamos o sandbox do tema escuro do app (color-scheme: light
+  // + reset agressivo de CSS variables) para que o PDF saia sempre com texto
+  // escuro sobre fundo branco, independente do tema atual da página.
   const sandbox = document.createElement('div');
   sandbox.style.position = 'fixed';
   sandbox.style.left = '-99999px';
@@ -280,6 +283,8 @@ export async function exportEbookPdf(
   sandbox.style.fontFamily = 'Inter, Arial, sans-serif';
   sandbox.style.fontSize = '11pt';
   sandbox.style.lineHeight = '1.7';
+  sandbox.style.colorScheme = 'light';
+  sandbox.setAttribute('data-pdf-sandbox', 'true');
   sandbox.innerHTML = `
     <style id="ebook-pdf-styles">
       .ebk, .ebk * {
