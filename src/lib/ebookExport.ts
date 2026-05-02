@@ -961,7 +961,11 @@ export async function exportEbookPdf(
         // Reserva espaço do número à direita
         const numReserve = 36;
         const labelMaxW = (pageW - marginX) - xStart - numReserve;
-        const labelText = pdf.splitTextToSize(entry.label, labelMaxW)[0];
+        // Aplica formatLabel + truncamento por caracteres e por largura.
+        // Importante: o link clicável continua usando `entry.page`, então
+        // alterar o texto NUNCA quebra a navegação.
+        const rawDisplay = computeDisplayLabel(entry) ?? entry.label;
+        const labelText = fitLabelToWidth(rawDisplay, labelMaxW, fontSize);
 
         // ---- Label ----
         if (entry.level === 1) {
