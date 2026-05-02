@@ -542,16 +542,21 @@ export async function exportEbookPdf(
         if (tag === 'H2' || tag === 'H3') {
           const text = (child.textContent || '').trim();
           if (text) {
+            // Garante que o cabeçalho não vá partir entre páginas: se não
+            // couber, força nova página antes de ancorar.
+            const subAnchorY = drawSectionAnchor(2);
+            const subAnchorPage = pageNum;
             await placeBlock(child.cloneNode(true) as HTMLElement);
             // Subcapítulo herda o agrupamento do capítulo pai ativo.
             pushTocEntry({
               label: text,
-              page: pageNum,
+              page: subAnchorPage,
               level: 2,
               kind: 'sub',
               order: activeChapterOrder,
               parentOrder: activeChapterOrder,
               subSeq: activeSubSeq++,
+              anchorY: subAnchorY,
             });
             continue;
           }
