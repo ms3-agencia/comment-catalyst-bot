@@ -555,6 +555,9 @@ export async function exportEbookPdf(
     parentOrder: number;
     subSeq: number;
     seq: number;
+    /** Coordenada Y (pt) onde o destaque visual da seção foi desenhado.
+     *  Permite que o link do sumário role o leitor exatamente até o badge. */
+    anchorY?: number;
   };
   const toc: TocEntry[] = [];
   let tocSeqCounter = 0;
