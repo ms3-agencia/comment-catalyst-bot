@@ -213,7 +213,7 @@ export default function ContentHistory() {
       try {
         const { data } = await supabase
           .from('generated_contents')
-          .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type, image_url, image_prompt, slides, created_at')
+          .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type, image_url, image_prompt, slides, video_url, video_provider, video_status, created_at')
           .order('created_at', { ascending: false })
           .limit(500);
         setAllHistory((data as HistoryItem[]) || []);
