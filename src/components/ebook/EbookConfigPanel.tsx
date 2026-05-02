@@ -69,6 +69,29 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  const startRename = (c: EbookConfig) => {
+    if (!c.id) return;
+    setRenamingId(c.id);
+    setRenameValue(c.name);
+  };
+  const cancelRename = () => { setRenamingId(null); setRenameValue(''); };
+  const commitRename = async (c: EbookConfig) => {
+    if (!c.id) return;
+    const newName = renameValue.trim();
+    if (!newName || newName === c.name) { cancelRename(); return; }
+    const { error, data } = await supabase.from('ebook_configs').update({ name: newName }).eq('id', c.id).select().single();
+    if (error) {
+      toast({ title: 'Erro ao renomear', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Template renomeado!' });
+    if (current.id === c.id) setCurrent(data as any);
+    cancelRename();
+    await load();
+  };
 
   // Em modo user, templates globais (criados por admin) NÃO podem ser editados aqui.
   const isGlobalTemplate = !!current.id && !!current.user_id && !!currentUserId && current.user_id !== currentUserId;
