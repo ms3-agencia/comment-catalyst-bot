@@ -628,17 +628,16 @@ export async function exportEbookPdf(
       onProgress?.({ current: i + 1, total: steps.length, label: s.label });
       await s.run();
     }
-    // Desenha rodapé na última página
-    drawPageChrome();
     // Preenche o sumário na página reservada
     drawToc();
+    // Desenha cabeçalho/rodapé em todas as páginas (exceto capa)
+    drawAllChrome();
   } finally {
     if (sandbox.parentNode) document.body.removeChild(sandbox);
   }
 
   const filename = `${(ebook.title || 'ebook').replace(/[^\w\s-]/g, '').slice(0, 80) || 'ebook'}.pdf`;
   pdf.save(filename);
-  void totalPages;
 }
 
 function escapeHtml(s: string) {
