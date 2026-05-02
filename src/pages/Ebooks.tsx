@@ -214,10 +214,12 @@ export default function EbooksPage() {
                 {(() => {
                   const categories = Array.from(new Set(availableConfigs.map(c => c.category || 'geral'))).sort();
                   const tags = Array.from(new Set(availableConfigs.flatMap(c => c.tags || []))).sort();
+                  const effectiveCategory = hasPremium ? categoryFilter : 'all';
+                  const effectiveTag = hasPremium ? tagFilter : 'all';
                   const filtered = availableConfigs.filter(c => {
                     const cat = c.category || 'geral';
-                    if (categoryFilter !== 'all' && cat !== categoryFilter) return false;
-                    if (tagFilter !== 'all' && !(c.tags || []).includes(tagFilter)) return false;
+                    if (effectiveCategory !== 'all' && cat !== effectiveCategory) return false;
+                    if (effectiveTag !== 'all' && !(c.tags || []).includes(effectiveTag)) return false;
                     return true;
                   });
                   return (
