@@ -718,15 +718,14 @@ export async function exportEbookPdf(
 
     drawHeader();
     bodyN.forEach((row, idx) => {
-      const before = pageNum;
+      // Se a linha não cabe na página atual, quebra e redesenha cabeçalho
+      const { h } = measureRow(row, false);
+      if (cursorY + h > contentBottom) {
+        newPage();
+        drawHeader();
+      }
       const zebra = idx % 2 === 1 ? zebraColor : undefined;
       drawRow(row, false, zebra);
-      // Se quebrou para nova página no meio, redesenha cabeçalho no topo
-      if (pageNum !== before && headRow) {
-        // ao trocar de página, drawRow já desenhou em nova; o header deveria
-        // estar acima — então, em vez disso, garantimos que linhas seguintes
-        // tenham header redesenhado ANTES delas.
-      }
     });
 
     // Borda externa final do bloco da tabela (retângulo geral)
