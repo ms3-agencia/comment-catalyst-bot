@@ -160,6 +160,17 @@ export type TocOptions = {
     level: 1 | 2;
     kind: 'intro' | 'chapter' | 'sub' | 'conclusion';
   }) => string | null;
+  /**
+   * Modo de "foco": deixa o marcador da seção (alvo do salto) muito mais
+   * evidente para o leitor localizar rapidamente onde aterrissou após
+   * clicar em um item do sumário.
+   *  - 'subtle' (default): caixa cyan-50, barra fina, chip discreto.
+   *  - 'focus':           caixa cyan-100 + borda, barra grossa, badge
+   *                        "VOCÊ ESTÁ AQUI" e número/ícone maior.
+   *  - 'off':             desliga o realce visual (mantém apenas a âncora
+   *                        para o link funcionar).
+   */
+  focusMode?: 'subtle' | 'focus' | 'off';
 };
 
 export async function exportEbookPdf(
