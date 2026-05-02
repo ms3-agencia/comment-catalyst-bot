@@ -489,6 +489,33 @@ export async function exportEbookPdf(
     if (cursorY > contentTop + 0.5) newPage();
   };
 
+  /**
+   * Desenha um marcador visual de "destaque" no início de uma seção: uma
+   * barra vertical cyan + bullet, à esquerda da margem. Funciona como alvo
+   * de navegação do sumário — quando o leitor pula até a seção, o usuário
+   * vê imediatamente o realce confirmando que a navegação funcionou.
+   *
+   * Retorna a coordenada Y do topo do destaque (em pt), para usar como
+   * `top` no `pdf.link`. Não consome espaço vertical no fluxo: o marcador
+   * é desenhado na margem esquerda, fora da coluna de texto.
+   */
+  const drawSectionAnchor = (level: 1 | 2 = 1): number => {
+    const anchorY = cursorY;
+    // Altura aproximada do bloco do título da seção (h2 ≈ 28pt + respiro)
+    const barH = level === 2 ? 18 : 28;
+    const barW = level === 2 ? 2 : 3;
+    const barX = marginX - 10; // dentro da margem, à esquerda do texto
+    // Barra vertical cyan
+    pdf.setFillColor(8, 145, 178);
+    pdf.rect(barX, anchorY + 2, barW, barH, 'F');
+    // Bullet circular cyan no topo
+    if (level === 1) {
+      pdf.setFillColor(34, 211, 238); // cyan-400 — mais luminoso
+      pdf.circle(barX + barW / 2, anchorY, 2.6, 'F');
+    }
+    return anchorY;
+  };
+
   // Renderiza um bloco isolado: cria div temporário com o HTML, mede e desenha
   const renderHtmlBlock = async (html: string, wrapperClass = '') => {
     const wrap = document.createElement('div');
