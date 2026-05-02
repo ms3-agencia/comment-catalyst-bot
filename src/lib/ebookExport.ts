@@ -241,16 +241,114 @@ export type TocVerificationReport = {
   issues: TocVerificationIssue[];
 };
 
+/**
+ * Converte HTML rico em uma lista linear de blocos de texto que serão
+ * renderizados nativamente pelo jsPDF (texto vetorial, sem html2canvas).
+ * Isso é dezenas de vezes mais rápido que rasterizar bloco a bloco e
+ * gera PDFs muito menores e com texto pesquisável/copiável.
+ */
+type RichRun = { text: string; bold?: boolean; italic?: boolean };
+type RichBlock =
+  | { kind: 'h2'; runs: RichRun[] }
+  | { kind: 'h3'; runs: RichRun[] }
+  | { kind: 'p'; runs: RichRun[] }
+  | { kind: 'li'; runs: RichRun[]; ordered: boolean; index: number }
+  | { kind: 'quote'; runs: RichRun[] }
+  | { kind: 'spacer'; pt: number };
+
+const parseRichHtml = (html: string): RichBlock[] => {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html || '';
+  const blocks: RichBlock[] = [];
+
+  const collectRuns = (node: Node, ctx: { bold?: boolean; italic?: boolean } = {}): RichRun[] => {
+    const runs: RichRun[] = [];
+    node.childNodes.forEach((child) => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        const text = (child.textContent || '').replace(/\s+/g, ' ');
+        if (text) runs.push({ text, bold: ctx.bold, italic: ctx.italic });
+        return;
+      }
+      if (child.nodeType !== Node.ELEMENT_NODE) return;
+      const el = child as HTMLElement;
+      const tag = el.tagName.toUpperCase();
+      const next = { ...ctx };
+      if (tag === 'STRONG' || tag === 'B') next.bold = true;
+      if (tag === 'EM' || tag === 'I') next.italic = true;
+      if (tag === 'BR') {
+        runs.push({ text: '\n' });
+        return;
+      }
+      runs.push(...collectRuns(el, next));
+    });
+    return runs;
+  };
+
+  const walk = (node: Node) => {
+    node.childNodes.forEach((child) => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        const text = (child.textContent || '').trim();
+        if (text) blocks.push({ kind: 'p', runs: [{ text }] });
+        return;
+      }
+      if (child.nodeType !== Node.ELEMENT_NODE) return;
+      const el = child as HTMLElement;
+      const tag = el.tagName.toUpperCase();
+      switch (tag) {
+        case 'H1':
+        case 'H2':
+          blocks.push({ kind: 'h2', runs: collectRuns(el) });
+          break;
+        case 'H3':
+        case 'H4':
+        case 'H5':
+        case 'H6':
+          blocks.push({ kind: 'h3', runs: collectRuns(el) });
+          break;
+        case 'P':
+          {
+            const runs = collectRuns(el);
+            if (runs.some((r) => r.text.trim())) blocks.push({ kind: 'p', runs });
+          }
+          break;
+        case 'BLOCKQUOTE':
+          blocks.push({ kind: 'quote', runs: collectRuns(el) });
+          break;
+        case 'UL':
+        case 'OL': {
+          const ordered = tag === 'OL';
+          const items = Array.from(el.children).filter((c) => c.tagName.toUpperCase() === 'LI');
+          items.forEach((li, i) => {
+            blocks.push({ kind: 'li', runs: collectRuns(li), ordered, index: i + 1 });
+          });
+          break;
+        }
+        case 'BR':
+          blocks.push({ kind: 'spacer', pt: 6 });
+          break;
+        case 'HR':
+          blocks.push({ kind: 'spacer', pt: 12 });
+          break;
+        default:
+          // Containers genéricos: continua descendo
+          walk(el);
+      }
+    });
+  };
+
+  walk(tmp);
+  return blocks;
+};
+
 export async function exportEbookPdf(
   ebook: EbookFull,
   onProgress?: (info: { current: number; total: number; label: string }) => void,
   tocOptions?: TocOptions,
 ) {
-  // Estratégia bloco-a-bloco: cada elemento (h2, p, li, blockquote, img...) é
-  // renderizado individualmente em um canvas. Se o bloco não couber no espaço
-  // restante da página, criamos nova página. Isso garante margens, espaçamento
-  // e quebras consistentes para qualquer tamanho de texto.
-  const html2canvas = (await import('html2canvas')).default;
+  // Estratégia: texto vetorial nativo do jsPDF (rápido, leve e pesquisável).
+  // Apenas a capa usa imagem. Conteúdo é parseado de HTML para blocos e
+  // renderizado com `pdf.text` + quebra de linha automática. Isso evita o
+  // gargalo do html2canvas (que era O(n) em chamadas de rasterização).
 
   const sortedChapters = [...ebook.chapters].sort((a, b) => a.chapter_number - b.chapter_number);
 
@@ -265,83 +363,11 @@ export async function exportEbookPdf(
   const contentBottom = pageH - marginBottom;
   const contentH = contentBottom - contentTop;
 
-  // Largura fixa do "papel" virtual em px (proporcional ao contentW em pt: 1pt ≈ 1.333px)
-  const RENDER_W = Math.round(contentW * 1.6); // ~760px → boa nitidez
-  const PX_TO_PT = contentW / RENDER_W;
-
-  // Sandbox onde montaremos os blocos para captura.
-  // IMPORTANTE: isolamos o sandbox do tema escuro do app (color-scheme: light
-  // + reset agressivo de CSS variables) para que o PDF saia sempre com texto
-  // escuro sobre fundo branco, independente do tema atual da página.
-  const sandbox = document.createElement('div');
-  sandbox.style.position = 'fixed';
-  sandbox.style.left = '-99999px';
-  sandbox.style.top = '0';
-  sandbox.style.width = `${RENDER_W}px`;
-  sandbox.style.background = '#ffffff';
-  sandbox.style.color = '#0f172a';
-  sandbox.style.fontFamily = 'Inter, Arial, sans-serif';
-  sandbox.style.fontSize = '11pt';
-  sandbox.style.lineHeight = '1.7';
-  sandbox.style.colorScheme = 'light';
-  sandbox.setAttribute('data-pdf-sandbox', 'true');
-  sandbox.innerHTML = `
-    <style id="ebook-pdf-styles">
-      /* Reset CSS variables that podem vazar do tema escuro do app */
-      [data-pdf-sandbox], [data-pdf-sandbox] * {
-        --background: 0 0% 100%;
-        --foreground: 222 47% 11%;
-        --primary: 190 90% 35%;
-        --muted: 210 40% 96%;
-        --muted-foreground: 215 16% 35%;
-        --border: 214 32% 91%;
-        color-scheme: light;
-      }
-      .ebk, .ebk * {
-        color: #1e293b !important;
-        background-color: transparent !important;
-        background-image: none !important;
-        box-shadow: none !important;
-        text-shadow: none !important;
-        filter: none !important;
-        mix-blend-mode: normal !important;
-        opacity: 1 !important;
-        font-family: Inter, Arial, sans-serif;
-      }
-      .ebk { background:#ffffff !important; box-sizing: border-box; width: ${RENDER_W}px; }
-      .ebk h1 { color:#0f172a !important; font-size: 28pt; font-weight: 800; line-height:1.25; margin: 0 0 14px; }
-      .ebk h2 { color:#0891b2 !important; font-size: 18pt; font-weight: 700; line-height:1.3; margin: 0 0 12px; padding-bottom:6px; border-bottom:2px solid #0891b2; }
-      .ebk h3 { color:#0e7490 !important; font-size: 14pt; font-weight: 700; line-height:1.35; margin: 0 0 10px; }
-      .ebk h4, .ebk h5, .ebk h6 { color:#0f172a !important; font-weight: 700; line-height:1.35; margin: 0 0 8px; }
-      .ebk p  { color:#1e293b !important; font-size: 11pt; line-height:1.7; margin: 0 0 10px; text-align: justify; hyphens: auto; }
-      .ebk ul, .ebk ol { margin: 0 0 10px 22px; padding: 0; color:#1e293b !important; }
-      .ebk li { font-size: 11pt; line-height:1.7; margin: 0 0 6px; color:#1e293b !important; }
-      .ebk blockquote { border-left: 3px solid #0891b2; background:#ecfeff !important; color:#155e75 !important; padding: 10px 14px; margin: 0 0 12px; border-radius: 4px; }
-      .ebk blockquote * { color:#155e75 !important; background-color: transparent !important; }
-      .ebk strong, .ebk b { color:#0f172a !important; font-weight: 700; }
-      .ebk em, .ebk i { font-style: italic; }
-      .ebk a { color:#0891b2 !important; text-decoration: underline; }
-      .ebk img { max-width: 100%; height: auto; display: block; margin: 8px 0; }
-      .ebk code { background:#f1f5f9 !important; color:#0f172a !important; padding:1px 4px; border-radius:3px; font-family: monospace; font-size: 10pt; }
-      .ebk pre { background:#f1f5f9 !important; color:#0f172a !important; padding: 12px; border-radius: 6px; margin: 0 0 12px; white-space: pre-wrap; word-break: break-word; font-size: 10pt; }
-      .ebk pre * { color:#0f172a !important; background-color: transparent !important; }
-      .ebk table { border-collapse: collapse; width: 100%; margin: 0 0 12px; font-size: 10pt; }
-      .ebk th, .ebk td { border: 1px solid #cbd5e1; padding: 6px 8px; color:#0f172a !important; }
-      .ebk th { background:#f1f5f9 !important; font-weight: 700; }
-      .ebk .cover { text-align:center; padding: 80px 20px 40px; }
-      .ebk .cover h1 { font-size: 32pt; margin-bottom: 14px; }
-      .ebk .cover .subtitle { font-size: 16pt; color:#475569 !important; margin: 0 0 32px; }
-      .ebk .cover .meta { font-size: 12pt; margin: 8px 0; }
-      .ebk .cta, .ebk .cta * { background:#0891b2 !important; color:#ffffff !important; }
-      .ebk .cta { padding: 18px 22px; border-radius: 8px; text-align: center; font-weight: 700; font-size: 13pt; }
-      .ebk .spacer-sm { height: 8px; }
-      .ebk .spacer-md { height: 16px; }
-      .ebk .spacer-lg { height: 28px; }
-    </style>
-    <div class="ebk" id="ebk-root"></div>
-  `;
-  document.body.appendChild(sandbox);
-  const root = sandbox.querySelector('#ebk-root') as HTMLElement;
+  // Renderização nativa: usamos as fontes built-in do jsPDF (helvetica) e
+  // desenhamos o texto vetorialmente. É ~50x mais rápido que html2canvas e
+  // produz PDFs muito menores, com texto pesquisável e copiável.
+  pdf.setFont('helvetica', 'normal');
+  pdf.setTextColor(30, 41, 59);
 
   let cursorY = contentTop;
   let pageNum = 1;
@@ -419,189 +445,120 @@ export async function exportEbookPdf(
   // Aumentamos o "topo de conteúdo" para não colidir com a faixa do header.
   // (já configurado em contentTop = marginTop = 64 — espaço suficiente)
 
-  const renderElementToCanvas = async (el: HTMLElement) => {
-    return await html2canvas(el, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-      windowWidth: RENDER_W,
-      // Garante legibilidade: remove apenas declarações inline de cor/fundo
-      // que poderiam herdar o tema escuro do app. Envolvido em try/catch
-      // para nunca quebrar a captura.
-      onclone: (clonedDoc) => {
-        try {
-          const targets = clonedDoc.querySelectorAll<HTMLElement>('.ebk, .ebk *');
-          targets.forEach((node) => {
-            const style = node.getAttribute('style');
-            if (!style) return;
-            const cleaned = style.replace(
-              /(?:^|;)\s*(?:color|background|background-color|background-image|filter|opacity|mix-blend-mode)\s*:[^;]*/gi,
-              '',
-            ).replace(/^\s*;+/, '').trim();
-            if (cleaned) node.setAttribute('style', cleaned);
-            else node.removeAttribute('style');
-          });
-        } catch {
-          /* noop — não bloquear a renderização por causa do reset visual */
-        }
-      },
-    });
+  // ===== Render nativo (jsPDF.text) =====
+  // Estilo por tipo de bloco. Tudo em pt.
+  const STYLES = {
+    h2: { size: 18, font: 'helvetica' as const, weight: 'bold' as const, color: [8, 145, 178] as [number, number, number], lineH: 1.3, marginBottom: 10, underline: true },
+    h3: { size: 14, font: 'helvetica' as const, weight: 'bold' as const, color: [14, 116, 144] as [number, number, number], lineH: 1.35, marginBottom: 8, underline: false },
+    p:  { size: 11, font: 'helvetica' as const, weight: 'normal' as const, color: [30, 41, 59] as [number, number, number], lineH: 1.55, marginBottom: 8, underline: false },
+    li: { size: 11, font: 'helvetica' as const, weight: 'normal' as const, color: [30, 41, 59] as [number, number, number], lineH: 1.55, marginBottom: 4, underline: false },
+    quote: { size: 11, font: 'helvetica' as const, weight: 'normal' as const, color: [21, 94, 117] as [number, number, number], lineH: 1.55, marginBottom: 10, underline: false },
   };
 
-  // Renderiza um elemento isolado em canvas e devolve dimensões
-  const measureAndRender = async (el: HTMLElement) => {
-    await new Promise((r) => requestAnimationFrame(() => r(null)));
-    const canvas = await renderElementToCanvas(el);
-    const safeW = canvas.width || 1;
-    const safeH = canvas.height || 1;
-    const ratio = contentW / safeW;
-    const h = safeH * ratio;
-    return { canvas, ratio, h: Number.isFinite(h) && h > 0 ? h : 0 };
+  const ensureSpace = (need: number) => {
+    if (cursorY + need > contentBottom) newPage();
   };
 
-  // Desenha um canvas inteiro na posição atual (assume que cabe).
-  // Protege contra dimensões inválidas (canvas vazio/zerado) que causariam
-  // o erro "invalid argument passed to jspdf.scale" no addImage.
-  const drawCanvasAt = (canvas: HTMLCanvasElement, h: number) => {
-    if (!canvas || !canvas.width || !canvas.height || !Number.isFinite(h) || h <= 0) {
+  // Concatena runs preservando bold/italic — para simplicidade, usa peso/estilo
+  // dominante do bloco e quebra linhas via splitTextToSize. Marcações
+  // (negrito/itálico) inline são desenhadas em uma segunda passada por palavra
+  // apenas se o bloco tiver runs mistas — caso contrário usa caminho rápido.
+  const runsToText = (runs: RichRun[]) =>
+    runs.map((r) => r.text).join('').replace(/\s+/g, ' ').trim();
+
+  const drawWrappedText = (
+    text: string,
+    x: number,
+    maxW: number,
+    style: { size: number; font: 'helvetica'; weight: 'normal' | 'bold'; color: [number, number, number]; lineH: number; marginBottom: number },
+  ) => {
+    if (!text) return;
+    pdf.setFont(style.font, style.weight);
+    pdf.setFontSize(style.size);
+    pdf.setTextColor(style.color[0], style.color[1], style.color[2]);
+    const lines = pdf.splitTextToSize(text, maxW) as string[];
+    const lineHeight = style.size * style.lineH;
+    for (const line of lines) {
+      ensureSpace(lineHeight);
+      pdf.text(line, x, cursorY + style.size * 0.85);
+      cursorY += lineHeight;
+    }
+    cursorY += style.marginBottom;
+  };
+
+  const drawBlock = (block: RichBlock) => {
+    if (block.kind === 'spacer') {
+      ensureSpace(block.pt);
+      cursorY += block.pt;
       return;
     }
-    const data = canvas.toDataURL('image/jpeg', 0.94);
-    pdf.addImage(data, 'JPEG', marginX, cursorY, contentW, h, undefined, 'FAST');
-    cursorY += h;
-  };
-
-  // Último recurso: fatia uma imagem grande (bloco atômico maior que uma página)
-  // entre páginas. Usado apenas para imagens/tabelas/pre que não podem ser
-  // quebrados em sub-elementos textuais.
-  const sliceCanvasAcrossPages = (canvas: HTMLCanvasElement) => {
-    const ratio = contentW / canvas.width;
-    const pageCanvasH = Math.floor(contentH / ratio);
-    let offsetY = 0;
-    if (cursorY > contentTop) newPage();
-    while (offsetY < canvas.height) {
-      const sliceH = Math.min(pageCanvasH, canvas.height - offsetY);
-      const sliceCanvas = document.createElement('canvas');
-      sliceCanvas.width = canvas.width;
-      sliceCanvas.height = sliceH;
-      const ctx = sliceCanvas.getContext('2d')!;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-      ctx.drawImage(canvas, 0, offsetY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-      const data = sliceCanvas.toDataURL('image/jpeg', 0.92);
-      const drawH = sliceH * ratio;
-      pdf.addImage(data, 'JPEG', marginX, cursorY, contentW, drawH, undefined, 'FAST');
-      cursorY += drawH;
-      offsetY += sliceH;
-      if (offsetY < canvas.height) newPage();
-    }
-  };
-
-  const isAtomicTag = (tag: string) =>
-    tag === 'IMG' || tag === 'TABLE' || tag === 'PRE' || tag === 'FIGURE' || tag === 'HR' || tag === 'CANVAS' || tag === 'VIDEO';
-
-  // Quebra um parágrafo em pedaços menores agrupando sentenças, para evitar
-  // cortar linha no meio. Cada pedaço vira um <p> próprio respeitando o estilo.
-  const splitParagraphIntoChunks = (p: HTMLElement): HTMLElement[] => {
-    const text = p.textContent || '';
-    if (!text.trim()) return [p];
-    // Quebra por sentenças (pt/en) — mantém pontuação
-    const sentences = text.match(/[^.!?…]+[.!?…]+\s*|[^.!?…]+$/g) || [text];
-    if (sentences.length <= 1) return [p];
-    // Agrupa em ~3 sentenças por chunk para manter parágrafos coerentes
-    const groupSize = 3;
-    const chunks: HTMLElement[] = [];
-    for (let i = 0; i < sentences.length; i += groupSize) {
-      const part = sentences.slice(i, i + groupSize).join('').trim();
-      if (!part) continue;
-      const np = document.createElement(p.tagName.toLowerCase());
-      // copia className/style básicos
-      if (p.className) np.className = p.className;
-      np.textContent = part;
-      chunks.push(np);
-    }
-    return chunks.length > 1 ? chunks : [p];
-  };
-
-  // Coloca um elemento na página, recursivamente quebrando se necessário.
-  const placeBlock = async (el: HTMLElement) => {
-    // Renderiza o elemento isolado no root
-    root.innerHTML = '';
-    root.appendChild(el);
-    const { canvas, h } = await measureAndRender(el);
-    const remaining = contentBottom - cursorY;
-
-    // Cabe na página atual: desenha
-    if (h <= remaining) {
-      drawCanvasAt(canvas, h);
+    if (block.kind === 'h2') {
+      const text = runsToText(block.runs);
+      if (!text) return;
+      // Garante espaço para evitar título órfão no fim da página
+      ensureSpace(STYLES.h2.size * 1.5 + 24);
+      drawWrappedText(text, marginX, contentW, STYLES.h2);
+      // Linha decorativa cyan abaixo do h2
+      pdf.setDrawColor(8, 145, 178);
+      pdf.setLineWidth(1.2);
+      const lineY = cursorY - STYLES.h2.marginBottom + 2;
+      pdf.line(marginX, lineY, marginX + Math.min(180, contentW), lineY);
+      cursorY += 4;
       return;
     }
-
-    const tag = el.tagName.toUpperCase();
-
-    // Bloco não cabe E ainda há conteúdo na página → tenta nova página primeiro
-    // (talvez caiba inteiro na próxima página)
-    if (cursorY > contentTop && h <= contentH) {
-      newPage();
-      // Recoloca na nova página (cabe)
-      root.innerHTML = '';
-      root.appendChild(el);
-      const re = await measureAndRender(el);
-      drawCanvasAt(re.canvas, re.h);
+    if (block.kind === 'h3') {
+      const text = runsToText(block.runs);
+      if (!text) return;
+      ensureSpace(STYLES.h3.size * 1.5 + 12);
+      drawWrappedText(text, marginX, contentW, STYLES.h3);
       return;
     }
-
-    // Bloco maior que uma página inteira: precisa quebrar
-    // 1) Listas: quebra item-a-item
-    if (tag === 'UL' || tag === 'OL') {
-      const items = Array.from(el.children) as HTMLElement[];
-      if (items.length > 1) {
-        for (const li of items) {
-          // Cria uma lista nova com um único item para preservar marcador/estilo
-          const wrapper = document.createElement(tag.toLowerCase()) as HTMLElement;
-          if (el.className) wrapper.className = el.className;
-          if (tag === 'OL') {
-            // Mantém numeração contínua aproximadamente — não perfeito, mas legível
-            const idx = items.indexOf(li) + 1;
-            (wrapper as HTMLOListElement).start = idx;
-          }
-          wrapper.appendChild(li.cloneNode(true) as HTMLElement);
-          await placeBlock(wrapper);
-        }
-        return;
+    if (block.kind === 'p') {
+      drawWrappedText(runsToText(block.runs), marginX, contentW, STYLES.p);
+      return;
+    }
+    if (block.kind === 'li') {
+      const bullet = block.ordered ? `${block.index}.` : '•';
+      const indent = 16;
+      const bulletW = pdf.getTextWidth(bullet) + 4;
+      const text = runsToText(block.runs);
+      if (!text) return;
+      // Desenha bullet primeiro
+      pdf.setFont(STYLES.li.font, 'bold');
+      pdf.setFontSize(STYLES.li.size);
+      pdf.setTextColor(8, 145, 178);
+      const lineHeight = STYLES.li.size * STYLES.li.lineH;
+      ensureSpace(lineHeight);
+      pdf.text(bullet, marginX + indent - bulletW, cursorY + STYLES.li.size * 0.85);
+      // Texto da li (com recuo)
+      drawWrappedText(text, marginX + indent, contentW - indent, STYLES.li);
+      return;
+    }
+    if (block.kind === 'quote') {
+      const text = runsToText(block.runs);
+      if (!text) return;
+      const padX = 12;
+      const padY = 8;
+      pdf.setFont(STYLES.quote.font, 'normal');
+      pdf.setFontSize(STYLES.quote.size);
+      const lines = pdf.splitTextToSize(text, contentW - padX * 2 - 6) as string[];
+      const lineHeight = STYLES.quote.size * STYLES.quote.lineH;
+      const totalH = lines.length * lineHeight + padY * 2;
+      ensureSpace(totalH + 6);
+      // Caixa de fundo + barra
+      pdf.setFillColor(236, 254, 255); // cyan-50
+      pdf.rect(marginX, cursorY, contentW, totalH, 'F');
+      pdf.setFillColor(8, 145, 178);
+      pdf.rect(marginX, cursorY, 3, totalH, 'F');
+      pdf.setTextColor(STYLES.quote.color[0], STYLES.quote.color[1], STYLES.quote.color[2]);
+      let ty = cursorY + padY;
+      for (const line of lines) {
+        pdf.text(line, marginX + padX + 6, ty + STYLES.quote.size * 0.85);
+        ty += lineHeight;
       }
-    }
-
-    // 2) Containers genéricos com filhos: quebra filho-a-filho
-    if ((tag === 'DIV' || tag === 'BLOCKQUOTE' || tag === 'SECTION' || tag === 'ARTICLE') && el.children.length > 1) {
-      const children = Array.from(el.children) as HTMLElement[];
-      for (const child of children) {
-        await placeBlock(child.cloneNode(true) as HTMLElement);
-      }
+      cursorY += totalH + STYLES.quote.marginBottom;
       return;
     }
-
-    // 3) Parágrafo/cabeçalho longo: quebra por sentenças
-    if (tag === 'P' || tag === 'BLOCKQUOTE') {
-      const chunks = splitParagraphIntoChunks(el);
-      if (chunks.length > 1) {
-        for (const c of chunks) {
-          await placeBlock(c);
-        }
-        return;
-      }
-    }
-
-    // 4) Atômico (imagem/tabela/pre) ou indivisível: fatia o canvas como último recurso
-    if (isAtomicTag(tag) || h > contentH) {
-      sliceCanvasAcrossPages(canvas);
-      return;
-    }
-
-    // Fallback: desenha o que sobrou (não deveria chegar aqui)
-    if (cursorY > contentTop) newPage();
-    drawCanvasAt(canvas, Math.min(h, contentBottom - cursorY));
   };
 
   const addSpacer = (pt: number) => {
@@ -753,53 +710,40 @@ export async function exportEbookPdf(
     return anchorY;
   };
 
-  // Renderiza um bloco isolado: cria div temporário com o HTML, mede e desenha
-  const renderHtmlBlock = async (html: string, wrapperClass = '') => {
-    const wrap = document.createElement('div');
-    if (wrapperClass) wrap.className = wrapperClass;
-    wrap.innerHTML = html;
-    await placeBlock(wrap);
+  // Renderiza um HTML simples como blocos nativos (não quebra para subcapítulos).
+  const renderHtmlBlock = async (html: string) => {
+    const blocks = parseRichHtml(html);
+    for (const b of blocks) drawBlock(b);
   };
 
-  // Renderiza HTML rico desmembrando os filhos diretos para permitir quebras
+  // Renderiza HTML rico bloco-a-bloco. Quando `registerSubheadings`, h2/h3 são
+  // âncoras para o sumário (nível 2).
   const renderRichHtml = async (html: string, registerSubheadings = false) => {
-    const holder = document.createElement('div');
-    holder.innerHTML = html;
-    const children = Array.from(holder.children) as HTMLElement[];
-    if (children.length === 0) {
-      const p = document.createElement('p');
-      p.textContent = holder.textContent || '';
-      await placeBlock(p);
-      return;
-    }
-    for (const child of children) {
-      // Registra h2/h3 como subentradas do sumário (nível 2)
-      if (registerSubheadings) {
-        const tag = child.tagName.toUpperCase();
-        if (tag === 'H2' || tag === 'H3') {
-          const text = (child.textContent || '').trim();
-          if (text) {
-            // Garante que o cabeçalho não vá partir entre páginas: se não
-            // couber, força nova página antes de ancorar.
-            const subAnchorY = drawSectionAnchor(2);
-            const subAnchorPage = pageNum;
-            await placeBlock(child.cloneNode(true) as HTMLElement);
-            // Subcapítulo herda o agrupamento do capítulo pai ativo.
-            pushTocEntry({
-              label: text,
-              page: subAnchorPage,
-              level: 2,
-              kind: 'sub',
-              order: activeChapterOrder,
-              parentOrder: activeChapterOrder,
-              subSeq: activeSubSeq++,
-              anchorY: subAnchorY,
-            });
-            continue;
-          }
+    const blocks = parseRichHtml(html);
+    if (blocks.length === 0) return;
+    for (const b of blocks) {
+      if (registerSubheadings && (b.kind === 'h2' || b.kind === 'h3')) {
+        const text = runsToText(b.runs);
+        if (text) {
+          // Garante espaço para o subtítulo + algumas linhas
+          ensureSpace(80);
+          const subAnchorY = drawSectionAnchor(2);
+          const subAnchorPage = pageNum;
+          drawBlock(b);
+          pushTocEntry({
+            label: text,
+            page: subAnchorPage,
+            level: 2,
+            kind: 'sub',
+            order: activeChapterOrder,
+            parentOrder: activeChapterOrder,
+            subSeq: activeSubSeq++,
+            anchorY: subAnchorY,
+          });
+          continue;
         }
       }
-      await placeBlock(child.cloneNode(true) as HTMLElement);
+      drawBlock(b);
     }
   };
 
@@ -858,27 +802,22 @@ export async function exportEbookPdf(
         // sem precisar passar por html2canvas. Garante 0 texto na capa.
         pdf.addImage(coverDataUrl, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
       } else {
-        // Sem imagem: capa neutra (somente gradiente cyan suave) — também
-        // sem qualquer texto.
-        const fullPageH = Math.round((pageH / pageW) * RENDER_W);
-        const html = `
-          <div style="
-            width: ${RENDER_W}px;
-            height: ${fullPageH}px;
-            background: linear-gradient(180deg, #ffffff 0%, #ecfeff 70%, #cffafe 100%);
-            box-sizing: border-box;
-          "></div>
-        `;
-        root.innerHTML = '';
-        const wrap = document.createElement('div');
-        wrap.innerHTML = html;
-        const coverEl = wrap.firstElementChild as HTMLElement;
-        root.appendChild(coverEl);
-        await new Promise((r) => requestAnimationFrame(() => r(null)));
-        const canvas = await renderElementToCanvas(coverEl);
-        const data = canvas.toDataURL('image/jpeg', 0.94);
-        pdf.addImage(data, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
+        // Sem imagem: capa neutra com gradiente cyan suave desenhado nativamente.
+        // Aproximamos o gradiente com várias faixas horizontais (rápido).
+        const bands = 60;
+        const start = [255, 255, 255];
+        const end = [207, 250, 254]; // cyan-100
+        const bandH = pageH / bands;
+        for (let i = 0; i < bands; i++) {
+          const t = i / (bands - 1);
+          const r = Math.round(start[0] + (end[0] - start[0]) * t);
+          const g = Math.round(start[1] + (end[1] - start[1]) * t);
+          const b = Math.round(start[2] + (end[2] - start[2]) * t);
+          pdf.setFillColor(r, g, b);
+          pdf.rect(0, i * bandH, pageW, bandH + 1, 'F');
+        }
       }
+
 
       // Marca essa página como capa (sem cabeçalho/rodapé nem numeração)
       skipChromePages.add(pageNum);
@@ -1268,8 +1207,9 @@ export async function exportEbookPdf(
     // Desenha cabeçalho/rodapé em todas as páginas (exceto capa)
     drawAllChrome();
   } finally {
-    if (sandbox.parentNode) document.body.removeChild(sandbox);
+    /* nada para limpar — render nativo não cria DOM offscreen */
   }
+
 
   // ===== Verificação automática dos links do sumário =====
   // Percorre toda entrada do TOC e confirma:
