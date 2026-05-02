@@ -171,6 +171,43 @@ export type TocOptions = {
    *                        para o link funcionar).
    */
   focusMode?: 'subtle' | 'focus' | 'off';
+  /**
+   * Estilo do destaque desenhado no alvo da seção (caixa de fundo, barra
+   * lateral, bullet e chip "alvo"). Cada propriedade é opcional — o que
+   * não for informado herda o default do `focusMode`.
+   *
+   * Cores podem ser passadas como:
+   *  - hex string `'#0891b2'` ou `'#0891b2cc'` (com alpha)
+   *  - tupla `[r, g, b]` (0–255)
+   */
+  highlightStyle?: {
+    /** Cor da caixa de fundo atrás do título */
+    backgroundColor?: string | [number, number, number];
+    /** Cor da borda da caixa (apenas em 'focus' por padrão) */
+    borderColor?: string | [number, number, number];
+    /** Mostrar/ocultar a borda da caixa */
+    showBorder?: boolean;
+    /** Cor da barra lateral à esquerda do título */
+    barColor?: string | [number, number, number];
+    /** Largura da barra lateral em pt (default: 3 / focus: 6) */
+    barWidth?: number;
+    /** Cor do(s) bullet(s) circular(es) na barra */
+    bulletColor?: string | [number, number, number];
+    /** Raio do bullet em pt (default: 2.6 / focus: 4) */
+    bulletRadius?: number;
+    /** Mostrar/ocultar o chip lateral ("↳ alvo do sumário"/"VOCÊ ESTÁ AQUI") */
+    showChip?: boolean;
+    /** Texto do chip — sobrescreve o default do `focusMode` */
+    chipText?: string;
+    /** Cor de fundo do chip */
+    chipBackgroundColor?: string | [number, number, number];
+    /** Cor do texto do chip */
+    chipTextColor?: string | [number, number, number];
+    /** Padding vertical extra do realce em pt */
+    paddingY?: number;
+    /** Padding horizontal extra (sangria nas margens) em pt */
+    paddingX?: number;
+  };
 };
 
 export async function exportEbookPdf(
