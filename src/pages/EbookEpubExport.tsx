@@ -38,6 +38,7 @@ export default function EbookEpubExport() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [generatingSynopsis, setGeneratingSynopsis] = useState(false);
   const [overlay, setOverlay] = useState<any>(null);
   const [ebook, setEbook] = useState<any>(null);
   const [chapters, setChapters] = useState<any[]>([]);
