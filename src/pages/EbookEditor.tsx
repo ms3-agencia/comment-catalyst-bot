@@ -141,14 +141,41 @@ export default function EbookEditor() {
 
   const doExport = async (fmt: 'pdf' | 'docx' | 'md' | 'txt') => {
     setExporting(true);
+    const formatLabel = fmt.toUpperCase();
+    setOverlay({
+      stage: 'section',
+      title: `Gerando arquivo ${formatLabel}`,
+      subtitle: 'Preparando conteúdo do eBook...',
+      progress: 5,
+    });
     try {
       const full = buildFull();
-      if (fmt === 'pdf') await exportEbookPdf(full);
-      else if (fmt === 'docx') await exportEbookDocx(full);
-      else if (fmt === 'md') await exportEbookMarkdown(full);
-      else await exportEbookTxt(full);
+      if (fmt === 'pdf') {
+        await exportEbookPdf(full, ({ current, total, label }) => {
+          setOverlay({
+            stage: 'section',
+            title: 'Gerando PDF',
+            subtitle: `Renderizando: ${label}`,
+            current,
+            total,
+            progress: Math.round((current / total) * 100),
+          });
+        });
+      } else if (fmt === 'docx') {
+        setOverlay({ stage: 'section', title: 'Gerando DOCX', subtitle: 'Montando documento Word...', progress: 60 });
+        await exportEbookDocx(full);
+      } else if (fmt === 'md') {
+        setOverlay({ stage: 'section', title: 'Gerando Markdown', subtitle: 'Convertendo conteúdo...', progress: 60 });
+        await exportEbookMarkdown(full);
+      } else {
+        setOverlay({ stage: 'section', title: 'Gerando TXT', subtitle: 'Convertendo conteúdo...', progress: 60 });
+        await exportEbookTxt(full);
+      }
+      setOverlay({ stage: 'section', title: 'Pronto!', subtitle: `Arquivo ${formatLabel} baixado.`, progress: 100 });
       toast({ title: 'Export pronto!' });
+      setTimeout(() => setOverlay(null), 600);
     } catch (e: any) {
+      setOverlay(null);
       toast({ title: 'Erro ao exportar', description: e.message, variant: 'destructive' });
     } finally { setExporting(false); }
   };
