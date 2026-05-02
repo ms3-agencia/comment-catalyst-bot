@@ -14,6 +14,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { Youtube, Plus, X, Loader2, MessageSquare, ThumbsUp, Sparkles, AlertTriangle } from 'lucide-react';
 import { AiProfileCard } from '@/components/AiProfileCard';
+import { ExtractionAnimation } from '@/components/ExtractionAnimation';
 import { useCredits } from '@/hooks/useCredits';
 import { usePlanUsage } from '@/hooks/usePlanUsage';
 
@@ -400,6 +401,11 @@ const Extract = () => {
         )}
 
         {!comments.length ? (
+          loading ? (
+            <Card className="glass p-6">
+              <ExtractionAnimation />
+            </Card>
+          ) : (
           <Card className="glass p-6">
             <form onSubmit={handleExtract} className="space-y-5">
               <div className="space-y-2">
@@ -431,6 +437,7 @@ const Extract = () => {
               </Button>
             </form>
           </Card>
+          )
         ) : (
           <div className="space-y-6">
             {/* Stats */}
