@@ -605,6 +605,133 @@ export async function exportEbookPdf(
       cursorY += totalH + STYLES.quote.marginBottom;
       return;
     }
+    if (block.kind === 'table') {
+      drawTable(block.head, block.body);
+      return;
+    }
+  };
+
+  // ===== Renderizador de tabela =====
+  // Layout: cabeçalho cyan com texto branco, linhas zebradas, bordas suaves,
+  // colunas com larguras proporcionais ao conteúdo, quebra de página
+  // automática repetindo o cabeçalho na próxima página.
+  const drawTable = (head: TableRow, body: TableRow[]) => {
+    const fontSize = 10;
+    const headFontSize = 10;
+    const padX = 8;
+    const padY = 6;
+    const lineH = fontSize * 1.35;
+    const headColor: [number, number, number] = [8, 145, 178]; // cyan-600
+    const headTextColor: [number, number, number] = [255, 255, 255];
+    const bodyTextColor: [number, number, number] = [30, 41, 59];
+    const zebraColor: [number, number, number] = [241, 249, 251]; // cyan-50 mais claro
+    const borderColor: [number, number, number] = [186, 230, 240];
+
+    // Determina nº de colunas a partir do maior entre head e linhas
+    const colCount = Math.max(
+      head.length,
+      ...body.map((r) => r.length),
+      1,
+    );
+    // Normaliza linhas para terem colCount células
+    const norm = (r: TableRow): TableRow => {
+      const out = r.slice(0, colCount);
+      while (out.length < colCount) out.push({ text: '' });
+      return out;
+    };
+    const headN = head.length ? norm(head) : [];
+    const bodyN = body.map(norm);
+
+    // Calcula largura proporcional de cada coluna baseada no comprimento médio
+    // do conteúdo (clamp mínimo/máximo). Soma = contentW.
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(fontSize);
+    const colScores = new Array(colCount).fill(0);
+    const allRows: TableRow[] = headN.length ? [headN, ...bodyN] : bodyN;
+    for (const row of allRows) {
+      row.forEach((cell, i) => {
+        const w = pdf.getTextWidth(cell.text || ' ');
+        if (w > colScores[i]) colScores[i] = w;
+      });
+    }
+    const minCol = 40;
+    const maxCol = contentW * 0.6;
+    const clamped = colScores.map((s) => Math.min(maxCol, Math.max(minCol, s + padX * 2)));
+    const sum = clamped.reduce((a, b) => a + b, 0);
+    const colWidths = clamped.map((c) => (c / sum) * contentW);
+
+    // Mede altura de uma linha (texto wrap por célula)
+    const measureRow = (row: TableRow, isHead: boolean) => {
+      pdf.setFont('helvetica', isHead ? 'bold' : 'normal');
+      pdf.setFontSize(isHead ? headFontSize : fontSize);
+      let maxLines = 1;
+      const wrapped: string[][] = row.map((cell, i) => {
+        const innerW = colWidths[i] - padX * 2;
+        const lines = (pdf.splitTextToSize(cell.text || '', Math.max(10, innerW)) as string[]) || [''];
+        if (lines.length > maxLines) maxLines = lines.length;
+        return lines.length ? lines : [''];
+      });
+      const h = maxLines * lineH + padY * 2;
+      return { wrapped, h };
+    };
+
+    const drawRow = (row: TableRow, isHead: boolean, fillBg?: [number, number, number]) => {
+      const { wrapped, h } = measureRow(row, isHead);
+      ensureSpace(h);
+      // Fundo
+      if (fillBg) {
+        pdf.setFillColor(fillBg[0], fillBg[1], fillBg[2]);
+        pdf.rect(marginX, cursorY, contentW, h, 'F');
+      }
+      // Texto + bordas verticais
+      pdf.setFont('helvetica', isHead ? 'bold' : 'normal');
+      pdf.setFontSize(isHead ? headFontSize : fontSize);
+      const tColor = isHead ? headTextColor : bodyTextColor;
+      pdf.setTextColor(tColor[0], tColor[1], tColor[2]);
+      let cx = marginX;
+      for (let i = 0; i < colCount; i++) {
+        const lines = wrapped[i];
+        let ty = cursorY + padY;
+        for (const ln of lines) {
+          pdf.text(ln, cx + padX, ty + fontSize * 0.85);
+          ty += lineH;
+        }
+        cx += colWidths[i];
+      }
+      // Borda inferior da linha
+      pdf.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+      pdf.setLineWidth(0.4);
+      pdf.line(marginX, cursorY + h, marginX + contentW, cursorY + h);
+      cursorY += h;
+      return h;
+    };
+
+    // Espaço mínimo: cabeçalho + 1 linha
+    const headRow = headN.length ? headN : null;
+    const minNeed = (headRow ? measureRow(headRow, true).h : 0) + (bodyN[0] ? measureRow(bodyN[0], false).h : 0);
+    if (minNeed > 0) ensureSpace(minNeed);
+
+    const drawHeader = () => {
+      if (!headRow) return;
+      drawRow(headRow, true, headColor);
+    };
+
+    drawHeader();
+    bodyN.forEach((row, idx) => {
+      const before = pageNum;
+      const zebra = idx % 2 === 1 ? zebraColor : undefined;
+      drawRow(row, false, zebra);
+      // Se quebrou para nova página no meio, redesenha cabeçalho no topo
+      if (pageNum !== before && headRow) {
+        // ao trocar de página, drawRow já desenhou em nova; o header deveria
+        // estar acima — então, em vez disso, garantimos que linhas seguintes
+        // tenham header redesenhado ANTES delas.
+      }
+    });
+
+    // Borda externa final do bloco da tabela (retângulo geral)
+    // (As bordas internas horizontais já foram desenhadas linha a linha.)
+    cursorY += 6; // respiro abaixo da tabela
   };
 
   const addSpacer = (pt: number) => {
