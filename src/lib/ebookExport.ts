@@ -210,6 +210,37 @@ export type TocOptions = {
   };
 };
 
+/**
+ * Resultado da verificação automática dos links do sumário.
+ *  - `ok`: true se todas as entradas apontam para páginas/coordenadas válidas.
+ *  - `total`: total de entradas verificadas.
+ *  - `valid`: quantas passaram em todos os checks.
+ *  - `issues`: lista detalhada de problemas encontrados (uma por entrada).
+ */
+export type TocVerificationIssue = {
+  index: number;
+  label: string;
+  level: 1 | 2;
+  page: number;
+  top?: number;
+  reason:
+    | 'page-out-of-range'
+    | 'top-out-of-range'
+    | 'missing-anchor'
+    | 'duplicate-target'
+    | 'page-points-to-toc'
+    | 'page-points-to-cover';
+  message: string;
+};
+
+export type TocVerificationReport = {
+  ok: boolean;
+  total: number;
+  valid: number;
+  totalPages: number;
+  issues: TocVerificationIssue[];
+};
+
 export async function exportEbookPdf(
   ebook: EbookFull,
   onProgress?: (info: { current: number; total: number; label: string }) => void,
