@@ -489,6 +489,33 @@ export async function exportEbookPdf(
     if (cursorY > contentTop + 0.5) newPage();
   };
 
+  /**
+   * Desenha um marcador visual de "destaque" no início de uma seção: uma
+   * barra vertical cyan + bullet, à esquerda da margem. Funciona como alvo
+   * de navegação do sumário — quando o leitor pula até a seção, o usuário
+   * vê imediatamente o realce confirmando que a navegação funcionou.
+   *
+   * Retorna a coordenada Y do topo do destaque (em pt), para usar como
+   * `top` no `pdf.link`. Não consome espaço vertical no fluxo: o marcador
+   * é desenhado na margem esquerda, fora da coluna de texto.
+   */
+  const drawSectionAnchor = (level: 1 | 2 = 1): number => {
+    const anchorY = cursorY;
+    // Altura aproximada do bloco do título da seção (h2 ≈ 28pt + respiro)
+    const barH = level === 2 ? 18 : 28;
+    const barW = level === 2 ? 2 : 3;
+    const barX = marginX - 10; // dentro da margem, à esquerda do texto
+    // Barra vertical cyan
+    pdf.setFillColor(8, 145, 178);
+    pdf.rect(barX, anchorY + 2, barW, barH, 'F');
+    // Bullet circular cyan no topo
+    if (level === 1) {
+      pdf.setFillColor(34, 211, 238); // cyan-400 — mais luminoso
+      pdf.circle(barX + barW / 2, anchorY, 2.6, 'F');
+    }
+    return anchorY;
+  };
+
   // Renderiza um bloco isolado: cria div temporário com o HTML, mede e desenha
   const renderHtmlBlock = async (html: string, wrapperClass = '') => {
     const wrap = document.createElement('div');
@@ -515,16 +542,21 @@ export async function exportEbookPdf(
         if (tag === 'H2' || tag === 'H3') {
           const text = (child.textContent || '').trim();
           if (text) {
+            // Garante que o cabeçalho não vá partir entre páginas: se não
+            // couber, força nova página antes de ancorar.
+            const subAnchorY = drawSectionAnchor(2);
+            const subAnchorPage = pageNum;
             await placeBlock(child.cloneNode(true) as HTMLElement);
             // Subcapítulo herda o agrupamento do capítulo pai ativo.
             pushTocEntry({
               label: text,
-              page: pageNum,
+              page: subAnchorPage,
               level: 2,
               kind: 'sub',
               order: activeChapterOrder,
               parentOrder: activeChapterOrder,
               subSeq: activeSubSeq++,
+              anchorY: subAnchorY,
             });
             continue;
           }
@@ -555,6 +587,9 @@ export async function exportEbookPdf(
     parentOrder: number;
     subSeq: number;
     seq: number;
+    /** Coordenada Y (pt) onde o destaque visual da seção foi desenhado.
+     *  Permite que o link do sumário role o leitor exatamente até o badge. */
+    anchorY?: number;
   };
   const toc: TocEntry[] = [];
   let tocSeqCounter = 0;
@@ -684,6 +719,7 @@ export async function exportEbookPdf(
         activeChapterKind = 'intro';
         activeChapterOrder = 0;
         activeSubSeq = 0;
+        const anchorY = drawSectionAnchor(1);
         pushTocEntry({
           label: 'Introdução',
           page: pageNum,
@@ -692,6 +728,7 @@ export async function exportEbookPdf(
           order: 0,
           parentOrder: 0,
           subSeq: 0,
+          anchorY,
         });
         await renderHtmlBlock('<h2>Introdução</h2>');
         await renderRichHtml(ebook.introduction!, true);
@@ -708,6 +745,7 @@ export async function exportEbookPdf(
         activeChapterKind = 'chapter';
         activeChapterOrder = c.chapter_number;
         activeSubSeq = 0;
+        const anchorY = drawSectionAnchor(1);
         pushTocEntry({
           label: `Capítulo ${c.chapter_number} — ${c.title}`,
           page: pageNum,
@@ -716,6 +754,7 @@ export async function exportEbookPdf(
           order: c.chapter_number,
           parentOrder: c.chapter_number,
           subSeq: 0,
+          anchorY,
         });
         await renderHtmlBlock(`<h2>Capítulo ${c.chapter_number} — ${escapeHtml(c.title)}</h2>`);
         await renderRichHtml(c.content_html || '<p><em>Capítulo ainda não gerado.</em></p>', true);
@@ -733,6 +772,7 @@ export async function exportEbookPdf(
         // Ordem alta para garantir que conclusão fique sempre por último.
         activeChapterOrder = Number.MAX_SAFE_INTEGER;
         activeSubSeq = 0;
+        const anchorY = drawSectionAnchor(1);
         pushTocEntry({
           label: 'Conclusão',
           page: pageNum,
@@ -741,6 +781,7 @@ export async function exportEbookPdf(
           order: Number.MAX_SAFE_INTEGER,
           parentOrder: Number.MAX_SAFE_INTEGER,
           subSeq: 0,
+          anchorY,
         });
         await renderHtmlBlock('<h2>Conclusão</h2>');
         await renderRichHtml(ebook.conclusion!, true);
@@ -1004,7 +1045,15 @@ export async function exportEbookPdf(
         }
 
         // ---- Link clicável cobrindo a linha inteira ----
-        pdf.link(marginX, y, contentW, lineH, { pageNumber: entry.page });
+        // Link clicável: aponta para a página E para a coordenada Y do
+        // destaque (badge cyan), garantindo que o leitor role exatamente
+        // até o marcador visual quando o usuário clica no item.
+        const linkTarget: { pageNumber: number; top?: number } = { pageNumber: entry.page };
+        if (typeof entry.anchorY === 'number') {
+          // pequena folga acima do destaque para o usuário enxergá-lo bem
+          linkTarget.top = Math.max(0, entry.anchorY - 12);
+        }
+        pdf.link(marginX, y, contentW, lineH, linkTarget);
 
         y += lineH;
         prevKind = entry.kind;
