@@ -651,7 +651,18 @@ export async function exportEbookPdf(
       tocLabel: 'Introdução',
       run: async () => {
         startNewPageSection();
-        toc.push({ label: 'Introdução', page: pageNum, level: 1 });
+        activeChapterKind = 'intro';
+        activeChapterOrder = 0;
+        activeSubSeq = 0;
+        pushTocEntry({
+          label: 'Introdução',
+          page: pageNum,
+          level: 1,
+          kind: 'intro',
+          order: 0,
+          parentOrder: 0,
+          subSeq: 0,
+        });
         await renderHtmlBlock('<h2>Introdução</h2>');
         await renderRichHtml(ebook.introduction!, true);
       },
@@ -664,7 +675,18 @@ export async function exportEbookPdf(
       tocLabel: `Capítulo ${c.chapter_number} — ${c.title}`,
       run: async () => {
         startNewPageSection();
-        toc.push({ label: `Capítulo ${c.chapter_number} — ${c.title}`, page: pageNum, level: 1 });
+        activeChapterKind = 'chapter';
+        activeChapterOrder = c.chapter_number;
+        activeSubSeq = 0;
+        pushTocEntry({
+          label: `Capítulo ${c.chapter_number} — ${c.title}`,
+          page: pageNum,
+          level: 1,
+          kind: 'chapter',
+          order: c.chapter_number,
+          parentOrder: c.chapter_number,
+          subSeq: 0,
+        });
         await renderHtmlBlock(`<h2>Capítulo ${c.chapter_number} — ${escapeHtml(c.title)}</h2>`);
         await renderRichHtml(c.content_html || '<p><em>Capítulo ainda não gerado.</em></p>', true);
       },
@@ -677,7 +699,19 @@ export async function exportEbookPdf(
       tocLabel: 'Conclusão',
       run: async () => {
         startNewPageSection();
-        toc.push({ label: 'Conclusão', page: pageNum, level: 1 });
+        activeChapterKind = 'conclusion';
+        // Ordem alta para garantir que conclusão fique sempre por último.
+        activeChapterOrder = Number.MAX_SAFE_INTEGER;
+        activeSubSeq = 0;
+        pushTocEntry({
+          label: 'Conclusão',
+          page: pageNum,
+          level: 1,
+          kind: 'conclusion',
+          order: Number.MAX_SAFE_INTEGER,
+          parentOrder: Number.MAX_SAFE_INTEGER,
+          subSeq: 0,
+        });
         await renderHtmlBlock('<h2>Conclusão</h2>');
         await renderRichHtml(ebook.conclusion!, true);
       },
