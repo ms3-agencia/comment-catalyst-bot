@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
     const aiJson = await aiResp.json();
     const dataUrl: string | undefined = aiJson?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     if (!dataUrl) {
-      await admin.rpc("admin_add_credits", { _user_id: user.id, _amount: creditsCost, _description: "Reembolso: imagem não retornada" } as any).catch(() => {});
+      await refund("Reembolso: imagem não retornada");
       return new Response(JSON.stringify({ error: "no_image" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
