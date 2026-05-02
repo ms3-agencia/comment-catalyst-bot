@@ -776,6 +776,11 @@ const GenerateContent = () => {
                 );
               })()}
             </Card>
+            {generating && (
+              <Card className="p-4">
+                <GenerationAnimation variant="content" />
+              </Card>
+            )}
           </div>
         )}
 
