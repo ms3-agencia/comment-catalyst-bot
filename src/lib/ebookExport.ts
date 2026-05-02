@@ -426,35 +426,25 @@ export async function exportEbookPdf(
       backgroundColor: '#ffffff',
       logging: false,
       windowWidth: RENDER_W,
-      // Garante legibilidade: remove estilos inline de cor/fundo do clone
-      // (oriundos do editor rich-text ou de temas escuros) antes da captura.
+      // Garante legibilidade: remove apenas declarações inline de cor/fundo
+      // que poderiam herdar o tema escuro do app. Envolvido em try/catch
+      // para nunca quebrar a captura.
       onclone: (clonedDoc) => {
-        const root = clonedDoc.querySelector('.ebk');
-        if (!root) return;
-        root.querySelectorAll<HTMLElement>('*').forEach((node) => {
-          const style = node.getAttribute('style');
-          if (!style) return;
-          // Remove apenas declarações de cor/fundo, preserva o resto
-          const cleaned = style
-            .split(';')
-            .map((s) => s.trim())
-            .filter((s) => {
-              if (!s) return false;
-              const prop = s.split(':')[0]?.trim().toLowerCase() ?? '';
-              return !(
-                prop === 'color' ||
-                prop === 'background' ||
-                prop === 'background-color' ||
-                prop === 'background-image' ||
-                prop === 'filter' ||
-                prop === 'opacity' ||
-                prop === 'mix-blend-mode'
-              );
-            })
-            .join('; ');
-          if (cleaned) node.setAttribute('style', cleaned);
-          else node.removeAttribute('style');
-        });
+        try {
+          const targets = clonedDoc.querySelectorAll<HTMLElement>('.ebk, .ebk *');
+          targets.forEach((node) => {
+            const style = node.getAttribute('style');
+            if (!style) return;
+            const cleaned = style.replace(
+              /(?:^|;)\s*(?:color|background|background-color|background-image|filter|opacity|mix-blend-mode)\s*:[^;]*/gi,
+              '',
+            ).replace(/^\s*;+/, '').trim();
+            if (cleaned) node.setAttribute('style', cleaned);
+            else node.removeAttribute('style');
+          });
+        } catch {
+          /* noop — não bloquear a renderização por causa do reset visual */
+        }
       },
     });
   };
