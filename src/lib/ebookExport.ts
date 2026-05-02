@@ -647,7 +647,7 @@ export async function exportEbookPdf(
         startNewPageSection();
         toc.push({ label: 'Conclusão', page: pageNum, level: 1 });
         await renderHtmlBlock('<h2>Conclusão</h2>');
-        await renderRichHtml(ebook.conclusion!);
+        await renderRichHtml(ebook.conclusion!, true);
       },
     });
   }
