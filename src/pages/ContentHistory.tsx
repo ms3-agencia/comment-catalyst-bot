@@ -623,6 +623,14 @@ export default function ContentHistory() {
                   )}
                 </Button>
 
+                {genLoading && (
+                  <GenerationAnimation
+                    variant="image"
+                    title={`Gerando imagem ${genResults.length + 1} de ${genQuantity}`}
+                    subtitle="A IA está compondo sua imagem com base no conteúdo. Aguarde alguns instantes…"
+                  />
+                )}
+
                 {genResults.length > 0 && (
                   <div className="space-y-2 pt-2">
                     <p className="text-xs font-medium text-muted-foreground">Imagens geradas:</p>
