@@ -101,7 +101,7 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
     setLoading(true);
     const { data: u } = await supabase.auth.getUser();
     setCurrentUserId(u.user?.id || null);
-    let query = supabase.from('ebook_configs').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('ebook_configs').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: false });
     if (mode === 'user' && u.user) {
       // Em modo user, lista os templates dele + globais (admins). RLS permite ler ambos.
       query = query;
