@@ -728,82 +728,151 @@ export async function exportEbookPdf(
     });
   }
 
-  // Desenha o TOC na página reservada com links clicáveis
+  // Desenha o TOC na página reservada com links clicáveis.
+  // Estratégia:
+  //  1. Ordena as entradas em ordem canônica: introdução, capítulos por
+  //     `chapter_number`, conclusão. Subcapítulos seguem o pai.
+  //  2. Pré-calcula quantas páginas o sumário precisa medindo o layout.
+  //  3. Insere as páginas extras de TOC ANTES de desenhar e desloca todos os
+  //     `entry.page` posteriores na mesma quantidade — assim os números e os
+  //     links permanecem corretos mesmo com inserções.
   const drawToc = () => {
     if (!tocPageNum || toc.length === 0) return;
-    pdf.setPage(tocPageNum);
 
-    // Título "Sumário"
-    let y = contentTop;
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(20);
-    pdf.setTextColor(8, 145, 178); // cyan #0891b2
-    pdf.text('Sumário', marginX, y + 14);
-    // Linha divisória
-    pdf.setDrawColor(8, 145, 178);
-    pdf.setLineWidth(1.2);
-    pdf.line(marginX, y + 22, pageW - marginX, y + 22);
-    y += 44;
+    // ---- 1) Ordenação canônica ----
+    const kindOrder: Record<TocKind, number> = {
+      intro: 0,
+      chapter: 1,
+      sub: 1, // mesmo grupo do capítulo pai (desempate via parentOrder/subSeq)
+      conclusion: 2,
+    };
+    const sortedToc = [...toc].sort((a, b) => {
+      const ka = kindOrder[a.kind];
+      const kb = kindOrder[b.kind];
+      if (ka !== kb) return ka - kb;
+      // Dentro do bloco "chapters": ordena pelo capítulo pai
+      if (a.parentOrder !== b.parentOrder) return a.parentOrder - b.parentOrder;
+      // Mesmo capítulo: o nível 1 (capítulo) vem antes dos seus subs
+      if (a.level !== b.level) return a.level - b.level;
+      // Subs dentro do mesmo capítulo: ordem em que apareceram
+      if (a.subSeq !== b.subSeq) return a.subSeq - b.subSeq;
+      return a.seq - b.seq;
+    });
 
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(11);
-    pdf.setTextColor(30, 41, 59);
-
+    // ---- 2) Layout / paginação do sumário ----
     const lineH1 = 22;
     const lineH2 = 18;
     const indent = 22;
+    const headerSpace = 44; // espaço do título "Sumário" + linha divisória
 
-    for (const entry of toc) {
+    // Quebra entradas em "páginas" do TOC para descobrir quantas páginas
+    // serão necessárias antes de inserir.
+    const tocPages: TocEntry[][] = [[]];
+    let yProbe = contentTop + headerSpace;
+    for (const entry of sortedToc) {
       const lineH = entry.level === 2 ? lineH2 : lineH1;
-      if (y + lineH > contentBottom) {
-        // Overflow: insere nova página de TOC e continua
-        pdf.insertPage(tocPageNum + 1);
-        pdf.setPage(tocPageNum + 1);
-        tocPageNum = tocPageNum + 1;
-        y = contentTop;
+      if (yProbe + lineH > contentBottom) {
+        tocPages.push([]);
+        yProbe = contentTop + headerSpace;
       }
-
-      const xStart = marginX + (entry.level === 2 ? indent : 0);
-      const fontSize = entry.level === 2 ? 10 : 11;
-      const labelMaxW = (pageW - marginX) - xStart - 60;
-      const labelText = pdf.splitTextToSize(entry.label, labelMaxW)[0];
-
-      // Label
-      if (entry.level === 1) {
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(15, 23, 42); // slate-900
-      } else {
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(71, 85, 105); // slate-600
-      }
-      pdf.setFontSize(fontSize);
-      pdf.text(labelText, xStart, y);
-
-      // Número da página alinhado à direita
-      pdf.setFont('helvetica', entry.level === 1 ? 'bold' : 'normal');
-      pdf.setTextColor(8, 145, 178);
-      const pageStr = String(entry.page);
-      pdf.text(pageStr, pageW - marginX, y, { align: 'right' });
-
-      // Pontilhado
-      const labelW = pdf.getTextWidth(labelText);
-      const pageW2 = pdf.getTextWidth(pageStr);
-      const dotsStartX = xStart + labelW + 6;
-      const dotsEndX = pageW - marginX - pageW2 - 6;
-      if (dotsEndX > dotsStartX) {
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(entry.level === 2 ? 203 : 148, entry.level === 2 ? 213 : 163, entry.level === 2 ? 225 : 184);
-        pdf.setFontSize(9);
-        const dots = '.'.repeat(Math.max(3, Math.floor((dotsEndX - dotsStartX) / 3)));
-        pdf.text(dots, dotsStartX, y);
-        pdf.setFontSize(fontSize);
-      }
-
-      // Link clicável cobrindo a linha inteira
-      pdf.link(marginX, y - lineH + 6, contentW, lineH, { pageNumber: entry.page });
-
-      y += lineH;
+      tocPages[tocPages.length - 1].push(entry);
+      yProbe += lineH;
     }
+
+    // ---- 3) Insere páginas extras e desloca números de página ----
+    const extraPages = tocPages.length - 1;
+    if (extraPages > 0) {
+      // Insere páginas logo após a página reservada do TOC.
+      for (let i = 0; i < extraPages; i++) {
+        pdf.insertPage(tocPageNum + 1 + i);
+      }
+      // Reabsorve o offset:
+      //  - Conteúdo registrado em páginas > tocPageNum precisa de +extraPages.
+      //  - skipChromePages (capa) que estejam antes de tocPageNum não muda;
+      //    se houver alguma após (não é o caso atual, mas defensivo), também
+      //    é deslocada.
+      for (const e of toc) {
+        if (e.page > tocPageNum) e.page += extraPages;
+      }
+      const shiftedSkip = new Set<number>();
+      for (const p of skipChromePages) {
+        shiftedSkip.add(p > tocPageNum ? p + extraPages : p);
+      }
+      skipChromePages.clear();
+      for (const p of shiftedSkip) skipChromePages.add(p);
+    }
+
+    // ---- 4) Desenha cada página do sumário ----
+    for (let pageIdx = 0; pageIdx < tocPages.length; pageIdx++) {
+      const targetPage = tocPageNum + pageIdx;
+      pdf.setPage(targetPage);
+
+      // Cabeçalho "Sumário" — repetido em cada página de TOC
+      let y = contentTop;
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(20);
+      pdf.setTextColor(8, 145, 178); // cyan
+      pdf.text(pageIdx === 0 ? 'Sumário' : 'Sumário (continuação)', marginX, y + 14);
+      pdf.setDrawColor(8, 145, 178);
+      pdf.setLineWidth(1.2);
+      pdf.line(marginX, y + 22, pageW - marginX, y + 22);
+      y += headerSpace;
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(11);
+      pdf.setTextColor(30, 41, 59);
+
+      for (const entry of tocPages[pageIdx]) {
+        const lineH = entry.level === 2 ? lineH2 : lineH1;
+        const xStart = marginX + (entry.level === 2 ? indent : 0);
+        const fontSize = entry.level === 2 ? 10 : 11;
+        const labelMaxW = (pageW - marginX) - xStart - 60;
+        const labelText = pdf.splitTextToSize(entry.label, labelMaxW)[0];
+
+        // Label
+        if (entry.level === 1) {
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(15, 23, 42); // slate-900
+        } else {
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(71, 85, 105); // slate-600
+        }
+        pdf.setFontSize(fontSize);
+        pdf.text(labelText, xStart, y);
+
+        // Número da página
+        pdf.setFont('helvetica', entry.level === 1 ? 'bold' : 'normal');
+        pdf.setTextColor(8, 145, 178);
+        const pageStr = String(entry.page);
+        pdf.text(pageStr, pageW - marginX, y, { align: 'right' });
+
+        // Pontilhado
+        const labelW = pdf.getTextWidth(labelText);
+        const pageW2 = pdf.getTextWidth(pageStr);
+        const dotsStartX = xStart + labelW + 6;
+        const dotsEndX = pageW - marginX - pageW2 - 6;
+        if (dotsEndX > dotsStartX) {
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(
+            entry.level === 2 ? 203 : 148,
+            entry.level === 2 ? 213 : 163,
+            entry.level === 2 ? 225 : 184,
+          );
+          pdf.setFontSize(9);
+          const dots = '.'.repeat(Math.max(3, Math.floor((dotsEndX - dotsStartX) / 3)));
+          pdf.text(dots, dotsStartX, y);
+          pdf.setFontSize(fontSize);
+        }
+
+        // Link clicável
+        pdf.link(marginX, y - lineH + 6, contentW, lineH, { pageNumber: entry.page });
+
+        y += lineH;
+      }
+    }
+
+    // Atualiza tocPageNum para a última página efetivamente usada pelo TOC
+    tocPageNum = tocPageNum + (tocPages.length - 1);
 
     // Restaura cor padrão
     pdf.setFont('helvetica', 'normal');
