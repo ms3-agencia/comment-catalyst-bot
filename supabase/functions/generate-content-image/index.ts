@@ -192,39 +192,53 @@ Deno.serve(async (req) => {
 
     if (!aiResp.ok) {
       await refundCredits();
-      const errText = await aiResp.text();
+      const errText = await aiResp.text().catch(() => "");
       console.error("AI gateway error:", aiResp.status, errText);
       if (aiResp.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições atingido. Tente em alguns instantes." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(JSON.stringify({
+          error: "Muitas requisições em pouco tempo. Aguarde alguns segundos e tente novamente.",
+          code: "rate_limited",
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       if (aiResp.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos do workspace de IA esgotados.", insufficient_credits: true }), {
-          status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(JSON.stringify({
+          error: "Os créditos do provedor de IA acabaram. Avise o administrador para recarregar.",
+          code: "ai_credits_exhausted",
+          insufficient_credits: true,
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      return new Response(JSON.stringify({ error: "Falha ao gerar imagem" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      if (aiResp.status === 400 || aiResp.status === 422) {
+        return new Response(JSON.stringify({
+          error: "O prompt foi rejeitado pela IA (possível filtro de conteúdo). Tente reformular a ideia visual.",
+          code: "prompt_rejected",
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({
+        error: "Não foi possível gerar a imagem agora. Tente novamente em instantes.",
+        code: "ai_gateway_error",
+        upstream_status: aiResp.status,
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const aiData = await aiResp.json();
     const imageDataUrl: string | undefined = aiData?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     if (!imageDataUrl || !imageDataUrl.startsWith("data:image/")) {
       await refundCredits();
-      return new Response(JSON.stringify({ error: "Imagem não retornada pela IA" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.error("No image returned. AI response:", JSON.stringify(aiData).slice(0, 500));
+      return new Response(JSON.stringify({
+        error: "A IA não retornou imagem (pode ter sido bloqueada por filtro de segurança). Reformule e tente novamente — os créditos foram devolvidos.",
+        code: "no_image",
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Decode base64
     const match = imageDataUrl.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
     if (!match) {
       await refundCredits();
-      return new Response(JSON.stringify({ error: "Formato de imagem inválido" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({
+        error: "A IA retornou um formato de imagem inválido. Tente novamente — os créditos foram devolvidos.",
+        code: "invalid_image_format",
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const mime = match[1];
     const ext = mime.split("/")[1].replace("+xml", "");
@@ -238,9 +252,10 @@ Deno.serve(async (req) => {
     if (upErr) {
       await refundCredits();
       console.error("Upload error:", upErr);
-      return new Response(JSON.stringify({ error: "Falha ao salvar imagem" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({
+        error: "Não foi possível salvar a imagem gerada. Tente novamente — os créditos foram devolvidos.",
+        code: "storage_upload_failed",
+      }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const { data: pub } = admin.storage.from("content-images").getPublicUrl(filePath);
