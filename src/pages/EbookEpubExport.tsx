@@ -358,16 +358,33 @@ export default function EbookEpubExport() {
         <Card className="p-5 space-y-4">
           <h2 className="font-heading text-lg font-bold">Descrição e marketing</h2>
           <div className="space-y-2">
-            <Label>Sinopse / descrição (será exibida na página da Amazon)</Label>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <Label>Sinopse / descrição (será exibida na página da Amazon)</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={generateSynopsisAI}
+                disabled={generatingSynopsis}
+                className="gap-1"
+              >
+                {generatingSynopsis ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Wand2 className="h-4 w-4 text-primary" />
+                )}
+                {generatingSynopsis ? 'Gerando...' : 'Gerar com IA'}
+              </Button>
+            </div>
             <Textarea
               value={meta.description || ''}
               onChange={(e) => setMeta({ ...meta, description: e.target.value })}
-              placeholder="Em até 4000 caracteres, descreva o que o leitor vai ganhar com este ebook."
-              rows={5}
+              placeholder="Em até 4000 caracteres, descreva o que o leitor vai ganhar com este ebook. Ou clique em 'Gerar com IA' para criar uma sinopse persuasiva baseada no conteúdo."
+              rows={6}
               maxLength={4000}
             />
             <p className="text-xs text-muted-foreground">
-              {(meta.description || '').length} / 4000 caracteres
+              {(meta.description || '').length} / 4000 caracteres · A IA gera com base no conteúdo dos capítulos, com tom persuasivo e gatilhos mentais para despertar o desejo de compra.
             </p>
           </div>
           <div className="grid md:grid-cols-2 gap-4">
