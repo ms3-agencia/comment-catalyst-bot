@@ -802,27 +802,22 @@ export async function exportEbookPdf(
         // sem precisar passar por html2canvas. Garante 0 texto na capa.
         pdf.addImage(coverDataUrl, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
       } else {
-        // Sem imagem: capa neutra (somente gradiente cyan suave) — também
-        // sem qualquer texto.
-        const fullPageH = Math.round((pageH / pageW) * RENDER_W);
-        const html = `
-          <div style="
-            width: ${RENDER_W}px;
-            height: ${fullPageH}px;
-            background: linear-gradient(180deg, #ffffff 0%, #ecfeff 70%, #cffafe 100%);
-            box-sizing: border-box;
-          "></div>
-        `;
-        root.innerHTML = '';
-        const wrap = document.createElement('div');
-        wrap.innerHTML = html;
-        const coverEl = wrap.firstElementChild as HTMLElement;
-        root.appendChild(coverEl);
-        await new Promise((r) => requestAnimationFrame(() => r(null)));
-        const canvas = await renderElementToCanvas(coverEl);
-        const data = canvas.toDataURL('image/jpeg', 0.94);
-        pdf.addImage(data, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
+        // Sem imagem: capa neutra com gradiente cyan suave desenhado nativamente.
+        // Aproximamos o gradiente com várias faixas horizontais (rápido).
+        const bands = 60;
+        const start = [255, 255, 255];
+        const end = [207, 250, 254]; // cyan-100
+        const bandH = pageH / bands;
+        for (let i = 0; i < bands; i++) {
+          const t = i / (bands - 1);
+          const r = Math.round(start[0] + (end[0] - start[0]) * t);
+          const g = Math.round(start[1] + (end[1] - start[1]) * t);
+          const b = Math.round(start[2] + (end[2] - start[2]) * t);
+          pdf.setFillColor(r, g, b);
+          pdf.rect(0, i * bandH, pageW, bandH + 1, 'F');
+        }
       }
+
 
       // Marca essa página como capa (sem cabeçalho/rodapé nem numeração)
       skipChromePages.add(pageNum);
