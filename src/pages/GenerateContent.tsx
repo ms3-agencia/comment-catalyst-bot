@@ -323,17 +323,25 @@ const GenerateContent = () => {
               slide_index: i,
             },
           });
-          if (error) throw error;
-          if ((data as any)?.error) {
-            if ((data as any).insufficient_credits) {
+          let payload: any = data;
+          if (error && (error as any)?.context?.response) {
+            try { payload = await (error as any).context.response.clone().json(); } catch { /* noop */ }
+          }
+          if (!payload && error) throw error;
+          if (payload?.error) {
+            if (payload.insufficient_credits || payload.code === 'ai_credits_exhausted') {
               notifyInsufficient();
             } else {
-              toast({ title: 'Erro ao gerar imagem', description: (data as any).error, variant: 'destructive' });
+              toast({
+                title: `Falha no slide ${i + 1}/${slides.length}`,
+                description: payload.error,
+                variant: 'destructive',
+              });
             }
             return;
           }
-          const img = (data as any).image_url;
-          const prompt = (data as any).image_prompt;
+          const img = payload.image_url;
+          const prompt = payload.image_prompt;
           updatedSlides = updatedSlides.map((s, idx) =>
             idx === i ? { ...s, image_url: img, image_prompt: prompt } : s
           );
@@ -355,22 +363,37 @@ const GenerateContent = () => {
           height: fmt.h,
         },
       });
-      if (error) throw error;
-      if ((data as any)?.error) {
-        if ((data as any).insufficient_credits) {
+      // Tenta extrair erro estruturado mesmo quando o client lança em non-2xx
+      let payload: any = data;
+      if (error && (error as any)?.context?.response) {
+        try { payload = await (error as any).context.response.clone().json(); } catch { /* noop */ }
+      }
+      if (!payload && error) throw error;
+      if (payload?.error) {
+        if (payload.insufficient_credits || payload.code === 'ai_credits_exhausted') {
           notifyInsufficient();
         } else {
-          toast({ title: 'Erro ao gerar imagem', description: (data as any).error, variant: 'destructive' });
+          toast({
+            title: 'Não foi possível gerar a imagem',
+            description: payload.error,
+            variant: 'destructive',
+          });
         }
         return;
       }
-      const updated = { image_url: (data as any).image_url, image_prompt: (data as any).image_prompt };
+      const updated = { image_url: payload.image_url, image_prompt: payload.image_prompt };
       setResults(prev => prev.map(r => r.id === content.id ? { ...r, ...updated } : r));
       setHistory(prev => prev.map(r => r.id === content.id ? { ...r, ...updated } : r));
       refreshCredits();
       toast({ title: 'Imagem gerada!', description: 'Imagem criada com sucesso.' });
     } catch (e: any) {
-      toast({ title: 'Erro ao gerar imagem', description: e.message || 'Tente novamente', variant: 'destructive' });
+      toast({
+        title: 'Não foi possível gerar a imagem',
+        description: e?.message?.includes('non-2xx')
+          ? 'Tivemos um problema temporário com a IA de imagens. Tente novamente em instantes — se o problema persistir, reformule a ideia visual.'
+          : (e?.message || 'Tente novamente em instantes.'),
+        variant: 'destructive',
+      });
     } finally {
       setImagingId(null);
     }
