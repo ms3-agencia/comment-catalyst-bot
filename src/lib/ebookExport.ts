@@ -7,6 +7,7 @@ export type EbookFull = {
   id: string;
   title: string;
   subtitle?: string | null;
+  cover_url?: string | null;
   introduction?: string | null;
   conclusion?: string | null;
   cta?: string | null;
@@ -343,21 +344,98 @@ export async function exportEbookPdf(
   const toc: TocEntry[] = [];
   let tocPageNum = 0; // página onde o TOC será desenhado (reservada)
 
-  // Capa
+  // Capa — sempre ocupa página inteira (A4). Se houver cover_url, usa como
+  // background com gradiente; senão, layout centralizado limpo.
   steps.push({
     label: 'Capa',
     run: async () => {
-      const html = `
-        <div class="cover">
-          <h1>${escapeHtml(ebook.title)}</h1>
-          ${ebook.subtitle ? `<div class="subtitle">${escapeHtml(ebook.subtitle)}</div>` : ''}
-          ${ebook.method_name ? `<div class="meta"><strong>Método:</strong> ${escapeHtml(ebook.method_name)}</div>` : ''}
-          ${ebook.promise ? `<div class="meta" style="font-style:italic; color:#334155 !important;">${escapeHtml(ebook.promise)}</div>` : ''}
-        </div>
-      `;
-      cursorY = contentTop;
-      await renderHtmlBlock(html);
-      if (cursorY > contentTop) newPage();
+      // Pré-carrega imagem (se houver) para evitar capa em branco
+      let coverDataUrl: string | null = null;
+      if (ebook.cover_url) {
+        coverDataUrl = await loadImageAsDataUrl(ebook.cover_url).catch(() => null);
+      }
+
+      const titleSafe = escapeHtml(ebook.title);
+      const subtitleSafe = ebook.subtitle ? escapeHtml(ebook.subtitle) : '';
+      const methodSafe = ebook.method_name ? escapeHtml(ebook.method_name) : '';
+      const promiseSafe = ebook.promise ? escapeHtml(ebook.promise) : '';
+
+      // Calcula altura "página inteira" no nó (em px) para preencher A4
+      // Proporção: pageH/pageW * RENDER_W
+      const fullPageH = Math.round((pageH / pageW) * RENDER_W);
+
+      let html = '';
+      if (coverDataUrl) {
+        html = `
+          <div style="
+            position: relative;
+            width: ${RENDER_W}px;
+            height: ${fullPageH}px;
+            overflow: hidden;
+            background: #0f172a;
+            font-family: Inter, Arial, sans-serif;
+          ">
+            <img src="${coverDataUrl}" style="
+              position:absolute; inset:0; width:100%; height:100%;
+              object-fit: cover; display:block;
+            " />
+            <div style="
+              position:absolute; inset:0;
+              background: linear-gradient(to bottom, rgba(15,23,42,0.10) 0%, rgba(15,23,42,0.55) 60%, rgba(15,23,42,0.92) 100%);
+            "></div>
+            <div style="
+              position:absolute; left:0; right:0; bottom:0;
+              padding: 60px 56px 80px;
+              color:#ffffff;
+              text-align:left;
+            ">
+              <h1 style="
+                color:#ffffff !important;
+                font-size: 38pt; font-weight: 800; line-height:1.15;
+                margin: 0 0 14px; text-shadow: 0 2px 18px rgba(0,0,0,0.45);
+              ">${titleSafe}</h1>
+              ${subtitleSafe ? `<div style="
+                color:#e2e8f0 !important;
+                font-size: 18pt; font-weight: 500; line-height:1.35;
+                margin: 0 0 24px; text-shadow: 0 1px 10px rgba(0,0,0,0.5);
+              ">${subtitleSafe}</div>` : ''}
+              ${methodSafe ? `<div style="color:#cffafe !important; font-size: 12pt; margin: 6px 0;"><strong style="color:#ffffff !important;">Método:</strong> ${methodSafe}</div>` : ''}
+              ${promiseSafe ? `<div style="color:#e2e8f0 !important; font-size: 12pt; font-style:italic; margin: 6px 0;">${promiseSafe}</div>` : ''}
+            </div>
+          </div>
+        `;
+      } else {
+        html = `
+          <div style="
+            width: ${RENDER_W}px;
+            height: ${fullPageH}px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 80px 60px;
+            background: linear-gradient(180deg, #ffffff 0%, #ecfeff 70%, #cffafe 100%);
+            box-sizing: border-box;
+          ">
+            <h1 style="color:#0f172a !important; font-size: 38pt; font-weight: 800; line-height:1.15; margin: 0 0 18px;">${titleSafe}</h1>
+            ${subtitleSafe ? `<div style="color:#475569 !important; font-size: 18pt; margin: 0 0 36px;">${subtitleSafe}</div>` : ''}
+            <div style="height:2px; width:120px; background:#0891b2; margin: 12px 0 28px;"></div>
+            ${methodSafe ? `<div style="font-size:12pt; color:#0f172a !important; margin: 6px 0;"><strong>Método:</strong> ${methodSafe}</div>` : ''}
+            ${promiseSafe ? `<div style="font-size:12pt; color:#334155 !important; font-style:italic; margin: 6px 0;">${promiseSafe}</div>` : ''}
+          </div>
+        `;
+      }
+
+      // Renderiza diretamente em página inteira (margem zero)
+      root.innerHTML = '';
+      const wrap = document.createElement('div');
+      wrap.innerHTML = html;
+      const coverEl = wrap.firstElementChild as HTMLElement;
+      root.appendChild(coverEl);
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      const canvas = await renderElementToCanvas(coverEl);
+      const data = canvas.toDataURL('image/jpeg', 0.94);
+      // Preenche A4 inteiro (sem margens)
+      pdf.addImage(data, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
+      // Próxima seção em nova página
+      newPage();
     },
   });
 
@@ -512,4 +590,18 @@ export async function exportEbookPdf(
 
 function escapeHtml(s: string) {
   return (s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+}
+
+async function loadImageAsDataUrl(url: string): Promise<string> {
+  // Carrega a imagem (com CORS) e converte para data URL para evitar problemas
+  // de tainted canvas no html2canvas.
+  const resp = await fetch(url, { mode: 'cors', cache: 'no-cache' });
+  if (!resp.ok) throw new Error(`Falha ao carregar imagem: ${resp.status}`);
+  const blob = await resp.blob();
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
 }
