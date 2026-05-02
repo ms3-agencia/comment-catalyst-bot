@@ -278,6 +278,13 @@ export default function EbookEditor() {
 
           {/* Editor */}
           <Card className="p-5 min-h-[600px]">
+            {activeChapter === -3 && (
+              <CoverEditor
+                ebook={ebook}
+                onSave={saveField}
+                onToast={toast}
+              />
+            )}
             {activeChapter === -1 && (
               <SectionEditor
                 title="Introdução"
