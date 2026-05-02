@@ -224,7 +224,7 @@ export default function EbooksPage() {
                   });
                   return (
                     <>
-                      {(categories.length > 1 || tags.length > 0) && (
+                      {hasPremium && (categories.length > 1 || tags.length > 0) && (
                         <div className="flex flex-wrap gap-2">
                           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                             <SelectTrigger className="h-8 text-xs w-auto min-w-[140px]">
