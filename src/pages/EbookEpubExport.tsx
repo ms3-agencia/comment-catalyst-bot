@@ -39,6 +39,8 @@ export default function EbookEpubExport() {
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [generatingSynopsis, setGeneratingSynopsis] = useState(false);
+  const [generatingKeywords, setGeneratingKeywords] = useState(false);
+  const [generatingCategories, setGeneratingCategories] = useState(false);
   const [overlay, setOverlay] = useState<any>(null);
   const [ebook, setEbook] = useState<any>(null);
   const [chapters, setChapters] = useState<any[]>([]);
@@ -188,6 +190,53 @@ export default function EbookEpubExport() {
       toast({ title: 'Erro ao gerar sinopse', description: e?.message || 'Falha desconhecida', variant: 'destructive' });
     } finally {
       setGeneratingSynopsis(false);
+    }
+  };
+
+  const generateKdpMeta = async (kind: 'keywords' | 'categories') => {
+    if (!ebook?.id) return;
+    if (chapters.length === 0) {
+      toast({ title: 'Sem conteúdo', description: 'Gere ao menos um capítulo antes.', variant: 'destructive' });
+      return;
+    }
+    const setLoading = kind === 'keywords' ? setGeneratingKeywords : setGeneratingCategories;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ebook-generate-kdp-meta', {
+        body: { ebook_id: ebook.id, language: meta.language || 'pt-BR', kind },
+      });
+      if (error) {
+        const status = (error as any).context?.status;
+        if (status === 402) {
+          toast({ title: 'Créditos de IA esgotados', description: 'Adicione saldo em Settings > Workspace > Usage.', variant: 'destructive' });
+        } else if (status === 429) {
+          toast({ title: 'Muitas requisições', description: 'Aguarde alguns segundos e tente de novo.', variant: 'destructive' });
+        } else {
+          toast({ title: `Erro ao gerar ${kind === 'keywords' ? 'palavras-chave' : 'categorias'}`, description: error.message, variant: 'destructive' });
+        }
+        return;
+      }
+      if (kind === 'keywords') {
+        const list = (data as any)?.keywords as string[] | undefined;
+        if (!list?.length) {
+          toast({ title: 'Resposta vazia da IA', variant: 'destructive' });
+          return;
+        }
+        setKeywordsInput(list.join(', '));
+        toast({ title: 'Palavras-chave geradas!', description: `${list.length} keywords KDP estratégicas.` });
+      } else {
+        const list = (data as any)?.categories as string[] | undefined;
+        if (!list?.length) {
+          toast({ title: 'Resposta vazia da IA', variant: 'destructive' });
+          return;
+        }
+        setCategoriesInput(list.join(', '));
+        toast({ title: 'Categorias geradas!', description: `${list.length} categorias para best-seller.` });
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar com IA', description: e?.message || 'Falha desconhecida', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -430,25 +479,60 @@ export default function EbookEpubExport() {
           </div>
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Palavras-chave KDP (até 7, separadas por vírgula)</Label>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <Label>Palavras-chave KDP (até 7, separadas por vírgula)</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => generateKdpMeta('keywords')}
+                  disabled={generatingKeywords}
+                  className="gap-1"
+                >
+                  {generatingKeywords ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-4 w-4 text-primary" />
+                  )}
+                  {generatingKeywords ? 'Gerando...' : 'Gerar com IA'}
+                </Button>
+              </div>
               <Input
                 value={keywordsInput}
                 onChange={(e) => setKeywordsInput(e.target.value)}
                 placeholder="produtividade, foco, hábitos, autoajuda"
               />
-              <p className="text-xs text-muted-foreground">Use termos que seu leitor digitaria na busca da Amazon.</p>
+              <p className="text-xs text-muted-foreground">A IA escolhe 7 termos estratégicos (long-tail + nicho) que leitores realmente buscam na Amazon.</p>
             </div>
             <div className="space-y-2">
-              <Label>Categorias / tópicos (separados por vírgula)</Label>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <Label>Categorias / tópicos (separados por vírgula)</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => generateKdpMeta('categories')}
+                  disabled={generatingCategories}
+                  className="gap-1"
+                >
+                  {generatingCategories ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-4 w-4 text-primary" />
+                  )}
+                  {generatingCategories ? 'Gerando...' : 'Gerar com IA'}
+                </Button>
+              </div>
               <Input
                 value={categoriesInput}
                 onChange={(e) => setCategoriesInput(e.target.value)}
                 placeholder="Negócios, Desenvolvimento Pessoal"
               />
-              <p className="text-xs text-muted-foreground">As categorias finais serão escolhidas no painel KDP.</p>
+              <p className="text-xs text-muted-foreground">A IA sugere sub-categorias profundas com mais chance de ranquear #1 best-seller.</p>
             </div>
           </div>
         </Card>
+
 
         {/* Direitos / publicação */}
         <Card className="p-5 space-y-4">
