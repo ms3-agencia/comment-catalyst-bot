@@ -24,16 +24,64 @@ Deno.serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
 
     const authHeader = req.headers.get("Authorization") ?? "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({
+          error: "missing_auth",
+          message: "Sessão ausente. Faça login novamente para continuar.",
+        }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const token = authHeader.replace("Bearer ", "").trim();
+
+    // Decode JWT payload (no signature check here — getUser/getClaims does that)
+    // to detect expiration BEFORE calling any external API (AI gateway).
+    try {
+      const parts = token.split(".");
+      if (parts.length === 3) {
+        const payload = JSON.parse(
+          atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")),
+        );
+        if (payload?.exp && typeof payload.exp === "number") {
+          const nowSec = Math.floor(Date.now() / 1000);
+          if (payload.exp <= nowSec) {
+            return new Response(
+              JSON.stringify({
+                error: "session_expired",
+                message:
+                  "Sua sessão expirou. Atualize a página (F5) ou faça login novamente.",
+              }),
+              {
+                status: 401,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              },
+            );
+          }
+        }
+      }
+    } catch (_) {
+      // malformed token → fall through to getUser which will reject it
+    }
+
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData.user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (userErr || !userData?.user) {
+      const msg = (userErr?.message || "").toLowerCase();
+      const expired = msg.includes("expired") || msg.includes("jwt");
+      return new Response(
+        JSON.stringify({
+          error: expired ? "session_expired" : "unauthorized",
+          message: expired
+            ? "Sua sessão expirou. Atualize a página (F5) ou faça login novamente."
+            : "Você precisa estar autenticado para gerar imagens.",
+        }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
     const user = userData.user;
 
