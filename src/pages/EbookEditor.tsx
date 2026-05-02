@@ -20,6 +20,8 @@ export default function EbookEditor() {
   const { toast } = useToast();
   const { hasAddon } = useUserAddons();
   const hasPremium = hasAddon('ebook-premium');
+  const hasEpubAddon = hasAddon('epub-export');
+  const navigate = useNavigate();
 
   const [ebook, setEbook] = useState<any>(null);
   const [chapters, setChapters] = useState<any[]>([]);
