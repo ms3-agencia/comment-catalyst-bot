@@ -309,16 +309,28 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
           const isGlobal = mode === 'user' && c.user_id && currentUserId && c.user_id !== currentUserId;
           const isRenaming = renamingId === c.id;
           const canRename = !isGlobal && canEdit;
+          const draggable = !isGlobal && canEdit && !isRenaming;
+          const isDragging = dragId === c.id;
+          const isDragOver = dragOverId === c.id;
           return (
             <div
               key={c.id}
               role="button"
               tabIndex={0}
+              draggable={draggable}
+              onDragStart={(e) => onDragStart(e, c)}
+              onDragOver={(e) => onDragOver(e, c)}
+              onDragLeave={() => { if (dragOverId === c.id) setDragOverId(null); }}
+              onDrop={(e) => onDrop(e, c)}
+              onDragEnd={onDragEnd}
               onClick={() => { if (!isRenaming) { setCurrent(c); onSelect?.(c); } }}
               onKeyDown={(e) => { if (!isRenaming && (e.key === 'Enter' || e.key === ' ')) { setCurrent(c); onSelect?.(c); } }}
-              className={`w-full text-left px-2.5 py-2 rounded-md text-sm hover:bg-accent flex items-center justify-between gap-2 cursor-pointer ${current.id === c.id ? 'bg-accent' : ''}`}
+              className={`w-full text-left px-2.5 py-2 rounded-md text-sm hover:bg-accent flex items-center justify-between gap-2 cursor-pointer ${current.id === c.id ? 'bg-accent' : ''} ${isDragging ? 'opacity-40' : ''} ${isDragOver ? 'ring-2 ring-cyan-400/60' : ''}`}
             >
               <span className="truncate flex items-center gap-1.5 flex-1 min-w-0">
+                {draggable && (
+                  <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 cursor-grab active:cursor-grabbing" aria-label="Arraste para reordenar" />
+                )}
                 {c.is_default && <Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0" />}
                 {c.premium_product_mode && (
                   <Gem className="h-3 w-3 text-cyan-400 shrink-0" aria-label="Modo Premium ativo" />
