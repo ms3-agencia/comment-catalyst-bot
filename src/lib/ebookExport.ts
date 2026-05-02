@@ -1207,8 +1207,9 @@ export async function exportEbookPdf(
     // Desenha cabeçalho/rodapé em todas as páginas (exceto capa)
     drawAllChrome();
   } finally {
-    if (sandbox.parentNode) document.body.removeChild(sandbox);
+    /* nada para limpar — render nativo não cria DOM offscreen */
   }
+
 
   // ===== Verificação automática dos links do sumário =====
   // Percorre toda entrada do TOC e confirma:
