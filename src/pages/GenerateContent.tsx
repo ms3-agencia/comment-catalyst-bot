@@ -213,12 +213,20 @@ const GenerateContent = () => {
         return;
       }
       refreshCredits();
+      // Atualiza estado local para o vídeo aparecer no histórico imediatamente
+      const patch: any = {
+        video_url: res?.video_url || null,
+        video_provider: res?.provider || null,
+        video_status: res?.status || null,
+      };
+      setResults(prev => prev.map(r => r.id === content.id ? { ...r, ...patch } : r));
+      setHistory(prev => prev.map(r => r.id === content.id ? { ...r, ...patch } : r));
       if (res?.status === 'completed' && res?.video_url) {
-        toast({ title: 'Vídeo gerado!', description: `Provedor: ${res.provider_name}. Veja em Admin → Integrações → Log.` });
+        toast({ title: 'Vídeo gerado!', description: `Provedor: ${res.provider_name}. Disponível no Histórico de ${content.social_network}.` });
       } else {
         toast({
           title: 'Solicitação enviada',
-          description: `Vídeo na fila do ${res?.provider_name || 'provedor'}. Acompanhe em Admin → Integrações → Log.`,
+          description: `Vídeo na fila do ${res?.provider_name || 'provedor'}. Aparecerá no Histórico quando concluído.`,
         });
       }
     } catch (e: any) {

@@ -119,6 +119,9 @@ type HistoryItem = {
   image_url?: string | null;
   image_prompt?: string | null;
   slides?: Slide[] | null;
+  video_url?: string | null;
+  video_provider?: string | null;
+  video_status?: string | null;
   created_at?: string;
 };
 
@@ -210,7 +213,7 @@ export default function ContentHistory() {
       try {
         const { data } = await supabase
           .from('generated_contents')
-          .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type, image_url, image_prompt, slides, created_at')
+          .select('id, title, caption, hashtags, cta, script, visual_idea, engagement_score, social_network, content_type, image_url, image_prompt, slides, video_url, video_provider, video_status, created_at')
           .order('created_at', { ascending: false })
           .limit(500);
         setAllHistory((data as HistoryItem[]) || []);
@@ -456,6 +459,30 @@ export default function ContentHistory() {
               </div>
             )}
 
+            {activePost.video_url && (
+              <div className="rounded-xl overflow-hidden border border-primary/40 bg-black">
+                <video
+                  src={activePost.video_url}
+                  controls
+                  className="w-full max-h-[480px] bg-black"
+                  preload="metadata"
+                />
+                <div className="px-3 py-2 text-[11px] text-muted-foreground flex items-center justify-between bg-card/40">
+                  <span className="flex items-center gap-1.5">
+                    <Clapperboard className="h-3.5 w-3.5 text-primary" />
+                    Vídeo gerado por IA{activePost.video_provider ? ` · ${activePost.video_provider}` : ''}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {!activePost.video_url && activePost.video_status && activePost.video_status !== 'completed' && activePost.video_status !== 'failed' && (
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-xs text-muted-foreground flex items-center gap-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                Vídeo {activePost.video_status === 'queued' ? 'na fila do provedor' : activePost.video_status}. Atualize esta página em alguns minutos.
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-2">
               {activePost.image_url && (
                 <Button
@@ -465,6 +492,18 @@ export default function ContentHistory() {
                   {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                   Baixar imagem
                 </Button>
+              )}
+              {activePost.video_url && (
+                <a
+                  href={activePost.video_url}
+                  download={`${activePost.title || 'video'}-${activePost.id.slice(0, 8)}.mp4`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button className="bg-primary/90 hover:bg-primary">
+                    <Download className="h-4 w-4" /> Baixar vídeo
+                  </Button>
+                </a>
               )}
               <Button variant="outline" onClick={() => copyContent(activePost)}>
                 {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
@@ -829,8 +868,20 @@ export default function ContentHistory() {
                       className="text-left w-full"
                     >
                       {h.image_url ? (
-                        <div className="mb-2 rounded-lg overflow-hidden border border-border aspect-video bg-muted">
+                        <div className="mb-2 rounded-lg overflow-hidden border border-border aspect-video bg-muted relative">
                           <img src={h.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                          {h.video_url && (
+                            <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary text-primary-foreground shadow">
+                              <Clapperboard className="h-3 w-3" /> Vídeo
+                            </span>
+                          )}
+                        </div>
+                      ) : h.video_url ? (
+                        <div className="mb-2 rounded-lg overflow-hidden border border-primary/40 aspect-video bg-black relative">
+                          <video src={h.video_url} className="w-full h-full object-cover" preload="metadata" muted />
+                          <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary text-primary-foreground shadow">
+                            <Clapperboard className="h-3 w-3" /> Vídeo
+                          </span>
                         </div>
                       ) : (
                         <div className="mb-2 rounded-lg border border-dashed border-border aspect-video bg-muted/30 flex items-center justify-center">

@@ -249,6 +249,23 @@ Deno.serve(async (req) => {
           .eq('id', logId);
       }
 
+      // Persiste no conteúdo para aparecer no histórico (na rede social respectiva)
+      if (contentId) {
+        try {
+          await admin
+            .from('generated_contents')
+            .update({
+              video_url: videoUrl,
+              video_provider: provider.id,
+              video_status: finalStatus,
+            })
+            .eq('id', contentId)
+            .eq('user_id', user.id);
+        } catch (e) {
+          console.warn('[generate-ai-video] failed to persist video_url on content', e);
+        }
+      }
+
       if (finalStatus !== 'failed') break;
     }
 

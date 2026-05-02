@@ -1006,6 +1006,9 @@ export type Database = {
           title: string | null
           updated_at: string
           user_id: string
+          video_provider: string | null
+          video_status: string | null
+          video_url: string | null
           visual_idea: string | null
         }
         Insert: {
@@ -1025,6 +1028,9 @@ export type Database = {
           title?: string | null
           updated_at?: string
           user_id: string
+          video_provider?: string | null
+          video_status?: string | null
+          video_url?: string | null
           visual_idea?: string | null
         }
         Update: {
@@ -1044,6 +1050,9 @@ export type Database = {
           title?: string | null
           updated_at?: string
           user_id?: string
+          video_provider?: string | null
+          video_status?: string | null
+          video_url?: string | null
           visual_idea?: string | null
         }
         Relationships: [
