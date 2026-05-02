@@ -141,19 +141,31 @@ Deno.serve(async (req) => {
         return;
       }
       try {
-        const { data, error } = await admin.rpc("admin_add_credits", {
-          _user_id: userId,
-          _amount: creditsCost,
-          _description: desc,
+        // Service-role direct refund (admin_add_credits requires admin caller, which service role isn't).
+        const { data: cur, error: selErr } = await admin
+          .from("user_credits")
+          .select("balance")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (selErr) {
+          console.error("[ebook-generate-image] refund select error", selErr.message);
+          return;
+        }
+        const newBalance = (cur?.balance ?? 0) + creditsCost;
+        const { error: upErr } = await admin
+          .from("user_credits")
+          .update({ balance: newBalance })
+          .eq("user_id", userId);
+        if (upErr) {
+          console.error("[ebook-generate-image] refund update error", upErr.message);
+          return;
+        }
+        await admin.from("credit_transactions").insert({
+          user_id: userId,
+          amount: creditsCost,
+          type: "refund",
+          description: desc,
         } as any);
-        if (error) {
-          console.error("[ebook-generate-image] refund rpc error", { userId, creditsCost, desc, error: error.message });
-          return;
-        }
-        if (data && (data as any).success === false) {
-          console.error("[ebook-generate-image] refund rpc failed", { userId, creditsCost, desc, data });
-          return;
-        }
         console.info("[ebook-generate-image] refund ok", { userId, creditsCost, desc });
       } catch (e: any) {
         console.error("[ebook-generate-image] refund threw", { userId, creditsCost, desc, message: e?.message });
