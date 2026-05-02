@@ -621,7 +621,7 @@ export async function exportEbookPdf(
         startNewPageSection();
         toc.push({ label: 'Introdução', page: pageNum, level: 1 });
         await renderHtmlBlock('<h2>Introdução</h2>');
-        await renderRichHtml(ebook.introduction!);
+        await renderRichHtml(ebook.introduction!, true);
       },
     });
   }
