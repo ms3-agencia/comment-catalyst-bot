@@ -485,13 +485,9 @@ export async function exportEbookPdf(
         if (tag === 'H2' || tag === 'H3') {
           const text = (child.textContent || '').trim();
           if (text) {
-            // Antes de renderizar: precisamos saber em qual página o cabeçalho cairá.
-            // Como placeBlock pode pular para nova página, registramos APÓS render.
-            const before = pageNum;
             await placeBlock(child.cloneNode(true) as HTMLElement);
-            // Se mudou de página durante a colocação do cabeçalho, a entrada
-            // aponta para a nova página onde o título realmente está.
-            toc.push({ label: text, page: pageNum >= before ? pageNum : before, level: 2 });
+            // pageNum reflete a página onde o cabeçalho foi efetivamente desenhado
+            toc.push({ label: text, page: pageNum, level: 2 });
             continue;
           }
         }
