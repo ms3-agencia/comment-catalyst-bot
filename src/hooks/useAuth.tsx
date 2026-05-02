@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -35,6 +35,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const currentUserRef = useRef<User | null>(null);
+  const explicitSignOutRef = useRef(false);
+  const recoveringSessionRef = useRef(false);
+  const recoveryTimerRef = useRef<number | null>(null);
 
   // ---- Session-log tracking ----
   // Persisted across reloads so we can close the row on logout.
@@ -90,67 +94,96 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (user) await fetchProfile(user.id);
   };
 
-  // Force a clean logout: clear local Supabase auth storage + state, then redirect to /login.
-  // Used when refresh fails or session becomes invalid mid-app.
-  const forceSignOutAndRedirect = async () => {
-    try { await closeSessionLog(); } catch { /* noop */ }
-    try { await supabase.auth.signOut({ scope: 'local' } as any); } catch { /* noop */ }
-    // Belt-and-suspenders: nuke any stale supabase auth keys from storage
-    try {
-      Object.keys(localStorage).forEach((k) => {
-        if (k.startsWith('sb-') && k.endsWith('-auth-token')) localStorage.removeItem(k);
-      });
-    } catch { /* noop */ }
+  const clearAuthState = () => {
+    currentUserRef.current = null;
     setSession(null);
     setUser(null);
     setProfile(null);
     setIsAdmin(false);
-    setLoading(false);
-    if (typeof window !== 'undefined') {
-      const path = window.location.pathname;
-      // Only redirect if user is on a protected area
-      const isPublic =
-        path === '/' ||
-        path.startsWith('/login') ||
-        path.startsWith('/register') ||
-        path.startsWith('/auth/') ||
-        path === '/install';
-      if (!isPublic) {
-        window.location.replace('/login');
+  };
+
+  const applyAuthSession = (nextSession: Session | null, event?: string) => {
+    currentUserRef.current = nextSession?.user ?? null;
+    setSession(nextSession);
+    setUser(nextSession?.user ?? null);
+
+    if (nextSession?.user) {
+      setTimeout(() => fetchProfile(nextSession.user.id), 0);
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        setTimeout(() => startSessionLog(nextSession.user.id), 0);
       }
+    } else {
+      setProfile(null);
+      setIsAdmin(false);
+    }
+
+    setLoading(false);
+  };
+
+  const scheduleSessionRecovery = () => {
+    if (typeof window === 'undefined' || recoveryTimerRef.current) return;
+    recoveryTimerRef.current = window.setTimeout(() => {
+      recoveryTimerRef.current = null;
+      void recoverSession();
+    }, 5000);
+  };
+
+  const recoverSession = async () => {
+    if (recoveringSessionRef.current) return;
+    recoveringSessionRef.current = true;
+
+    try {
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      if (!refreshError && refreshData.session) {
+        applyAuthSession(refreshData.session, 'INITIAL_SESSION');
+        return;
+      }
+
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (!sessionError && sessionData.session) {
+        applyAuthSession(sessionData.session, 'INITIAL_SESSION');
+        return;
+      }
+
+      if (explicitSignOutRef.current || !currentUserRef.current) {
+        clearAuthState();
+        setLoading(false);
+        return;
+      }
+
+      setLoading(false);
+      scheduleSessionRecovery();
+    } catch {
+      if (explicitSignOutRef.current || !currentUserRef.current) {
+        clearAuthState();
+      }
+      setLoading(false);
+      if (!explicitSignOutRef.current && currentUserRef.current) scheduleSessionRecovery();
+    } finally {
+      recoveringSessionRef.current = false;
     }
   };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Token refresh failure → kick to login
       if (event === 'TOKEN_REFRESHED' && !session) {
-        forceSignOutAndRedirect();
-        return;
-      }
-      if (event === 'SIGNED_OUT') {
-        // Fire-and-forget; do not await inside the callback
-        setTimeout(() => { closeSessionLog(); }, 0);
-        setSession(null);
-        setUser(null);
-        setProfile(null);
-        setIsAdmin(false);
-        setLoading(false);
+        setTimeout(() => { void recoverSession(); }, 0);
         return;
       }
 
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        setTimeout(() => fetchProfile(session.user.id), 0);
-        if (event === 'SIGNED_IN') {
-          setTimeout(() => startSessionLog(session.user.id), 0);
+      if (event === 'SIGNED_OUT') {
+        if (explicitSignOutRef.current) {
+          setTimeout(() => { closeSessionLog(); }, 0);
+          clearAuthState();
+          setLoading(false);
+        } else {
+          setTimeout(() => { void recoverSession(); }, 0);
         }
-      } else {
-        setProfile(null);
-        setIsAdmin(false);
+        return;
       }
-      setLoading(false);
+
+      explicitSignOutRef.current = false;
+      applyAuthSession(session, event);
     });
 
     (async () => {
@@ -158,38 +191,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
-          await forceSignOutAndRedirect();
+          await recoverSession();
           return;
         }
 
-        // No session at all — just finish loading (public pages can render)
         if (!session) {
           setLoading(false);
           return;
         }
 
-        // Session expired → try refresh, fall back to forced logout
         if (session.expires_at && session.expires_at * 1000 < Date.now()) {
-          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-          if (refreshError || !refreshData.session) {
-            await forceSignOutAndRedirect();
-            return;
-          }
-          setSession(refreshData.session);
-          setUser(refreshData.session.user);
-          fetchProfile(refreshData.session.user.id);
-          startSessionLog(refreshData.session.user.id);
-          setLoading(false);
+          await recoverSession();
           return;
         }
 
-        setSession(session);
-        setUser(session.user);
-        fetchProfile(session.user.id);
-        startSessionLog(session.user.id);
-        setLoading(false);
+        applyAuthSession(session, 'INITIAL_SESSION');
       } catch {
-        await forceSignOutAndRedirect();
+        await recoverSession();
       }
     })();
 
@@ -215,16 +233,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       subscription.unsubscribe();
       window.removeEventListener('beforeunload', handleUnload);
+      if (recoveryTimerRef.current) {
+        window.clearTimeout(recoveryTimerRef.current);
+      }
     };
   }, []);
 
   const signOut = async () => {
+    explicitSignOutRef.current = true;
     await closeSessionLog();
     await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setProfile(null);
-    setIsAdmin(false);
+    clearAuthState();
   };
 
   return (
