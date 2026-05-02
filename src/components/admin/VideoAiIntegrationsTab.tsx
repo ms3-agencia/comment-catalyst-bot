@@ -243,6 +243,46 @@ export function VideoAiIntegrationsTab() {
         </AlertDescription>
       </Alert>
 
+      <Card className={`p-5 border-2 transition-colors ${autoEnabled ? 'border-primary/40 bg-primary/5' : 'border-border bg-card/40'}`}>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-3 flex-1 min-w-[260px]">
+            <div className={`p-2 rounded-lg border ${autoEnabled ? 'bg-primary/15 border-primary/30' : 'bg-muted border-border'}`}>
+              <Wand2 className={autoEnabled ? 'text-primary' : 'text-muted-foreground'} size={22} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-semibold text-base">Geração automática de vídeo</h3>
+                {autoEnabled ? (
+                  <Badge className="bg-primary/15 text-primary border-primary/30">
+                    <Power size={12} className="mr-1" />Ativada
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-muted-foreground">
+                    <Power size={12} className="mr-1" />Desativada
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
+                Quando ativada, o botão <strong>"Gerar vídeo automaticamente"</strong> aparece em todos os
+                conteúdos que possuam roteiro (Gerar Conteúdo e Histórico). Quando desativada, o botão
+                fica oculto para todos os usuários.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Label htmlFor="video-auto-global" className="text-xs text-muted-foreground">
+              {autoEnabled ? 'Ativada' : 'Desativada'}
+            </Label>
+            <Switch
+              id="video-auto-global"
+              checked={autoEnabled}
+              onCheckedChange={toggleAuto}
+              disabled={togglingAuto}
+            />
+          </div>
+        </div>
+      </Card>
+
       {VIDEO_AI_PROVIDERS.map((provider) => {
         const Icon = provider.icon;
         const fieldKey = provider.apiKeyField.key;
