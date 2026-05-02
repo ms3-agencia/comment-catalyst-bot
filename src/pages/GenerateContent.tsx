@@ -323,17 +323,25 @@ const GenerateContent = () => {
               slide_index: i,
             },
           });
-          if (error) throw error;
-          if ((data as any)?.error) {
-            if ((data as any).insufficient_credits) {
+          let payload: any = data;
+          if (error && (error as any)?.context?.response) {
+            try { payload = await (error as any).context.response.clone().json(); } catch { /* noop */ }
+          }
+          if (!payload && error) throw error;
+          if (payload?.error) {
+            if (payload.insufficient_credits || payload.code === 'ai_credits_exhausted') {
               notifyInsufficient();
             } else {
-              toast({ title: 'Erro ao gerar imagem', description: (data as any).error, variant: 'destructive' });
+              toast({
+                title: `Falha no slide ${i + 1}/${slides.length}`,
+                description: payload.error,
+                variant: 'destructive',
+              });
             }
             return;
           }
-          const img = (data as any).image_url;
-          const prompt = (data as any).image_prompt;
+          const img = payload.image_url;
+          const prompt = payload.image_prompt;
           updatedSlides = updatedSlides.map((s, idx) =>
             idx === i ? { ...s, image_url: img, image_prompt: prompt } : s
           );
