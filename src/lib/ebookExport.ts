@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import 'jspdf/dist/polyfills.es.js';
 import { Document, Packer, Paragraph, HeadingLevel, AlignmentType, TextRun } from 'docx';
 import { saveAs } from 'file-saver';
 
@@ -133,60 +133,89 @@ export async function exportEbookDocx(ebook: EbookFull) {
 }
 
 export async function exportEbookPdf(ebook: EbookFull) {
-  // Renderiza um nó offscreen e converte por páginas com html2canvas + jsPDF
+  // Usa jsPDF.html() (texto real, selecionável, com paginação automática).
+  // Renderiza um nó offscreen com o conteúdo completo do eBook em HTML semântico
+  // e deixa o jsPDF cuidar das quebras de página — sem o limite de 16k px do html2canvas
+  // que estava cortando eBooks longos.
   const node = document.createElement('div');
   node.style.position = 'fixed';
   node.style.left = '-99999px';
   node.style.top = '0';
-  node.style.width = '794px'; // A4 em ~96dpi
-  node.style.padding = '60px 64px';
+  node.style.width = '794px'; // ~A4 a 96dpi (210mm)
   node.style.background = '#ffffff';
   node.style.color = '#0f172a';
   node.style.fontFamily = 'Inter, Arial, sans-serif';
-  node.style.fontSize = '14px';
-  node.style.lineHeight = '1.65';
-  node.innerHTML = `
-    <div style="text-align:center; padding:120px 0 60px;">
-      <h1 style="font-size:42px; margin:0 0 12px; color:#0f172a;">${escapeHtml(ebook.title)}</h1>
-      ${ebook.subtitle ? `<p style="font-size:20px; color:#475569; margin:0;">${escapeHtml(ebook.subtitle)}</p>` : ''}
-      ${ebook.method_name ? `<p style="margin-top:32px;"><strong>Método:</strong> ${escapeHtml(ebook.method_name)}</p>` : ''}
-      ${ebook.promise ? `<p style="font-style:italic;">${escapeHtml(ebook.promise)}</p>` : ''}
-    </div>
-    <div style="page-break-after: always;"></div>
-    ${ebook.introduction ? `<h2 style="color:#0891b2; border-bottom:2px solid #0891b2; padding-bottom:6px;">Introdução</h2>${ebook.introduction}<div style="page-break-after: always;"></div>` : ''}
-    ${ebook.chapters.sort((a,b)=>a.chapter_number-b.chapter_number).map(c => `
-      <h2 style="color:#0891b2; border-bottom:2px solid #0891b2; padding-bottom:6px;">Capítulo ${c.chapter_number} — ${escapeHtml(c.title)}</h2>
-      ${c.content_html}
-      <div style="page-break-after: always;"></div>
-    `).join('')}
-    ${ebook.conclusion ? `<h2 style="color:#0891b2; border-bottom:2px solid #0891b2; padding-bottom:6px;">Conclusão</h2>${ebook.conclusion}` : ''}
-    ${ebook.cta ? `<p style="margin-top:24px; padding:16px; background:#0891b2; color:#fff; text-align:center; font-weight:bold;">${escapeHtml(ebook.cta)}</p>` : ''}
-  `;
+  node.style.fontSize = '12pt';
+  node.style.lineHeight = '1.6';
+
+  const sections: string[] = [];
+  // Capa
+  sections.push(`
+    <section style="text-align:center; padding:120px 24px 60px;">
+      <h1 style="font-size:32pt; margin:0 0 12px; color:#0f172a; line-height:1.2;">${escapeHtml(ebook.title)}</h1>
+      ${ebook.subtitle ? `<p style="font-size:16pt; color:#475569; margin:0;">${escapeHtml(ebook.subtitle)}</p>` : ''}
+      ${ebook.method_name ? `<p style="margin-top:32px; font-size:12pt;"><strong>Método:</strong> ${escapeHtml(ebook.method_name)}</p>` : ''}
+      ${ebook.promise ? `<p style="font-style:italic; font-size:12pt;">${escapeHtml(ebook.promise)}</p>` : ''}
+    </section>
+  `);
+  if (ebook.introduction) {
+    sections.push(`
+      <section style="padding:24px; page-break-before: always;">
+        <h2 style="color:#0891b2; border-bottom:2px solid #0891b2; padding-bottom:6px; font-size:20pt;">Introdução</h2>
+        <div>${ebook.introduction}</div>
+      </section>
+    `);
+  }
+  ebook.chapters.sort((a, b) => a.chapter_number - b.chapter_number).forEach((c) => {
+    sections.push(`
+      <section style="padding:24px; page-break-before: always;">
+        <h2 style="color:#0891b2; border-bottom:2px solid #0891b2; padding-bottom:6px; font-size:20pt;">Capítulo ${c.chapter_number} — ${escapeHtml(c.title)}</h2>
+        <div>${c.content_html || '<p><em>Capítulo ainda não gerado.</em></p>'}</div>
+      </section>
+    `);
+  });
+  if (ebook.conclusion) {
+    sections.push(`
+      <section style="padding:24px; page-break-before: always;">
+        <h2 style="color:#0891b2; border-bottom:2px solid #0891b2; padding-bottom:6px; font-size:20pt;">Conclusão</h2>
+        <div>${ebook.conclusion}</div>
+      </section>
+    `);
+  }
+  if (ebook.cta) {
+    sections.push(`
+      <section style="padding:24px;">
+        <p style="margin-top:24px; padding:16px; background:#0891b2; color:#fff; text-align:center; font-weight:bold; border-radius:8px;">${escapeHtml(ebook.cta)}</p>
+      </section>
+    `);
+  }
+
+  node.innerHTML = sections.join('');
   document.body.appendChild(node);
+
   try {
-    const canvas = await html2canvas(node, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-    const imgData = canvas.toDataURL('image/jpeg', 0.92);
-    const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    let heightLeft = imgHeight;
-    let position = 0;
-    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight;
-      pdf.addPage();
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-    }
-    pdf.save(`${ebook.title.replace(/[^\w\s-]/g, '').slice(0, 80)}.pdf`);
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4', compress: true });
+    const pageWidth = pdf.internal.pageSize.getWidth();   // 595.28pt
+    const pageHeight = pdf.internal.pageSize.getHeight(); // 841.89pt
+    const margin = 36; // ~12.7mm
+
+    await pdf.html(node, {
+      x: margin,
+      y: margin,
+      width: pageWidth - margin * 2,
+      windowWidth: 794,
+      autoPaging: 'text',
+      margin: [margin, margin, margin, margin],
+      html2canvas: { scale: (pageWidth - margin * 2) / 794, useCORS: true, backgroundColor: '#ffffff' },
+    });
+
+    const filename = `${(ebook.title || 'ebook').replace(/[^\w\s-]/g, '').slice(0, 80) || 'ebook'}.pdf`;
+    pdf.save(filename);
   } finally {
-    document.body.removeChild(node);
+    if (node.parentNode) document.body.removeChild(node);
   }
 }
 
 function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+  return (s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
 }
