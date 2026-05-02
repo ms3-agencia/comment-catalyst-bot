@@ -193,6 +193,53 @@ export default function EbookEpubExport() {
     }
   };
 
+  const generateKdpMeta = async (kind: 'keywords' | 'categories') => {
+    if (!ebook?.id) return;
+    if (chapters.length === 0) {
+      toast({ title: 'Sem conteúdo', description: 'Gere ao menos um capítulo antes.', variant: 'destructive' });
+      return;
+    }
+    const setLoading = kind === 'keywords' ? setGeneratingKeywords : setGeneratingCategories;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ebook-generate-kdp-meta', {
+        body: { ebook_id: ebook.id, language: meta.language || 'pt-BR', kind },
+      });
+      if (error) {
+        const status = (error as any).context?.status;
+        if (status === 402) {
+          toast({ title: 'Créditos de IA esgotados', description: 'Adicione saldo em Settings > Workspace > Usage.', variant: 'destructive' });
+        } else if (status === 429) {
+          toast({ title: 'Muitas requisições', description: 'Aguarde alguns segundos e tente de novo.', variant: 'destructive' });
+        } else {
+          toast({ title: `Erro ao gerar ${kind === 'keywords' ? 'palavras-chave' : 'categorias'}`, description: error.message, variant: 'destructive' });
+        }
+        return;
+      }
+      if (kind === 'keywords') {
+        const list = (data as any)?.keywords as string[] | undefined;
+        if (!list?.length) {
+          toast({ title: 'Resposta vazia da IA', variant: 'destructive' });
+          return;
+        }
+        setKeywordsInput(list.join(', '));
+        toast({ title: 'Palavras-chave geradas!', description: `${list.length} keywords KDP estratégicas.` });
+      } else {
+        const list = (data as any)?.categories as string[] | undefined;
+        if (!list?.length) {
+          toast({ title: 'Resposta vazia da IA', variant: 'destructive' });
+          return;
+        }
+        setCategoriesInput(list.join(', '));
+        toast({ title: 'Categorias geradas!', description: `${list.length} categorias para best-seller.` });
+      }
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar com IA', description: e?.message || 'Falha desconhecida', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const doExport = async () => {
     const err = validate();
     if (err) {
