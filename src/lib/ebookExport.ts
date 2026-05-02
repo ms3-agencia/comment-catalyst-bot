@@ -760,37 +760,64 @@ export async function exportEbookPdf(
     });
 
     // ---- 2) Layout / paginação do sumário ----
-    const lineH1 = 22;
-    const lineH2 = 18;
-    const indent = 22;
-    const headerSpace = 44; // espaço do título "Sumário" + linha divisória
+    // Todas as medidas em pt (unidade do jsPDF). Tamanhos pensados para
+    // legibilidade em tela e impressão (300dpi+) — nada depende de pixels CSS.
+    const FS_KICKER = 9;     // "ÍNDICE"
+    const FS_TITLE = 26;     // "Sumário"
+    const FS_SUBTITLE = 10;  // subtítulo opcional
+    const FS_LEVEL1 = 12;    // capítulos / introdução / conclusão
+    const FS_LEVEL2 = 10.5;  // subcapítulos
+    const FS_PAGE_NUM = 11;  // números de página (level 1)
+    const FS_PAGE_NUM_2 = 10;// números de página (level 2)
+
+    const LH1 = 26;          // altura de linha p/ entradas nível 1
+    const LH2 = 20;          // altura de linha p/ entradas nível 2
+    const GROUP_GAP = 8;     // respiro extra entre grupos (intro/cap/concl.)
+    const SUB_INDENT = 24;   // recuo dos subcapítulos
+    const HEADER_BLOCK_H = 78; // kicker + título + subtítulo + divisor
+
+    // Paleta consistente (alinhada à identidade do projeto)
+    const COLOR_ACCENT: [number, number, number] = [8, 145, 178];   // cyan-600
+    const COLOR_TITLE: [number, number, number] = [15, 23, 42];     // slate-900
+    const COLOR_BODY: [number, number, number] = [30, 41, 59];      // slate-800
+    const COLOR_MUTED: [number, number, number] = [71, 85, 105];    // slate-600
+    const COLOR_DOT_L1: [number, number, number] = [203, 213, 225]; // slate-300
+    const COLOR_DOT_L2: [number, number, number] = [226, 232, 240]; // slate-200
+    const COLOR_KICKER: [number, number, number] = [100, 116, 139]; // slate-500
+
+    const setColor = (c: [number, number, number]) => pdf.setTextColor(c[0], c[1], c[2]);
 
     // Quebra entradas em "páginas" do TOC para descobrir quantas páginas
-    // serão necessárias antes de inserir.
+    // serão necessárias antes de inserir. Considera também o respiro entre
+    // grupos para que a contagem de páginas bata com o desenho real.
     const tocPages: TocEntry[][] = [[]];
-    let yProbe = contentTop + headerSpace;
+    let yProbe = contentTop + HEADER_BLOCK_H;
+    let prevKindProbe: TocKind | null = null;
     for (const entry of sortedToc) {
-      const lineH = entry.level === 2 ? lineH2 : lineH1;
-      if (yProbe + lineH > contentBottom) {
+      const lineH = entry.level === 2 ? LH2 : LH1;
+      // Adiciona gap quando muda o "macro-grupo" (intro→chapter→conclusion).
+      // Subs não disparam gap: pertencem ao grupo do capítulo.
+      const macroKind = entry.kind === 'sub' ? 'chapter' : entry.kind;
+      const prevMacro = prevKindProbe === 'sub' ? 'chapter' : prevKindProbe;
+      const gap = prevMacro && prevMacro !== macroKind ? GROUP_GAP : 0;
+
+      if (yProbe + gap + lineH > contentBottom) {
         tocPages.push([]);
-        yProbe = contentTop + headerSpace;
+        yProbe = contentTop + HEADER_BLOCK_H;
+      } else {
+        yProbe += gap;
       }
       tocPages[tocPages.length - 1].push(entry);
       yProbe += lineH;
+      prevKindProbe = entry.kind;
     }
 
     // ---- 3) Insere páginas extras e desloca números de página ----
     const extraPages = tocPages.length - 1;
     if (extraPages > 0) {
-      // Insere páginas logo após a página reservada do TOC.
       for (let i = 0; i < extraPages; i++) {
         pdf.insertPage(tocPageNum + 1 + i);
       }
-      // Reabsorve o offset:
-      //  - Conteúdo registrado em páginas > tocPageNum precisa de +extraPages.
-      //  - skipChromePages (capa) que estejam antes de tocPageNum não muda;
-      //    se houver alguma após (não é o caso atual, mas defensivo), também
-      //    é deslocada.
       for (const e of toc) {
         if (e.page > tocPageNum) e.page += extraPages;
       }
@@ -807,76 +834,105 @@ export async function exportEbookPdf(
       const targetPage = tocPageNum + pageIdx;
       pdf.setPage(targetPage);
 
-      // Cabeçalho "Sumário" — repetido em cada página de TOC
+      // ===== Cabeçalho do sumário =====
       let y = contentTop;
+
+      // Kicker "ÍNDICE" (letterspacing simulado por espaço entre letras)
       pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(20);
-      pdf.setTextColor(8, 145, 178); // cyan
-      pdf.text(pageIdx === 0 ? 'Sumário' : 'Sumário (continuação)', marginX, y + 14);
-      pdf.setDrawColor(8, 145, 178);
-      pdf.setLineWidth(1.2);
-      pdf.line(marginX, y + 22, pageW - marginX, y + 22);
-      y += headerSpace;
+      pdf.setFontSize(FS_KICKER);
+      setColor(COLOR_KICKER);
+      const kicker = pageIdx === 0 ? 'Í N D I C E' : 'Í N D I C E   ( c o n t . )';
+      pdf.text(kicker, marginX, y + 10);
 
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(11);
-      pdf.setTextColor(30, 41, 59);
+      // Título principal
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(FS_TITLE);
+      setColor(COLOR_TITLE);
+      pdf.text('Sumário', marginX, y + 36);
 
+      // Subtítulo (apenas na primeira página)
+      if (pageIdx === 0) {
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(FS_SUBTITLE);
+        setColor(COLOR_MUTED);
+        pdf.text('Toque em qualquer item para abrir o capítulo correspondente.', marginX, y + 54);
+      }
+
+      // Divisor cyan
+      pdf.setDrawColor(COLOR_ACCENT[0], COLOR_ACCENT[1], COLOR_ACCENT[2]);
+      pdf.setLineWidth(1.4);
+      pdf.line(marginX, y + 66, pageW - marginX, y + 66);
+
+      y += HEADER_BLOCK_H;
+
+      // ===== Linhas =====
+      let prevKind: TocKind | null = null;
       for (const entry of tocPages[pageIdx]) {
-        const lineH = entry.level === 2 ? lineH2 : lineH1;
-        const xStart = marginX + (entry.level === 2 ? indent : 0);
-        const fontSize = entry.level === 2 ? 10 : 11;
-        const labelMaxW = (pageW - marginX) - xStart - 60;
+        const lineH = entry.level === 2 ? LH2 : LH1;
+        const fontSize = entry.level === 2 ? FS_LEVEL2 : FS_LEVEL1;
+        const numFontSize = entry.level === 2 ? FS_PAGE_NUM_2 : FS_PAGE_NUM;
+        const xStart = marginX + (entry.level === 2 ? SUB_INDENT : 0);
+
+        // Respiro entre grupos macro
+        const macroKind = entry.kind === 'sub' ? 'chapter' : entry.kind;
+        const prevMacro = prevKind === 'sub' ? 'chapter' : prevKind;
+        if (prevMacro && prevMacro !== macroKind) y += GROUP_GAP;
+
+        // Reserva espaço do número à direita
+        const numReserve = 36;
+        const labelMaxW = (pageW - marginX) - xStart - numReserve;
         const labelText = pdf.splitTextToSize(entry.label, labelMaxW)[0];
 
-        // Label
+        // ---- Label ----
         if (entry.level === 1) {
           pdf.setFont('helvetica', 'bold');
-          pdf.setTextColor(15, 23, 42); // slate-900
+          setColor(COLOR_TITLE);
         } else {
           pdf.setFont('helvetica', 'normal');
-          pdf.setTextColor(71, 85, 105); // slate-600
+          setColor(COLOR_MUTED);
         }
         pdf.setFontSize(fontSize);
-        pdf.text(labelText, xStart, y);
+        // Baseline ajustada para centralizar verticalmente na "linha"
+        const baseline = y + lineH * 0.65;
+        pdf.text(labelText, xStart, baseline);
 
-        // Número da página
+        // ---- Número da página ----
         pdf.setFont('helvetica', entry.level === 1 ? 'bold' : 'normal');
-        pdf.setTextColor(8, 145, 178);
+        pdf.setFontSize(numFontSize);
+        setColor(COLOR_ACCENT);
         const pageStr = String(entry.page);
-        pdf.text(pageStr, pageW - marginX, y, { align: 'right' });
+        pdf.text(pageStr, pageW - marginX, baseline, { align: 'right' });
 
-        // Pontilhado
+        // ---- Pontilhado (leaders) ----
         const labelW = pdf.getTextWidth(labelText);
-        const pageW2 = pdf.getTextWidth(pageStr);
-        const dotsStartX = xStart + labelW + 6;
-        const dotsEndX = pageW - marginX - pageW2 - 6;
+        const pageStrW = pdf.getTextWidth(pageStr);
+        const dotsStartX = xStart + labelW + 8;
+        const dotsEndX = pageW - marginX - pageStrW - 8;
         if (dotsEndX > dotsStartX) {
           pdf.setFont('helvetica', 'normal');
-          pdf.setTextColor(
-            entry.level === 2 ? 203 : 148,
-            entry.level === 2 ? 213 : 163,
-            entry.level === 2 ? 225 : 184,
-          );
+          setColor(entry.level === 2 ? COLOR_DOT_L2 : COLOR_DOT_L1);
           pdf.setFontSize(9);
-          const dots = '.'.repeat(Math.max(3, Math.floor((dotsEndX - dotsStartX) / 3)));
-          pdf.text(dots, dotsStartX, y);
-          pdf.setFontSize(fontSize);
+          // Leaders compostos por '·' (ponto médio) — mais elegante e
+          // consistente entre PDF readers e impressoras.
+          const dotW = pdf.getTextWidth('·  ');
+          const count = Math.max(3, Math.floor((dotsEndX - dotsStartX) / dotW));
+          pdf.text('·  '.repeat(count), dotsStartX, baseline);
         }
 
-        // Link clicável
-        pdf.link(marginX, y - lineH + 6, contentW, lineH, { pageNumber: entry.page });
+        // ---- Link clicável cobrindo a linha inteira ----
+        pdf.link(marginX, y, contentW, lineH, { pageNumber: entry.page });
 
         y += lineH;
+        prevKind = entry.kind;
       }
     }
 
     // Atualiza tocPageNum para a última página efetivamente usada pelo TOC
     tocPageNum = tocPageNum + (tocPages.length - 1);
 
-    // Restaura cor padrão
+    // Restaura estilo padrão
     pdf.setFont('helvetica', 'normal');
-    pdf.setTextColor(30, 41, 59);
+    setColor(COLOR_BODY);
   };
 
   try {
