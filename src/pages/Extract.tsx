@@ -481,13 +481,15 @@ const Extract = () => {
 
             {/* AI Profile */}
             <Card className="glass p-6">
-              {!aiProfile ? (
+              {aiLoading ? (
+                <GenerationAnimation variant="avatar" />
+              ) : !aiProfile ? (
                 <div className="text-center">
                   <Sparkles className="mx-auto text-warning" size={32} />
                   <h3 className="font-heading text-lg font-bold mt-3">Gerar Perfil de Avatar com IA</h3>
                   <p className="text-sm text-muted-foreground mt-1">Análise inteligente real do perfil da sua audiência</p>
                   <Button onClick={handleGenerateAI} className="mt-4 glow-primary" disabled={aiLoading}>
-                    {aiLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando com IA...</> : <><Sparkles className="mr-2 h-4 w-4" /> Gerar com IA</>}
+                    <Sparkles className="mr-2 h-4 w-4" /> Gerar com IA
                   </Button>
                 </div>
               ) : (
