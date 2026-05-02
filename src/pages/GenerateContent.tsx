@@ -5,6 +5,7 @@ import { DashboardLayout } from '@/components/DashboardLayout';
 import { CopyIconButton } from '@/components/CopyIconButton';
 import { VideoEditor } from '@/components/VideoEditor';
 import { VideoEditorErrorBoundary } from '@/components/VideoEditorErrorBoundary';
+import { GenerationAnimation } from '@/components/GenerationAnimation';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -775,6 +776,11 @@ const GenerateContent = () => {
                 );
               })()}
             </Card>
+            {generating && (
+              <Card className="p-4">
+                <GenerationAnimation variant="content" />
+              </Card>
+            )}
           </div>
         )}
 
@@ -907,7 +913,14 @@ const GenerateContent = () => {
                     )}
                     {/* AI Image (capa) */}
                     <div className="border-t border-border pt-3 space-y-2">
-                      {c.image_url ? (
+                      {imagingId === c.id && !c.image_url ? (
+                        <GenerationAnimation
+                          variant="image"
+                          subtitle={c.content_type === 'carrossel' && c.slides?.length
+                            ? `Gerando ${c.slides.length} imagens em sequência para o carrossel…`
+                            : 'Compondo pixels, luz e cor para criar sua imagem…'}
+                        />
+                      ) : c.image_url ? (
                         <div className="space-y-2">
                           <div className="relative rounded-lg overflow-hidden border border-border bg-muted">
                             <img

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { GenerationAnimation } from '@/components/GenerationAnimation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -557,6 +558,7 @@ function CoverEditor({ ebook, onSave, onToast }: { ebook: any; onSave: (patch: a
               {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               {generating ? 'Gerando...' : 'Gerar capa com IA'}
             </Button>
+            {generating && <GenerationAnimation variant="image" title="Gerando capa do ebook" />}
             <p className="text-xs text-muted-foreground">Consome créditos da ação "ebook_image".</p>
           </div>
 
