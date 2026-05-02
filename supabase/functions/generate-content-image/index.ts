@@ -166,11 +166,13 @@ Deno.serve(async (req) => {
     }
 
     const refundCredits = async () => {
-      await admin.rpc("admin_add_credits", {
-        _user_id: user.id,
-        _amount: creditCost,
-        _description: "Reembolso: falha na geração de imagem",
-      }).catch(() => {});
+      try {
+        await admin.rpc("admin_add_credits", {
+          _user_id: user.id,
+          _amount: creditCost,
+          _description: "Reembolso: falha na geração de imagem",
+        });
+      } catch (_) { /* noop */ }
     };
 
     // Call Lovable AI image gen
