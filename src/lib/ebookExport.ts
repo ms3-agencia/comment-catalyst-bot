@@ -332,6 +332,49 @@ const parseRichHtml = (html: string): RichBlock[] => {
         case 'HR':
           blocks.push({ kind: 'spacer', pt: 12 });
           break;
+        case 'TABLE': {
+          const cellText = (cell: Element) =>
+            (cell.textContent || '').replace(/\s+/g, ' ').trim();
+          const rowsAll = Array.from(el.querySelectorAll('tr'));
+          if (rowsAll.length === 0) break;
+          let head: TableRow = [];
+          let bodyRows: TableRow[] = [];
+          // Cabeçalho: <thead> se existir, senão a 1ª linha que tiver <th>
+          const theadRow = el.querySelector('thead tr');
+          let bodyTrs: Element[] = [];
+          if (theadRow) {
+            head = Array.from(theadRow.children).map((c) => ({
+              text: cellText(c),
+              header: true,
+            }));
+            bodyTrs = Array.from(el.querySelectorAll('tbody tr'));
+            if (bodyTrs.length === 0) {
+              bodyTrs = rowsAll.filter((r) => r !== theadRow);
+            }
+          } else {
+            const first = rowsAll[0];
+            const firstHasTh = !!first.querySelector('th');
+            if (firstHasTh) {
+              head = Array.from(first.children).map((c) => ({
+                text: cellText(c),
+                header: true,
+              }));
+              bodyTrs = rowsAll.slice(1);
+            } else {
+              bodyTrs = rowsAll;
+            }
+          }
+          bodyRows = bodyTrs.map((tr) =>
+            Array.from(tr.children).map((c) => ({
+              text: cellText(c),
+              header: c.tagName.toUpperCase() === 'TH',
+            })),
+          );
+          if (head.length || bodyRows.length) {
+            blocks.push({ kind: 'table', head, body: bodyRows });
+          }
+          break;
+        }
         default:
           // Containers genéricos: continua descendo
           walk(el);
