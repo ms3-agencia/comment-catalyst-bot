@@ -557,6 +557,7 @@ function CoverEditor({ ebook, onSave, onToast }: { ebook: any; onSave: (patch: a
               {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               {generating ? 'Gerando...' : 'Gerar capa com IA'}
             </Button>
+            {generating && <GenerationAnimation variant="image" title="Gerando capa do ebook" />}
             <p className="text-xs text-muted-foreground">Consome créditos da ação "ebook_image".</p>
           </div>
 
