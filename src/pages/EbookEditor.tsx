@@ -224,6 +224,17 @@ export default function EbookEditor() {
                 <DropdownMenuItem onClick={() => doExport('docx')}>DOCX</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => doExport('md')}>Markdown</DropdownMenuItem>
                 <DropdownMenuItem onClick={() => doExport('txt')}>TXT</DropdownMenuItem>
+                {hasEpubAddon ? (
+                  <DropdownMenuItem onClick={() => navigate(`/dashboard/ebooks/${id}/epub`)}>
+                    EPUB (Amazon KDP)
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard/addons" className="opacity-70">
+                      EPUB (KDP) — ative o add-on
+                    </Link>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
