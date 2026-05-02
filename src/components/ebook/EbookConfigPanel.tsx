@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Plus, Trash2, Save, Star, Lock, Gem, Copy, Pencil, Check, X } from 'lucide-react';
+import { Loader2, Plus, Trash2, Save, Star, Lock, Gem, Copy, Pencil, Check, X, GripVertical } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUserAddons } from '@/hooks/useUserAddons';
 
@@ -93,6 +93,61 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
     await load();
   };
 
+  // Drag & drop reorder (apenas templates próprios)
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  const isOwn = (c: EbookConfig) => !!currentUserId && c.user_id === currentUserId;
+
+  const onDragStart = (e: React.DragEvent, c: EbookConfig) => {
+    if (!c.id || !isOwn(c)) { e.preventDefault(); return; }
+    setDragId(c.id);
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', c.id); } catch {}
+  };
+  const onDragOver = (e: React.DragEvent, c: EbookConfig) => {
+    if (!dragId || !c.id || !isOwn(c) || c.id === dragId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverId !== c.id) setDragOverId(c.id);
+  };
+  const onDragEnd = () => { setDragId(null); setDragOverId(null); };
+
+  const onDrop = async (e: React.DragEvent, target: EbookConfig) => {
+    e.preventDefault();
+    const sourceId = dragId;
+    setDragId(null);
+    setDragOverId(null);
+    if (!sourceId || !target.id || sourceId === target.id || !isOwn(target)) return;
+
+    // Reordena localmente apenas dentro dos templates do próprio usuário
+    const ownList = configs.filter(isOwn);
+    const otherList = configs.filter(c => !isOwn(c));
+    const fromIdx = ownList.findIndex(c => c.id === sourceId);
+    const toIdx = ownList.findIndex(c => c.id === target.id);
+    if (fromIdx < 0 || toIdx < 0) return;
+
+    const reordered = [...ownList];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+
+    // Otimista: atualiza UI
+    setConfigs([...otherList, ...reordered]);
+
+    // Persiste sort_order para os afetados (apenas próprios)
+    try {
+      await Promise.all(
+        reordered.map((c, idx) =>
+          supabase.from('ebook_configs').update({ sort_order: idx + 1 }).eq('id', c.id!)
+        )
+      );
+      await load();
+    } catch (err: any) {
+      toast({ title: 'Erro ao reordenar', description: err?.message || 'Tente novamente', variant: 'destructive' });
+      load();
+    }
+  };
+
   // Em modo user, templates globais (criados por admin) NÃO podem ser editados aqui.
   const isGlobalTemplate = !!current.id && !!current.user_id && !!currentUserId && current.user_id !== currentUserId;
   const editingLocked = !canEdit || (mode === 'user' && isGlobalTemplate);
@@ -101,7 +156,7 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
     setLoading(true);
     const { data: u } = await supabase.auth.getUser();
     setCurrentUserId(u.user?.id || null);
-    let query = supabase.from('ebook_configs').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('ebook_configs').select('*').order('sort_order', { ascending: true }).order('created_at', { ascending: false });
     if (mode === 'user' && u.user) {
       // Em modo user, lista os templates dele + globais (admins). RLS permite ler ambos.
       query = query;
@@ -254,16 +309,28 @@ export function EbookConfigPanel({ onSelect, mode = 'admin', canEdit = true }: {
           const isGlobal = mode === 'user' && c.user_id && currentUserId && c.user_id !== currentUserId;
           const isRenaming = renamingId === c.id;
           const canRename = !isGlobal && canEdit;
+          const draggable = !isGlobal && canEdit && !isRenaming;
+          const isDragging = dragId === c.id;
+          const isDragOver = dragOverId === c.id;
           return (
             <div
               key={c.id}
               role="button"
               tabIndex={0}
+              draggable={draggable}
+              onDragStart={(e) => onDragStart(e, c)}
+              onDragOver={(e) => onDragOver(e, c)}
+              onDragLeave={() => { if (dragOverId === c.id) setDragOverId(null); }}
+              onDrop={(e) => onDrop(e, c)}
+              onDragEnd={onDragEnd}
               onClick={() => { if (!isRenaming) { setCurrent(c); onSelect?.(c); } }}
               onKeyDown={(e) => { if (!isRenaming && (e.key === 'Enter' || e.key === ' ')) { setCurrent(c); onSelect?.(c); } }}
-              className={`w-full text-left px-2.5 py-2 rounded-md text-sm hover:bg-accent flex items-center justify-between gap-2 cursor-pointer ${current.id === c.id ? 'bg-accent' : ''}`}
+              className={`w-full text-left px-2.5 py-2 rounded-md text-sm hover:bg-accent flex items-center justify-between gap-2 cursor-pointer ${current.id === c.id ? 'bg-accent' : ''} ${isDragging ? 'opacity-40' : ''} ${isDragOver ? 'ring-2 ring-cyan-400/60' : ''}`}
             >
               <span className="truncate flex items-center gap-1.5 flex-1 min-w-0">
+                {draggable && (
+                  <GripVertical className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0 cursor-grab active:cursor-grabbing" aria-label="Arraste para reordenar" />
+                )}
                 {c.is_default && <Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0" />}
                 {c.premium_product_mode && (
                   <Gem className="h-3 w-3 text-cyan-400 shrink-0" aria-label="Modo Premium ativo" />
