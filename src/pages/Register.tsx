@@ -104,11 +104,11 @@ const Register = () => {
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Mínimo 6 caracteres"
+                placeholder="Mín. 8 caracteres (com maiúscula, minúscula e número)"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
                 className="pr-10"
               />
               <button
