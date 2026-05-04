@@ -57,6 +57,8 @@ export function EbookRichEditor({ value, onChange, ebookId, contextHint }: Ebook
   const [imgPrompt, setImgPrompt] = useState('');
   const [imgRatio, setImgRatio] = useState<'16:9' | '1:1' | '9:16' | '4:5' | '3:4' | '4:3'>('16:9');
   const [imgGenerating, setImgGenerating] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     extensions: [
