@@ -59,7 +59,19 @@ const Login = () => {
 
     setLoading(true);
 
-    // 2. Lockout (anti brute-force)
+    // 2. CAPTCHA Turnstile (se configurado)
+    const captchaCheck = await sb.functions.invoke('verify-turnstile', { body: { token: captchaToken || '' } });
+    if (captchaCheck.error || !(captchaCheck.data as any)?.success) {
+      setLoading(false);
+      toast({
+        title: 'Verificação de segurança falhou',
+        description: 'Por favor, complete o CAPTCHA antes de continuar.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // 3. Lockout (anti brute-force)
     const lock = await checkLoginLockout(parsed.data.email);
     if (lock.locked) {
       setLoading(false);
