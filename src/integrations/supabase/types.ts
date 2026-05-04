@@ -164,6 +164,45 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          resource: string | null
+          resource_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resource?: string | null
+          resource_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resource?: string | null
+          resource_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       auth_rate_limits: {
         Row: {
           action: string
@@ -1095,6 +1134,42 @@ export type Database = {
         }
         Relationships: []
       }
+      login_events: {
+        Row: {
+          created_at: string
+          device_fingerprint: string | null
+          email: string | null
+          id: string
+          ip_address: string | null
+          is_new_device: boolean | null
+          success: boolean
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_fingerprint?: string | null
+          email?: string | null
+          id?: string
+          ip_address?: string | null
+          is_new_device?: boolean | null
+          success: boolean
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_fingerprint?: string | null
+          email?: string | null
+          id?: string
+          ip_address?: string | null
+          is_new_device?: boolean | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       logo_customizations: {
         Row: {
           apply_on_images: boolean
@@ -2006,6 +2081,7 @@ export type Database = {
         }
         Returns: Json
       }
+      check_login_lockout: { Args: { _identifier: string }; Returns: Json }
       cleanup_auth_rate_limits: { Args: never; Returns: number }
       cleanup_email_confirmation_tokens: { Args: never; Returns: number }
       cleanup_video_editor_drafts: { Args: never; Returns: Json }
@@ -2030,6 +2106,32 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      log_audit_event: {
+        Args: {
+          _action: string
+          _ip?: string
+          _metadata?: Json
+          _resource?: string
+          _resource_id?: string
+          _ua?: string
+        }
+        Returns: string
+      }
+      record_login_event: {
+        Args: {
+          _email: string
+          _fingerprint: string
+          _ip: string
+          _success: boolean
+          _ua: string
+          _user_id: string
+        }
+        Returns: Json
+      }
+      record_login_failure: {
+        Args: { _identifier: string }
+        Returns: undefined
       }
       seed_ebook_item_costs: { Args: never; Returns: Json }
       user_has_addon: {
