@@ -39,8 +39,24 @@ export const TurnstileHostnamesPanel = () => {
 
   const toggleConfigured = async (hostname: string, configured: boolean) => {
     setUpdating(hostname);
-    await supabase.from('turnstile_hostnames').update({ configured, last_error: configured ? null : undefined }).eq('hostname', hostname);
+    const { data, error } = await supabase.rpc('admin_set_turnstile_hostname_configured', {
+      _hostname: hostname,
+      _configured: configured,
+    });
     setUpdating(null);
+    const result = data as { success?: boolean; error?: string } | null;
+    if (error || !result?.success) {
+      toast({
+        title: 'Erro ao atualizar',
+        description: result?.error || error?.message || 'Tente novamente.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    toast({
+      title: configured ? 'Hostname marcado como OK' : 'Hostname desmarcado',
+      description: hostname,
+    });
     load();
   };
 

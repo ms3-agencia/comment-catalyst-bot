@@ -2093,6 +2093,10 @@ export type Database = {
       admin_delete_user: { Args: { _user_id: string }; Returns: undefined }
       admin_run_draft_cleanup: { Args: never; Returns: Json }
       admin_seed_ebook_item_costs: { Args: never; Returns: Json }
+      admin_set_turnstile_hostname_configured: {
+        Args: { _configured: boolean; _hostname: string }
+        Returns: Json
+      }
       admin_update_user_email: {
         Args: { _new_email: string; _user_id: string }
         Returns: undefined
