@@ -10,22 +10,23 @@ const corsHeaders = {
 };
 
 export async function verifyTurnstileToken(token: string, remoteip?: string): Promise<{ success: boolean; reason?: string }> {
-  if (!token || typeof token !== "string") {
-    return { success: false, reason: "missing_token" };
-  }
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const admin = createClient(supabaseUrl, serviceKey);
 
+  // 1. Se Turnstile estiver desabilitado, libera (mesmo sem token)
   const { data: enabledRow } = await admin.from("app_settings").select("value").eq("key", "turnstile_enabled").maybeSingle();
   const enabled = (enabledRow?.value || "").toString().toLowerCase() === "true";
   if (!enabled) return { success: true, reason: "disabled" };
 
+  // 2. Se não há secret configurada, libera
   const { data: secretRow } = await admin.from("app_settings").select("value").eq("key", "turnstile_secret_key").maybeSingle();
   const secret = (secretRow?.value || "").toString().trim();
-  if (!secret) {
-    // Sem secret configurada: tratamos como desabilitado para não bloquear logins.
-    return { success: true, reason: "no_secret" };
+  if (!secret) return { success: true, reason: "no_secret" };
+
+  // 3. Agora sim exige token
+  if (!token || typeof token !== "string") {
+    return { success: false, reason: "missing_token" };
   }
 
   const form = new FormData();
