@@ -812,26 +812,126 @@ const Admin = () => {
           }}
         >
 
-          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-12 h-auto">
-            <TabsTrigger value="users"><Users size={14} className="mr-1.5" />Usuários</TabsTrigger>
-            <TabsTrigger value="plans"><ShieldCheck size={14} className="mr-1.5" />Planos</TabsTrigger>
-            <TabsTrigger value="packages"><Package size={14} className="mr-1.5" />Pacotes</TabsTrigger>
-            <TabsTrigger value="addons"><Sparkles size={14} className="mr-1.5" />Add-ons</TabsTrigger>
-            <TabsTrigger value="ebook_templates"><BookOpen size={14} className="mr-1.5" />eBook Templates</TabsTrigger>
-            <TabsTrigger value="costs"><Coins size={14} className="mr-1.5" />Custos</TabsTrigger>
-            <TabsTrigger value="audit"><FileText size={14} className="mr-1.5" />Auditoria</TabsTrigger>
-            <TabsTrigger value="video"><Clapperboard size={14} className="mr-1.5" />Vídeo</TabsTrigger>
-            <TabsTrigger value="notifications"><Bot size={14} className="mr-1.5" />Avisos & Emails</TabsTrigger>
-            <TabsTrigger value="security"><Shield size={14} className="mr-1.5" />Segurança</TabsTrigger>
-            <TabsTrigger
-              value="integrations"
-              data-active-sub={integrationsTab !== 'connectors' ? 'true' : undefined}
-              className="data-[active-sub=true]:bg-primary/10 data-[active-sub=true]:text-primary"
-            >
-              <Plug size={14} className="mr-1.5" />Integrações
-            </TabsTrigger>
-            <TabsTrigger value="branding"><Palette size={14} className="mr-1.5" />Personalização</TabsTrigger>
-          </TabsList>
+          {(() => {
+            const groups: { label: string; items: { value: string; label: string; icon: any }[] }[] = [
+              {
+                label: 'Pessoas',
+                items: [
+                  { value: 'users', label: 'Usuários', icon: Users },
+                ],
+              },
+              {
+                label: 'Comercial',
+                items: [
+                  { value: 'plans', label: 'Planos', icon: ShieldCheck },
+                  { value: 'packages', label: 'Pacotes', icon: Package },
+                  { value: 'addons', label: 'Add-ons', icon: Sparkles },
+                  { value: 'costs', label: 'Custos', icon: Coins },
+                  { value: 'audit', label: 'Auditoria', icon: FileText },
+                ],
+              },
+              {
+                label: 'Conteúdo',
+                items: [
+                  { value: 'ebook_templates', label: 'eBook Templates', icon: BookOpen },
+                  { value: 'video', label: 'Vídeo', icon: Clapperboard },
+                ],
+              },
+              {
+                label: 'Sistema',
+                items: [
+                  { value: 'notifications', label: 'Avisos & Emails', icon: Bot },
+                  { value: 'security', label: 'Segurança', icon: Shield },
+                  { value: 'integrations', label: 'Integrações', icon: Plug },
+                  { value: 'branding', label: 'Personalização', icon: Palette },
+                ],
+              },
+            ];
+            const allItems = groups.flatMap(g => g.items);
+            const activeItem = allItems.find(i => i.value === activeTab) ?? allItems[0];
+            const activeGroup = groups.find(g => g.items.some(i => i.value === activeTab)) ?? groups[0];
+
+            return (
+              <div className="space-y-3">
+                {/* Mobile: select compacto */}
+                <div className="sm:hidden">
+                  <Select value={activeTab} onValueChange={(v) => {
+                    setActiveTab(v);
+                    if (v === 'integrations') setIntegrationsTab('connectors');
+                  }}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {groups.map(g => (
+                        <div key={g.label}>
+                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{g.label}</div>
+                          {g.items.map(item => (
+                            <SelectItem key={item.value} value={item.value}>
+                              <span className="flex items-center gap-2">
+                                <item.icon size={14} />
+                                {item.label}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </div>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Desktop: categorias + abas da categoria ativa */}
+                <div className="hidden sm:block space-y-2">
+                  <div className="flex flex-wrap gap-1 p-1 rounded-lg bg-muted/50 border border-border">
+                    {groups.map(g => {
+                      const isActive = g.label === activeGroup.label;
+                      return (
+                        <button
+                          key={g.label}
+                          type="button"
+                          onClick={() => {
+                            const first = g.items[0].value;
+                            setActiveTab(first);
+                            if (first === 'integrations') setIntegrationsTab('connectors');
+                          }}
+                          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                            isActive
+                              ? 'bg-background text-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                          }`}
+                        >
+                          {g.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <TabsList className="w-full flex flex-wrap justify-start gap-1 h-auto p-1 bg-muted/30">
+                    {activeGroup.items.map(item => (
+                      <TabsTrigger
+                        key={item.value}
+                        value={item.value}
+                        data-active-sub={item.value === 'integrations' && integrationsTab !== 'connectors' ? 'true' : undefined}
+                        className="data-[active-sub=true]:bg-primary/10 data-[active-sub=true]:text-primary"
+                      >
+                        <item.icon size={14} className="mr-1.5" />
+                        {item.label}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+
+                  {/* Breadcrumb contextual */}
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground px-1">
+                    <span>Admin</span>
+                    <span>/</span>
+                    <span>{activeGroup.label}</span>
+                    <span>/</span>
+                    <span className="text-foreground font-medium">{activeItem.label}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           <TabsContent value="security" className="mt-4">
             <SecurityTab />
