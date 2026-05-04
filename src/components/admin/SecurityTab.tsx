@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Shield, Save, Loader2, ExternalLink, CheckCircle2, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { TurnstileHostnamesPanel } from './TurnstileHostnamesPanel';
 
 const KEYS = ['turnstile_enabled', 'turnstile_site_key', 'turnstile_secret_key'] as const;
 
