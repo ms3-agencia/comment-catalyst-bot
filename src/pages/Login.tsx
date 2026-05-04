@@ -13,7 +13,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { LogIn, Eye, EyeOff, MailWarning, Loader2, Send } from 'lucide-react';
+import { LogIn, Eye, EyeOff, MailWarning, Loader2, Send, KeyRound } from 'lucide-react';
 
 const isEmailNotConfirmedError = (error: { message?: string; code?: string; name?: string } | null) => {
   if (!error) return false;
