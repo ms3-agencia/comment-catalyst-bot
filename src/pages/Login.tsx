@@ -44,18 +44,55 @@ const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // 1. Validação client-side
+    const parsed = loginSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      const first = parsed.error.errors[0];
+      toast({ title: 'Dados inválidos', description: first?.message || 'Verifique os campos.', variant: 'destructive' });
+      return;
+    }
+
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    // 2. Lockout (anti brute-force)
+    const lock = await checkLoginLockout(parsed.data.email);
+    if (lock.locked) {
+      setLoading(false);
+      toast({
+        title: 'Conta temporariamente bloqueada',
+        description: lock.message || 'Excesso de tentativas. Tente novamente em alguns minutos.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // 3. Tentar login
+    const { error } = await supabase.auth.signInWithPassword({
+      email: parsed.data.email,
+      password: parsed.data.password,
+    });
     setLoading(false);
+
     if (error) {
+      // Registra falha (alimenta lockout) — fire-and-forget
+      reportSecurityEvent('login_failure', { email: parsed.data.email });
+
       if (isEmailNotConfirmedError(error)) {
         setShowUnconfirmedDialog(true);
         return;
       }
-      toast({ title: 'Erro ao entrar', description: error.message, variant: 'destructive' });
-    } else {
-      navigate('/dashboard');
+      toast({
+        title: 'Erro ao entrar',
+        description: 'E-mail ou senha incorretos.',
+        variant: 'destructive',
+      });
+      return;
     }
+
+    // 4. Sucesso → registra evento (e dispara alerta se for novo dispositivo)
+    reportSecurityEvent('login_success', { email: parsed.data.email });
+    navigate('/dashboard');
   };
 
   const handleResend = async () => {
@@ -82,13 +119,13 @@ const Login = () => {
   };
 
   const handleForgot = async () => {
-    const target = (forgotEmail || '').trim();
-    if (!target) {
-      toast({ title: 'Informe o e-mail', description: 'Digite o e-mail da sua conta para receber o link.', variant: 'destructive' });
+    const parsed = forgotSchema.safeParse({ email: forgotEmail });
+    if (!parsed.success) {
+      toast({ title: 'E-mail inválido', description: parsed.error.errors[0]?.message || 'Digite um e-mail válido.', variant: 'destructive' });
       return;
     }
     setSendingReset(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(target, {
+    const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setSendingReset(false);
@@ -96,7 +133,8 @@ const Login = () => {
       toast({ title: 'Não foi possível enviar', description: error.message, variant: 'destructive' });
       return;
     }
-    toast({ title: 'Link enviado', description: `Enviamos um link de redefinição de senha para ${target}. Verifique seu e-mail (e o spam).` });
+    reportSecurityEvent('password_reset_requested', { email: parsed.data.email });
+    toast({ title: 'Link enviado', description: `Se o e-mail existir, enviaremos um link de redefinição para ${parsed.data.email}.` });
     setShowForgotDialog(false);
   };
 
