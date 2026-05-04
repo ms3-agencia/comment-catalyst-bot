@@ -17,6 +17,7 @@ import { IntegrationsTab } from '@/components/admin/IntegrationsTab';
 import { VideoAiIntegrationsTab } from '@/components/admin/VideoAiIntegrationsTab';
 import { VideoAiLogTab } from '@/components/admin/VideoAiLogTab';
 import { NotificationsTab } from '@/components/admin/NotificationsTab';
+import { SecurityTab } from '@/components/admin/SecurityTab';
 import { CreditAuditTab } from '@/components/admin/CreditAuditTab';
 import { EbookConfigPanel } from '@/components/ebook/EbookConfigPanel';
 import { AdminEbookTemplatesTab } from '@/components/admin/AdminEbookTemplatesTab';
@@ -811,7 +812,7 @@ const Admin = () => {
           }}
         >
 
-          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-11 h-auto">
+          <TabsList className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-12 h-auto">
             <TabsTrigger value="users"><Users size={14} className="mr-1.5" />Usuários</TabsTrigger>
             <TabsTrigger value="plans"><ShieldCheck size={14} className="mr-1.5" />Planos</TabsTrigger>
             <TabsTrigger value="packages"><Package size={14} className="mr-1.5" />Pacotes</TabsTrigger>
@@ -821,6 +822,7 @@ const Admin = () => {
             <TabsTrigger value="audit"><FileText size={14} className="mr-1.5" />Auditoria</TabsTrigger>
             <TabsTrigger value="video"><Clapperboard size={14} className="mr-1.5" />Vídeo</TabsTrigger>
             <TabsTrigger value="notifications"><Bot size={14} className="mr-1.5" />Avisos & Emails</TabsTrigger>
+            <TabsTrigger value="security"><Shield size={14} className="mr-1.5" />Segurança</TabsTrigger>
             <TabsTrigger
               value="integrations"
               data-active-sub={integrationsTab !== 'connectors' ? 'true' : undefined}
@@ -830,6 +832,10 @@ const Admin = () => {
             </TabsTrigger>
             <TabsTrigger value="branding"><Palette size={14} className="mr-1.5" />Personalização</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="security" className="mt-4">
+            <SecurityTab />
+          </TabsContent>
 
           <TabsContent value="ebook_templates" className="mt-4">
             <AdminEbookTemplatesTab />
