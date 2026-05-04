@@ -1,0 +1,1 @@
+DELETE FROM public.turnstile_hostnames WHERE hostname='test-curl.example.com';
