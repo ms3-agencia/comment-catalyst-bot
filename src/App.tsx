@@ -25,6 +25,7 @@ import ContentHistory from "./pages/ContentHistory";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 import ConfirmEmail from "./pages/ConfirmEmail";
+import ResetPassword from "./pages/ResetPassword";
 import Ebooks from "./pages/Ebooks";
 import EbookEditor from "./pages/EbookEditor";
 import EbookEpubExport from "./pages/EbookEpubExport";
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/auth/confirm" element={<ConfirmEmail />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/dashboard/extract" element={<ProtectedRoute><Extract /></ProtectedRoute>} />
             <Route path="/dashboard/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
