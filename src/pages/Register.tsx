@@ -25,8 +25,14 @@ const Register = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (password.length < 6) {
-      toast({ title: 'Senha muito curta', description: 'Use no mínimo 6 caracteres.', variant: 'destructive' });
+    const parsed = registerSchema.safeParse({
+      full_name: fullName,
+      email,
+      password,
+    });
+    if (!parsed.success) {
+      const first = parsed.error.errors[0];
+      toast({ title: 'Dados inválidos', description: first?.message || 'Verifique os campos.', variant: 'destructive' });
       return;
     }
     if (password !== confirmPassword) {
