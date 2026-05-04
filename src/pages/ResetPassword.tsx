@@ -152,6 +152,8 @@ const ResetPassword = () => {
               />
             </div>
 
+            <TurnstileWidget onToken={setCaptchaToken} />
+
             <Button type="submit" className="w-full glow-primary" disabled={loading}>
               {loading ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</>
