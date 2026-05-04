@@ -164,12 +164,19 @@ const Login = () => {
     }
     setSendingReset(true);
 
-    // CAPTCHA Turnstile (se configurado)
-    const captchaCheck = await sb.functions.invoke('verify-turnstile', { body: { token: forgotCaptchaToken || '' } });
-    if (captchaCheck.error || !(captchaCheck.data as any)?.success) {
-      setSendingReset(false);
-      toast({ title: 'Verificação de segurança falhou', description: 'Complete o CAPTCHA antes de continuar.', variant: 'destructive' });
-      return;
+    // CAPTCHA Turnstile (apenas se configurado)
+    if (await isTurnstileConfigured()) {
+      if (!forgotCaptchaToken) {
+        setSendingReset(false);
+        toast({ title: 'Aguarde a verificação de segurança', description: 'Complete o CAPTCHA antes de continuar.', variant: 'destructive' });
+        return;
+      }
+      const captchaCheck = await sb.functions.invoke('verify-turnstile', { body: { token: forgotCaptchaToken } });
+      if (captchaCheck.error || !(captchaCheck.data as any)?.success) {
+        setSendingReset(false);
+        toast({ title: 'Verificação de segurança falhou', description: 'Tente novamente em instantes.', variant: 'destructive' });
+        return;
+      }
     }
 
     const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
