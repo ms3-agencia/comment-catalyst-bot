@@ -470,7 +470,7 @@ const Extract = () => {
                   )}
                   <div className="flex-1 min-w-0">
                     <span className="font-medium text-sm">{c.author}</span>
-                    <p className="text-sm text-muted-foreground mt-1" dangerouslySetInnerHTML={{ __html: c.content }} />
+                    <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">{c.content?.replace(/<br\s*\/?>(\n)?/gi, '\n').replace(/<[^>]+>/g, '').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')}</p>
                     <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1"><ThumbsUp size={12} /> {c.likes}</span>
                       <span>{new Date(c.published_at).toLocaleDateString('pt-BR')}</span>
