@@ -239,6 +239,58 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
+  const forceLogoutAndRedirect = async (reason: string) => {
+    if (explicitSignOutRef.current) return;
+    explicitSignOutRef.current = true;
+    try { await closeSessionLog(); } catch { /* noop */ }
+    try { await supabase.auth.signOut({ scope: 'local' } as any); } catch { /* noop */ }
+    clearAuthState();
+    setLoading(false);
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      const next = encodeURIComponent(window.location.pathname + window.location.search);
+      window.location.replace(`/login?reason=${encodeURIComponent(reason)}&next=${next}`);
+    }
+  };
+
+  // Detecta JWT inválido / sessão removida em respostas Supabase e força logout
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const originalFetch = window.fetch.bind(window);
+    let supaHost = '';
+    try { supaHost = new URL((import.meta as any).env?.VITE_SUPABASE_URL || '').host; } catch { /* noop */ }
+
+    const isAuthInvalidResponse = async (res: Response): Promise<boolean> => {
+      if (res.status !== 401 && res.status !== 403) return false;
+      try {
+        const text = await res.clone().text();
+        const lower = text.toLowerCase();
+        return (
+          lower.includes('session_not_found') ||
+          lower.includes('jwt expired') ||
+          lower.includes('invalid jwt') ||
+          lower.includes('invalid_token') ||
+          lower.includes('bad_jwt') ||
+          lower.includes('does not exist')
+        );
+      } catch { return false; }
+    };
+
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const res = await originalFetch(input as any, init);
+      try {
+        const url = typeof input === 'string' ? input : (input instanceof URL ? input.href : (input as Request).url);
+        if (supaHost && url && url.includes(supaHost) && currentUserRef.current) {
+          if (await isAuthInvalidResponse(res)) {
+            void forceLogoutAndRedirect('session_expired');
+          }
+        }
+      } catch { /* noop */ }
+      return res;
+    };
+
+    return () => { window.fetch = originalFetch; };
+  }, []);
+
   const signOut = async () => {
     explicitSignOutRef.current = true;
     await closeSessionLog();
