@@ -158,6 +158,7 @@ const Register = () => {
               <p className="text-xs text-destructive">As senhas não coincidem</p>
             )}
           </div>
+          <TurnstileWidget onToken={setCaptchaToken} />
           <Button type="submit" className="w-full glow-primary" disabled={loading}>
             {loading ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" /> : <><UserPlus className="mr-2 h-4 w-4" /> Criar conta</>}
           </Button>
