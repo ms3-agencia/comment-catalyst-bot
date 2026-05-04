@@ -67,6 +67,12 @@ export const TurnstileWidget = ({ onToken, theme = 'dark' }: Props) => {
       setSiteKey(k);
       if (!k) onToken(null);
     });
+    // Registra hostname para monitoramento (admin) — não bloqueia render
+    if (typeof window !== 'undefined') {
+      try {
+        supabase.rpc('register_turnstile_hostname', { _hostname: window.location.hostname }).then(() => {});
+      } catch { /* noop */ }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -79,7 +85,15 @@ export const TurnstileWidget = ({ onToken, theme = 'dark' }: Props) => {
         sitekey: siteKey,
         theme,
         callback: (token: string) => onToken(token),
-        'error-callback': () => onToken(null),
+        'error-callback': (code?: string) => {
+          onToken(null);
+          try {
+            supabase.rpc('register_turnstile_hostname', {
+              _hostname: window.location.hostname,
+              _error: `turnstile_error_${code || 'unknown'}`,
+            }).then(() => {});
+          } catch { /* noop */ }
+        },
         'expired-callback': () => onToken(null),
         'timeout-callback': () => onToken(null),
       });
