@@ -141,6 +141,15 @@ const Login = () => {
       return;
     }
     setSendingReset(true);
+
+    // CAPTCHA Turnstile (se configurado)
+    const captchaCheck = await sb.functions.invoke('verify-turnstile', { body: { token: forgotCaptchaToken || '' } });
+    if (captchaCheck.error || !(captchaCheck.data as any)?.success) {
+      setSendingReset(false);
+      toast({ title: 'Verificação de segurança falhou', description: 'Complete o CAPTCHA antes de continuar.', variant: 'destructive' });
+      return;
+    }
+
     const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
@@ -184,6 +193,7 @@ const Login = () => {
               </button>
             </div>
           </div>
+          <TurnstileWidget onToken={setCaptchaToken} />
           <Button type="submit" className="w-full glow-primary" disabled={loading}>
             {loading ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" /> : <><LogIn className="mr-2 h-4 w-4" /> Entrar</>}
           </Button>
