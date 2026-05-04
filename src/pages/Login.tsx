@@ -16,7 +16,7 @@ import {
 import { LogIn, Eye, EyeOff, MailWarning, Loader2, Send, KeyRound } from 'lucide-react';
 import { loginSchema, forgotSchema } from '@/lib/security';
 import { reportSecurityEvent, checkLoginLockout } from '@/lib/securityEvents';
-import { TurnstileWidget } from '@/components/TurnstileWidget';
+import { TurnstileWidget, isTurnstileConfigured } from '@/components/TurnstileWidget';
 import { supabase as sb } from '@/integrations/supabase/client';
 
 const isEmailNotConfirmedError = (error: { message?: string; code?: string; name?: string } | null) => {
