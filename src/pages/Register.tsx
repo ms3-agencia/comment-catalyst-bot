@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus, Eye, EyeOff, Mail } from 'lucide-react';
 import { registerSchema } from '@/lib/security';
+import { TurnstileWidget } from '@/components/TurnstileWidget';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -17,6 +18,7 @@ const Register = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -41,6 +43,15 @@ const Register = () => {
     }
 
     setLoading(true);
+
+    // CAPTCHA Turnstile (se configurado)
+    const captchaCheck = await supabase.functions.invoke('verify-turnstile', { body: { token: captchaToken || '' } });
+    if (captchaCheck.error || !(captchaCheck.data as any)?.success) {
+      setLoading(false);
+      toast({ title: 'Verificação de segurança falhou', description: 'Complete o CAPTCHA antes de continuar.', variant: 'destructive' });
+      return;
+    }
+
     const { data, error } = await supabase.functions.invoke('register-user', {
       body: { email, password, fullName },
     });
