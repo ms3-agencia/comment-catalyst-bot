@@ -177,6 +177,47 @@ const Login = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={showForgotDialog} onOpenChange={setShowForgotDialog}>
+        <DialogContent className="glass border-primary/20 sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 border border-primary/30 glow-primary">
+              <KeyRound className="h-7 w-7 text-primary" />
+            </div>
+            <DialogTitle className="text-center font-heading text-xl">
+              Recuperar acesso à conta
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Informe o e-mail cadastrado e enviaremos um link para você criar uma nova senha.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label htmlFor="forgot-email">E-mail</Label>
+            <Input
+              id="forgot-email"
+              type="email"
+              placeholder="seu@email.com"
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
+              autoFocus
+            />
+          </div>
+
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button onClick={handleForgot} disabled={sendingReset} className="w-full glow-primary">
+              {sendingReset ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando link...</>
+              ) : (
+                <><Send className="mr-2 h-4 w-4" /> Enviar link de redefinição</>
+              )}
+            </Button>
+            <Button type="button" variant="ghost" className="w-full" onClick={() => setShowForgotDialog(false)}>
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
