@@ -14,6 +14,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { LogIn, Eye, EyeOff, MailWarning, Loader2, Send, KeyRound } from 'lucide-react';
+import { loginSchema, forgotSchema } from '@/lib/security';
+import { reportSecurityEvent, checkLoginLockout } from '@/lib/securityEvents';
 
 const isEmailNotConfirmedError = (error: { message?: string; code?: string; name?: string } | null) => {
   if (!error) return false;
