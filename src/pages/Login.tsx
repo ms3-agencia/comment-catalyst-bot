@@ -45,6 +45,17 @@ const Login = () => {
   const [forgotCaptchaToken, setForgotCaptchaToken] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('reason') === 'session_expired') {
+      toast({
+        title: 'Sessão expirada',
+        description: 'Sua sessão expirou ou foi encerrada. Faça login novamente.',
+        variant: 'destructive',
+      });
+    }
+  }, [searchParams, toast]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
