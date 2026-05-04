@@ -16,6 +16,8 @@ import {
 import { LogIn, Eye, EyeOff, MailWarning, Loader2, Send, KeyRound } from 'lucide-react';
 import { loginSchema, forgotSchema } from '@/lib/security';
 import { reportSecurityEvent, checkLoginLockout } from '@/lib/securityEvents';
+import { TurnstileWidget } from '@/components/TurnstileWidget';
+import { supabase as sb } from '@/integrations/supabase/client';
 
 const isEmailNotConfirmedError = (error: { message?: string; code?: string; name?: string } | null) => {
   if (!error) return false;
@@ -39,6 +41,8 @@ const Login = () => {
   const [showForgotDialog, setShowForgotDialog] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [sendingReset, setSendingReset] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [forgotCaptchaToken, setForgotCaptchaToken] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
