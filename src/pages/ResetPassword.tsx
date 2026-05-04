@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { KeyRound, Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react';
+import { newPasswordSchema } from '@/lib/security';
+import { reportSecurityEvent } from '@/lib/securityEvents';
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
