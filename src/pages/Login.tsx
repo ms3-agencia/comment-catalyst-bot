@@ -270,6 +270,8 @@ const Login = () => {
             />
           </div>
 
+          {showForgotDialog && <TurnstileWidget onToken={setForgotCaptchaToken} />}
+
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             <Button onClick={handleForgot} disabled={sendingReset} className="w-full glow-primary">
               {sendingReset ? (
