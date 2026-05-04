@@ -101,10 +101,38 @@ export function EbookRichEditor({ value, onChange, ebookId, contextHint }: Ebook
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   };
 
-  const insertImageByUrl = () => {
-    const url = window.prompt('URL da imagem');
-    if (url) editor.chain().focus().setImage({ src: url }).run();
+  const handleImageFile = async (file: File) => {
+    if (!editor) return;
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Arquivo inválido', description: 'Selecione uma imagem.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: 'Arquivo muito grande', description: 'Máximo 10MB.', variant: 'destructive' });
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Não autenticado');
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const path = `${user.id}/ebook/${ebookId || 'misc'}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('content-images').upload(path, file, {
+        cacheControl: '3600', upsert: false, contentType: file.type,
+      });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from('content-images').getPublicUrl(path);
+      editor.chain().focus().setImage({ src: pub.publicUrl, alt: file.name }).run();
+      toast({ title: 'Imagem enviada!' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao enviar imagem', description: e.message, variant: 'destructive' });
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
+
+  const triggerImageUpload = () => fileInputRef.current?.click();
 
   const generateAiImage = async () => {
     if (!imgPrompt.trim()) {
