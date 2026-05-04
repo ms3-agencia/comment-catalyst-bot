@@ -1661,6 +1661,36 @@ export type Database = {
         }
         Relationships: []
       }
+      turnstile_hostnames: {
+        Row: {
+          configured: boolean
+          first_seen: string
+          hits: number
+          hostname: string
+          last_error: string | null
+          last_error_at: string | null
+          last_seen: string
+        }
+        Insert: {
+          configured?: boolean
+          first_seen?: string
+          hits?: number
+          hostname: string
+          last_error?: string | null
+          last_error_at?: string | null
+          last_seen?: string
+        }
+        Update: {
+          configured?: boolean
+          first_seen?: string
+          hits?: number
+          hostname?: string
+          last_error?: string | null
+          last_error_at?: string | null
+          last_seen?: string
+        }
+        Relationships: []
+      }
       user_addons: {
         Row: {
           activated_at: string
@@ -2132,6 +2162,10 @@ export type Database = {
       }
       record_login_failure: {
         Args: { _identifier: string }
+        Returns: undefined
+      }
+      register_turnstile_hostname: {
+        Args: { _error?: string; _hostname: string }
         Returns: undefined
       }
       seed_ebook_item_costs: { Args: never; Returns: Json }
