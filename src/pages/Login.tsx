@@ -92,7 +92,16 @@ const Login = () => {
             <Input id="email" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Senha</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Senha</Label>
+              <button
+                type="button"
+                onClick={() => { setForgotEmail(email); setShowForgotDialog(true); }}
+                className="text-xs text-primary hover:underline"
+              >
+                Esqueci minha senha
+              </button>
+            </div>
             <div className="relative">
               <Input id="password" type={showPass ? 'text' : 'password'} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
               <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowPass(!showPass)}>
