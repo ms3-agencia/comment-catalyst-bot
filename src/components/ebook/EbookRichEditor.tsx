@@ -19,7 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough, List, ListOrdered,
   Heading1, Heading2, Heading3, Link as LinkIcon, Undo, Redo, Code, Quote,
-  AlignLeft, AlignCenter, AlignRight, AlignJustify, Image as ImageIcon,
+  AlignLeft, AlignCenter, AlignRight, AlignJustify, Image as ImageIcon, Upload,
   Sparkles, Highlighter, Palette, Type, Loader2, Minus,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
