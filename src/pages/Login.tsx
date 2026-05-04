@@ -16,6 +16,8 @@ import {
 import { LogIn, Eye, EyeOff, MailWarning, Loader2, Send, KeyRound } from 'lucide-react';
 import { loginSchema, forgotSchema } from '@/lib/security';
 import { reportSecurityEvent, checkLoginLockout } from '@/lib/securityEvents';
+import { TurnstileWidget } from '@/components/TurnstileWidget';
+import { supabase as sb } from '@/integrations/supabase/client';
 
 const isEmailNotConfirmedError = (error: { message?: string; code?: string; name?: string } | null) => {
   if (!error) return false;
@@ -39,6 +41,8 @@ const Login = () => {
   const [showForgotDialog, setShowForgotDialog] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [sendingReset, setSendingReset] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [forgotCaptchaToken, setForgotCaptchaToken] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -55,7 +59,19 @@ const Login = () => {
 
     setLoading(true);
 
-    // 2. Lockout (anti brute-force)
+    // 2. CAPTCHA Turnstile (se configurado)
+    const captchaCheck = await sb.functions.invoke('verify-turnstile', { body: { token: captchaToken || '' } });
+    if (captchaCheck.error || !(captchaCheck.data as any)?.success) {
+      setLoading(false);
+      toast({
+        title: 'Verificação de segurança falhou',
+        description: 'Por favor, complete o CAPTCHA antes de continuar.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // 3. Lockout (anti brute-force)
     const lock = await checkLoginLockout(parsed.data.email);
     if (lock.locked) {
       setLoading(false);
@@ -125,6 +141,15 @@ const Login = () => {
       return;
     }
     setSendingReset(true);
+
+    // CAPTCHA Turnstile (se configurado)
+    const captchaCheck = await sb.functions.invoke('verify-turnstile', { body: { token: forgotCaptchaToken || '' } });
+    if (captchaCheck.error || !(captchaCheck.data as any)?.success) {
+      setSendingReset(false);
+      toast({ title: 'Verificação de segurança falhou', description: 'Complete o CAPTCHA antes de continuar.', variant: 'destructive' });
+      return;
+    }
+
     const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
@@ -168,6 +193,7 @@ const Login = () => {
               </button>
             </div>
           </div>
+          <TurnstileWidget onToken={setCaptchaToken} />
           <Button type="submit" className="w-full glow-primary" disabled={loading}>
             {loading ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" /> : <><LogIn className="mr-2 h-4 w-4" /> Entrar</>}
           </Button>
@@ -243,6 +269,8 @@ const Login = () => {
               autoFocus
             />
           </div>
+
+          {showForgotDialog && <TurnstileWidget onToken={setForgotCaptchaToken} />}
 
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             <Button onClick={handleForgot} disabled={sendingReset} className="w-full glow-primary">
