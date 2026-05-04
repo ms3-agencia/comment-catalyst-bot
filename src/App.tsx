@@ -25,6 +25,7 @@ import ContentHistory from "./pages/ContentHistory";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 import ConfirmEmail from "./pages/ConfirmEmail";
+import ResetPassword from "./pages/ResetPassword";
 import Ebooks from "./pages/Ebooks";
 import EbookEditor from "./pages/EbookEditor";
 import EbookEpubExport from "./pages/EbookEpubExport";
