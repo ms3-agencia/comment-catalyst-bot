@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { KeyRound, Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react';
 import { newPasswordSchema } from '@/lib/security';
 import { reportSecurityEvent } from '@/lib/securityEvents';
+import { TurnstileWidget } from '@/components/TurnstileWidget';
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
@@ -17,6 +18,7 @@ const ResetPassword = () => {
   const [ready, setReady] = useState(false);
   const [success, setSuccess] = useState(false);
   const [hasRecovery, setHasRecovery] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -54,6 +56,15 @@ const ResetPassword = () => {
     }
 
     setLoading(true);
+
+    // CAPTCHA Turnstile (se configurado)
+    const captchaCheck = await supabase.functions.invoke('verify-turnstile', { body: { token: captchaToken || '' } });
+    if (captchaCheck.error || !(captchaCheck.data as any)?.success) {
+      setLoading(false);
+      toast({ title: 'Verificação de segurança falhou', description: 'Complete o CAPTCHA antes de continuar.', variant: 'destructive' });
+      return;
+    }
+
     const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
     setLoading(false);
 
