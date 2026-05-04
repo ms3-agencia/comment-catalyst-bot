@@ -198,6 +198,8 @@ export const SecurityTab = () => {
           <li>✓ Headers de segurança (CSP, Referrer-Policy, X-Content-Type-Options)</li>
         </ul>
       </Card>
+
+      <TurnstileHostnamesPanel />
     </div>
   );
 };
