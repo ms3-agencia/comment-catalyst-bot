@@ -2099,6 +2099,7 @@ export type Database = {
         }
         Returns: Json
       }
+      get_turnstile_site_key: { Args: never; Returns: string }
       get_user_plan_usage: { Args: { _user_id?: string }; Returns: Json }
       has_role: {
         Args: {
