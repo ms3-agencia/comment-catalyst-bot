@@ -293,7 +293,16 @@ export function EbookRichEditor({ value, onChange, ebookId, contextHint }: Ebook
         <Sep />
 
         <Btn active={editor.isActive('link')} onClick={setLink} title="Inserir link"><LinkIcon size={14} /></Btn>
-        <Btn onClick={insertImageByUrl} title="Inserir imagem por URL"><ImageIcon size={14} /></Btn>
+        <Btn onClick={triggerImageUpload} title="Enviar imagem do computador" disabled={uploadingImage}>
+          {uploadingImage ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
+        </Btn>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFile(f); }}
+        />
         <Button
           type="button"
           variant="ghost"
