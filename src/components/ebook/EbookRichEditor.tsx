@@ -8,7 +8,7 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import Highlight from '@tiptap/extension-highlight';
 import FontFamily from '@tiptap/extension-font-family';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -57,6 +57,8 @@ export function EbookRichEditor({ value, onChange, ebookId, contextHint }: Ebook
   const [imgPrompt, setImgPrompt] = useState('');
   const [imgRatio, setImgRatio] = useState<'16:9' | '1:1' | '9:16' | '4:5' | '3:4' | '4:3'>('16:9');
   const [imgGenerating, setImgGenerating] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     extensions: [
@@ -99,10 +101,38 @@ export function EbookRichEditor({ value, onChange, ebookId, contextHint }: Ebook
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   };
 
-  const insertImageByUrl = () => {
-    const url = window.prompt('URL da imagem');
-    if (url) editor.chain().focus().setImage({ src: url }).run();
+  const handleImageFile = async (file: File) => {
+    if (!editor) return;
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Arquivo inválido', description: 'Selecione uma imagem.', variant: 'destructive' });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: 'Arquivo muito grande', description: 'Máximo 10MB.', variant: 'destructive' });
+      return;
+    }
+    setUploadingImage(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Não autenticado');
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+      const path = `${user.id}/ebook/${ebookId || 'misc'}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('content-images').upload(path, file, {
+        cacheControl: '3600', upsert: false, contentType: file.type,
+      });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from('content-images').getPublicUrl(path);
+      editor.chain().focus().setImage({ src: pub.publicUrl, alt: file.name }).run();
+      toast({ title: 'Imagem enviada!' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao enviar imagem', description: e.message, variant: 'destructive' });
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
+
+  const triggerImageUpload = () => fileInputRef.current?.click();
 
   const generateAiImage = async () => {
     if (!imgPrompt.trim()) {
@@ -263,7 +293,16 @@ export function EbookRichEditor({ value, onChange, ebookId, contextHint }: Ebook
         <Sep />
 
         <Btn active={editor.isActive('link')} onClick={setLink} title="Inserir link"><LinkIcon size={14} /></Btn>
-        <Btn onClick={insertImageByUrl} title="Inserir imagem por URL"><ImageIcon size={14} /></Btn>
+        <Btn onClick={triggerImageUpload} title="Enviar imagem do computador" disabled={uploadingImage}>
+          {uploadingImage ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
+        </Btn>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFile(f); }}
+        />
         <Button
           type="button"
           variant="ghost"
