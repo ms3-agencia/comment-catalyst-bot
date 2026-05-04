@@ -407,7 +407,7 @@ const Projects = () => {
                               )}
                               <div className="flex-1 min-w-0">
                                 <span className="font-medium text-xs">{c.author}</span>
-                                <p className="text-xs text-muted-foreground mt-0.5" dangerouslySetInnerHTML={{ __html: c.content }} />
+                                <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap break-words">{c.content?.replace(/<br\s*\/?>(\n)?/gi, '\n').replace(/<[^>]+>/g, '').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')}</p>
                                 <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground">
                                   <span className="flex items-center gap-1"><ThumbsUp size={10} /> {c.likes}</span>
                                   {c.published_at && <span>{new Date(c.published_at).toLocaleDateString('pt-BR')}</span>}
