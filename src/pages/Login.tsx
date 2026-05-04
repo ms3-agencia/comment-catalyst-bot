@@ -79,6 +79,25 @@ const Login = () => {
     setShowUnconfirmedDialog(false);
   };
 
+  const handleForgot = async () => {
+    const target = (forgotEmail || '').trim();
+    if (!target) {
+      toast({ title: 'Informe o e-mail', description: 'Digite o e-mail da sua conta para receber o link.', variant: 'destructive' });
+      return;
+    }
+    setSendingReset(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(target, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setSendingReset(false);
+    if (error) {
+      toast({ title: 'Não foi possível enviar', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Link enviado', description: `Enviamos um link de redefinição de senha para ${target}. Verifique seu e-mail (e o spam).` });
+    setShowForgotDialog(false);
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="glass w-full max-w-md rounded-2xl p-8 animate-fade-in">
