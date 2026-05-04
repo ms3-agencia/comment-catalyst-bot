@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { KeyRound, Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react';
+import { newPasswordSchema } from '@/lib/security';
+import { reportSecurityEvent } from '@/lib/securityEvents';
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
@@ -43,17 +45,16 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 8) {
-      toast({ title: 'Senha muito curta', description: 'Use pelo menos 8 caracteres.', variant: 'destructive' });
-      return;
-    }
-    if (password !== confirm) {
-      toast({ title: 'Senhas diferentes', description: 'A confirmação não corresponde à nova senha.', variant: 'destructive' });
+
+    const parsed = newPasswordSchema.safeParse({ password, confirm });
+    if (!parsed.success) {
+      const first = parsed.error.errors[0];
+      toast({ title: 'Senha inválida', description: first?.message || 'Verifique a nova senha.', variant: 'destructive' });
       return;
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
+    const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
     setLoading(false);
 
     if (error) {
@@ -61,6 +62,7 @@ const ResetPassword = () => {
       return;
     }
 
+    reportSecurityEvent('password_changed');
     setSuccess(true);
     toast({ title: 'Senha redefinida', description: 'Sua nova senha foi salva com sucesso.' });
     // Desloga o usuário para que ele entre com a nova senha

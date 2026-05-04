@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { UserPlus, Eye, EyeOff, Mail } from 'lucide-react';
+import { registerSchema } from '@/lib/security';
 
 const Register = () => {
   const [email, setEmail] = useState('');
@@ -24,8 +25,14 @@ const Register = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (password.length < 6) {
-      toast({ title: 'Senha muito curta', description: 'Use no mínimo 6 caracteres.', variant: 'destructive' });
+    const parsed = registerSchema.safeParse({
+      full_name: fullName,
+      email,
+      password,
+    });
+    if (!parsed.success) {
+      const first = parsed.error.errors[0];
+      toast({ title: 'Dados inválidos', description: first?.message || 'Verifique os campos.', variant: 'destructive' });
       return;
     }
     if (password !== confirmPassword) {
@@ -97,11 +104,11 @@ const Register = () => {
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Mínimo 6 caracteres"
+                placeholder="Mín. 8 caracteres (com maiúscula, minúscula e número)"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                minLength={6}
+                minLength={8}
                 className="pr-10"
               />
               <button
