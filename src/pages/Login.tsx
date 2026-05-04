@@ -34,6 +34,9 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [showUnconfirmedDialog, setShowUnconfirmedDialog] = useState(false);
   const [resending, setResending] = useState(false);
+  const [showForgotDialog, setShowForgotDialog] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [sendingReset, setSendingReset] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
