@@ -70,16 +70,27 @@ const Login = () => {
 
     setLoading(true);
 
-    // 2. CAPTCHA Turnstile (se configurado)
-    const captchaCheck = await sb.functions.invoke('verify-turnstile', { body: { token: captchaToken || '' } });
-    if (captchaCheck.error || !(captchaCheck.data as any)?.success) {
-      setLoading(false);
-      toast({
-        title: 'Verificação de segurança falhou',
-        description: 'Por favor, complete o CAPTCHA antes de continuar.',
-        variant: 'destructive',
-      });
-      return;
+    // 2. CAPTCHA Turnstile (apenas se configurado)
+    if (await isTurnstileConfigured()) {
+      if (!captchaToken) {
+        setLoading(false);
+        toast({
+          title: 'Aguarde a verificação de segurança',
+          description: 'Complete o CAPTCHA antes de continuar.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      const captchaCheck = await sb.functions.invoke('verify-turnstile', { body: { token: captchaToken } });
+      if (captchaCheck.error || !(captchaCheck.data as any)?.success) {
+        setLoading(false);
+        toast({
+          title: 'Verificação de segurança falhou',
+          description: 'Tente novamente em instantes.',
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     // 3. Lockout (anti brute-force)
