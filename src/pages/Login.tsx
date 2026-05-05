@@ -227,7 +227,7 @@ const Login = () => {
               </button>
             </div>
           </div>
-          <TurnstileWidget onToken={setCaptchaToken} />
+          <TurnstileWidget onToken={setCaptchaToken} resetRef={captchaResetRef} />
           <Button type="submit" className="w-full glow-primary" disabled={loading}>
             {loading ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" /> : <><LogIn className="mr-2 h-4 w-4" /> Entrar</>}
           </Button>
@@ -304,7 +304,7 @@ const Login = () => {
             />
           </div>
 
-          {showForgotDialog && <TurnstileWidget onToken={setForgotCaptchaToken} />}
+          {showForgotDialog && <TurnstileWidget onToken={setForgotCaptchaToken} resetRef={forgotCaptchaResetRef} />}
 
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             <Button onClick={handleForgot} disabled={sendingReset} className="w-full glow-primary">
