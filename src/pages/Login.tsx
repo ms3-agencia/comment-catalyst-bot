@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,8 @@ const Login = () => {
   const [sendingReset, setSendingReset] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [forgotCaptchaToken, setForgotCaptchaToken] = useState<string | null>(null);
+  const captchaResetRef = useRef<(() => void) | null>(null);
+  const forgotCaptchaResetRef = useRef<(() => void) | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
