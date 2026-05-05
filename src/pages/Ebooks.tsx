@@ -42,8 +42,6 @@ export default function EbooksPage() {
   const [genDone, setGenDone] = useState(false);
   const [savedConfigId, setSavedConfigId] = useState<string | null>(null);
   const [savingPref, setSavingPref] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [tagFilter, setTagFilter] = useState<string>('all');
 
 
   const loadConfigs = async (preferredId?: string | null) => {
@@ -212,57 +210,9 @@ export default function EbooksPage() {
               <div className="space-y-1.5">
                 <Label>Template de configuração</Label>
                 {(() => {
-                  const categories = Array.from(new Set(availableConfigs.map(c => c.category || 'geral'))).sort();
-                  const tags = Array.from(new Set(availableConfigs.flatMap(c => c.tags || []))).sort();
-                  const effectiveCategory = hasPremium ? categoryFilter : 'all';
-                  const effectiveTag = hasPremium ? tagFilter : 'all';
-                  const filtered = availableConfigs.filter(c => {
-                    const cat = c.category || 'geral';
-                    if (effectiveCategory !== 'all' && cat !== effectiveCategory) return false;
-                    if (effectiveTag !== 'all' && !(c.tags || []).includes(effectiveTag)) return false;
-                    return true;
-                  });
+                  const filtered = availableConfigs;
                   return (
                     <>
-                      {hasPremium && (categories.length > 1 || tags.length > 0) && (
-                        <div className="flex flex-wrap gap-2">
-                          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                            <SelectTrigger className="h-8 text-xs w-auto min-w-[140px]">
-                              <SelectValue placeholder="Categoria" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">Todas categorias</SelectItem>
-                              {categories.map(cat => (
-                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {tags.length > 0 && (
-                            <Select value={tagFilter} onValueChange={setTagFilter}>
-                              <SelectTrigger className="h-8 text-xs w-auto min-w-[140px]">
-                                <SelectValue placeholder="Tag" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">Todas tags</SelectItem>
-                                {tags.map(t => (
-                                  <SelectItem key={t} value={t}>#{t}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                          {(categoryFilter !== 'all' || tagFilter !== 'all') && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              className="h-8 text-xs"
-                              onClick={() => { setCategoryFilter('all'); setTagFilter('all'); }}
-                            >
-                              Limpar
-                            </Button>
-                          )}
-                        </div>
-                      )}
                       <div className="flex gap-2">
                         <Select
                           value={selectedConfig?.id || ''}
