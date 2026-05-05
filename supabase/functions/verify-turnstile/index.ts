@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || undefined;
     const result = await verifyTurnstileToken(token, ip);
     return new Response(JSON.stringify(result), {
-      status: result.success ? 200 : 400,
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
