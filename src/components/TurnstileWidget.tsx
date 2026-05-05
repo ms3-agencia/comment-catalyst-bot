@@ -50,6 +50,8 @@ interface Props {
   onToken: (token: string | null) => void;
   /** Quando false, o componente não é exibido — útil enquanto carrega config. */
   theme?: 'light' | 'dark' | 'auto';
+  /** Ref opcional para resetar o widget externamente (após consumir o token). */
+  resetRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 /**
@@ -57,7 +59,7 @@ interface Props {
  * Se o admin não configurou a site_key, o componente não aparece e
  * o callback dispara com `null` (caller deve tratar como "captcha desativado").
  */
-export const TurnstileWidget = ({ onToken, theme = 'dark' }: Props) => {
+export const TurnstileWidget = ({ onToken, theme = 'dark', resetRef }: Props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetIdRef = useRef<string | null>(null);
   const [siteKey, setSiteKey] = useState<string | null | undefined>(undefined);
@@ -97,6 +99,14 @@ export const TurnstileWidget = ({ onToken, theme = 'dark' }: Props) => {
         'expired-callback': () => onToken(null),
         'timeout-callback': () => onToken(null),
       });
+      if (resetRef) {
+        resetRef.current = () => {
+          try {
+            onToken(null);
+            if (widgetIdRef.current && window.turnstile) window.turnstile.reset(widgetIdRef.current);
+          } catch { /* noop */ }
+        };
+      }
     });
     return () => {
       cancelled = true;
