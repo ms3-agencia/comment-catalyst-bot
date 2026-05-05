@@ -35,15 +35,28 @@ function loadTurnstileScript(): Promise<void> {
 }
 
 let cachedSiteKey: string | null | undefined;
+let inflight: Promise<string | null> | null = null;
 async function fetchSiteKey(): Promise<string | null> {
   if (cachedSiteKey !== undefined) return cachedSiteKey ?? null;
-  try {
-    const { data } = await supabase.rpc('get_turnstile_site_key');
-    cachedSiteKey = (data as string | null) || null;
-  } catch {
-    cachedSiteKey = null;
-  }
-  return cachedSiteKey;
+  if (inflight) return inflight;
+  inflight = (async () => {
+    try {
+      // Timeout de 3s — se o RPC não responder, tratamos como "não configurado"
+      // e deixamos o fluxo alternativo de segurança (lockout + eventos) cuidar.
+      const rpc = supabase.rpc('get_turnstile_site_key');
+      const timeout = new Promise<{ data: null }>((resolve) =>
+        setTimeout(() => resolve({ data: null }), 3000),
+      );
+      const { data } = (await Promise.race([rpc, timeout])) as { data: string | null };
+      cachedSiteKey = (data as string | null) || null;
+    } catch {
+      cachedSiteKey = null;
+    }
+    return cachedSiteKey ?? null;
+  })();
+  const result = await inflight;
+  inflight = null;
+  return result;
 }
 
 interface Props {
