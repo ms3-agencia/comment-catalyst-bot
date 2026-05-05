@@ -176,9 +176,10 @@ const Login = () => {
         return;
       }
       const captchaCheck = await sb.functions.invoke('verify-turnstile', { body: { token: forgotCaptchaToken } });
+      forgotCaptchaResetRef.current?.();
       if (captchaCheck.error || !(captchaCheck.data as any)?.success) {
         setSendingReset(false);
-        toast({ title: 'Verificação de segurança falhou', description: 'Tente novamente em instantes.', variant: 'destructive' });
+        toast({ title: 'Verificação de segurança falhou', description: 'Aguarde o novo desafio carregar e tente novamente.', variant: 'destructive' });
         return;
       }
     }
