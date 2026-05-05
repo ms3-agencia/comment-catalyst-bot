@@ -83,8 +83,9 @@ const Login = () => {
         });
         return;
       }
-      const captchaCheck = await sb.functions.invoke('verify-turnstile', { body: { token: captchaToken } });
-      // Token Turnstile é single-use: resetar imediatamente após consumo
+      const tokenToVerify = captchaToken;
+      setCaptchaToken(null);
+      const captchaCheck = await sb.functions.invoke('verify-turnstile', { body: { token: tokenToVerify } });
       captchaResetRef.current?.();
       if (captchaCheck.error || !(captchaCheck.data as any)?.success) {
         setLoading(false);
@@ -175,7 +176,9 @@ const Login = () => {
         toast({ title: 'Aguarde a verificação de segurança', description: 'Complete o CAPTCHA antes de continuar.', variant: 'destructive' });
         return;
       }
-      const captchaCheck = await sb.functions.invoke('verify-turnstile', { body: { token: forgotCaptchaToken } });
+      const tokenToVerify = forgotCaptchaToken;
+      setForgotCaptchaToken(null);
+      const captchaCheck = await sb.functions.invoke('verify-turnstile', { body: { token: tokenToVerify } });
       forgotCaptchaResetRef.current?.();
       if (captchaCheck.error || !(captchaCheck.data as any)?.success) {
         setSendingReset(false);
