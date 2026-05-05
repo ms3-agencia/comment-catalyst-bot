@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,8 @@ const Login = () => {
   const [sendingReset, setSendingReset] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [forgotCaptchaToken, setForgotCaptchaToken] = useState<string | null>(null);
+  const captchaResetRef = useRef<(() => void) | null>(null);
+  const forgotCaptchaResetRef = useRef<(() => void) | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -82,11 +84,13 @@ const Login = () => {
         return;
       }
       const captchaCheck = await sb.functions.invoke('verify-turnstile', { body: { token: captchaToken } });
+      // Token Turnstile é single-use: resetar imediatamente após consumo
+      captchaResetRef.current?.();
       if (captchaCheck.error || !(captchaCheck.data as any)?.success) {
         setLoading(false);
         toast({
           title: 'Verificação de segurança falhou',
-          description: 'Tente novamente em instantes.',
+          description: 'Aguarde o novo desafio carregar e tente novamente.',
           variant: 'destructive',
         });
         return;
@@ -172,9 +176,10 @@ const Login = () => {
         return;
       }
       const captchaCheck = await sb.functions.invoke('verify-turnstile', { body: { token: forgotCaptchaToken } });
+      forgotCaptchaResetRef.current?.();
       if (captchaCheck.error || !(captchaCheck.data as any)?.success) {
         setSendingReset(false);
-        toast({ title: 'Verificação de segurança falhou', description: 'Tente novamente em instantes.', variant: 'destructive' });
+        toast({ title: 'Verificação de segurança falhou', description: 'Aguarde o novo desafio carregar e tente novamente.', variant: 'destructive' });
         return;
       }
     }
@@ -222,7 +227,7 @@ const Login = () => {
               </button>
             </div>
           </div>
-          <TurnstileWidget onToken={setCaptchaToken} />
+          <TurnstileWidget onToken={setCaptchaToken} resetRef={captchaResetRef} />
           <Button type="submit" className="w-full glow-primary" disabled={loading}>
             {loading ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" /> : <><LogIn className="mr-2 h-4 w-4" /> Entrar</>}
           </Button>
@@ -299,7 +304,7 @@ const Login = () => {
             />
           </div>
 
-          {showForgotDialog && <TurnstileWidget onToken={setForgotCaptchaToken} />}
+          {showForgotDialog && <TurnstileWidget onToken={setForgotCaptchaToken} resetRef={forgotCaptchaResetRef} />}
 
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             <Button onClick={handleForgot} disabled={sendingReset} className="w-full glow-primary">
