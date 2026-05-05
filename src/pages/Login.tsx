@@ -84,11 +84,13 @@ const Login = () => {
         return;
       }
       const captchaCheck = await sb.functions.invoke('verify-turnstile', { body: { token: captchaToken } });
+      // Token Turnstile é single-use: resetar imediatamente após consumo
+      captchaResetRef.current?.();
       if (captchaCheck.error || !(captchaCheck.data as any)?.success) {
         setLoading(false);
         toast({
           title: 'Verificação de segurança falhou',
-          description: 'Tente novamente em instantes.',
+          description: 'Aguarde o novo desafio carregar e tente novamente.',
           variant: 'destructive',
         });
         return;
