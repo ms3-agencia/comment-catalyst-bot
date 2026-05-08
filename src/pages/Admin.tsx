@@ -1057,6 +1057,9 @@ const Admin = () => {
                                 <DropdownMenuItem onClick={() => { setPwdUser(u); setNewPassword(''); }}>
                                   <KeyRound className="mr-2 h-4 w-4" /> Mudar senha
                                 </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleConfirmEmail(u)}>
+                                  <MailCheck className="mr-2 h-4 w-4" /> Confirmar e-mail
+                                </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => openCreditsDialog(u, 'add')}>
                                   <Coins className="mr-2 h-4 w-4" /> Créditos
                                 </DropdownMenuItem>
