@@ -642,6 +642,8 @@ const Admin = () => {
       toast({ title: 'E-mail confirmado', description: `${u.email} agora pode acessar a conta.` });
     }
   };
+
+  const openCreditsDialog = async (u: UserProfile, mode: 'add' | 'remove') => {
     setCreditsUser(u);
     setCreditsMode(mode);
     setCreditsAmount(mode === 'add' ? 100 : 0);
