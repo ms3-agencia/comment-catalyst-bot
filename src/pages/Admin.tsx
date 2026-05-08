@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, ArrowUpCircle, ArrowDownCircle, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2, CreditCard, Package, Coins, Wallet, Plus, Pencil, Palette, Clapperboard, FileText, Clock, Sparkles, BookOpen } from 'lucide-react';
+import { Users, FolderOpen, MessageSquare, Shield, Search, Save, Loader2, Key, ExternalLink, CheckCircle2, Bot, ArrowUp, ArrowDown, ArrowUpCircle, ArrowDownCircle, Power, MoreHorizontal, KeyRound, ShieldCheck, ShieldOff, UserX, UserCheck, Trash2, CreditCard, Package, Coins, Wallet, Plus, Pencil, Palette, Clapperboard, FileText, Clock, Sparkles, BookOpen, MailCheck } from 'lucide-react';
 import { BrandingTab } from '@/components/admin/BrandingTab';
 import { PwaTab } from '@/components/admin/PwaTab';
 import { AddonsTab } from '@/components/admin/AddonsTab';
@@ -634,6 +634,15 @@ const Admin = () => {
     }
   };
 
+  const handleConfirmEmail = async (u: UserProfile) => {
+    const { error } = await supabase.rpc('admin_confirm_user_email', { _user_id: u.user_id });
+    if (error) {
+      toast({ title: 'Erro ao confirmar e-mail', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'E-mail confirmado', description: `${u.email} agora pode acessar a conta.` });
+    }
+  };
+
   const openCreditsDialog = async (u: UserProfile, mode: 'add' | 'remove') => {
     setCreditsUser(u);
     setCreditsMode(mode);
@@ -1047,6 +1056,9 @@ const Admin = () => {
                                 </DropdownMenuSub>
                                 <DropdownMenuItem onClick={() => { setPwdUser(u); setNewPassword(''); }}>
                                   <KeyRound className="mr-2 h-4 w-4" /> Mudar senha
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleConfirmEmail(u)}>
+                                  <MailCheck className="mr-2 h-4 w-4" /> Confirmar e-mail
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => openCreditsDialog(u, 'add')}>
                                   <Coins className="mr-2 h-4 w-4" /> Créditos

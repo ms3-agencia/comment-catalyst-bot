@@ -58,10 +58,13 @@ Deno.serve(async (req) => {
 
     const userId = created.user.id;
 
-    // Gera token e grava
+    // Gera token em claro (somente vai no email) e armazena apenas o hash SHA-256.
     const token = genToken();
+    const tokenHashBuf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+    const tokenHash = Array.from(new Uint8Array(tokenHashBuf))
+      .map((b) => b.toString(16).padStart(2, "0")).join("");
     await admin.from("email_confirmation_tokens").insert({
-      user_id: userId, email, token,
+      user_id: userId, email, token_hash: tokenHash,
     });
 
     // Resolve domínio configurado

@@ -784,7 +784,7 @@ export type Database = {
           email: string
           expires_at: string
           id: string
-          token: string
+          token: string | null
           token_hash: string
           used_at: string | null
           user_id: string
@@ -794,7 +794,7 @@ export type Database = {
           email: string
           expires_at?: string
           id?: string
-          token: string
+          token?: string | null
           token_hash: string
           used_at?: string | null
           user_id: string
@@ -804,7 +804,7 @@ export type Database = {
           email?: string
           expires_at?: string
           id?: string
-          token?: string
+          token?: string | null
           token_hash?: string
           used_at?: string | null
           user_id?: string
@@ -2089,6 +2089,10 @@ export type Database = {
       admin_add_credits: {
         Args: { _amount: number; _description?: string; _user_id: string }
         Returns: Json
+      }
+      admin_confirm_user_email: {
+        Args: { _user_id: string }
+        Returns: undefined
       }
       admin_delete_user: { Args: { _user_id: string }; Returns: undefined }
       admin_run_draft_cleanup: { Args: never; Returns: Json }
