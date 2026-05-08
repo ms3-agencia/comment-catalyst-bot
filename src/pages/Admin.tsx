@@ -634,7 +634,14 @@ const Admin = () => {
     }
   };
 
-  const openCreditsDialog = async (u: UserProfile, mode: 'add' | 'remove') => {
+  const handleConfirmEmail = async (u: UserProfile) => {
+    const { error } = await supabase.rpc('admin_confirm_user_email', { _user_id: u.user_id });
+    if (error) {
+      toast({ title: 'Erro ao confirmar e-mail', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'E-mail confirmado', description: `${u.email} agora pode acessar a conta.` });
+    }
+  };
     setCreditsUser(u);
     setCreditsMode(mode);
     setCreditsAmount(mode === 'add' ? 100 : 0);
