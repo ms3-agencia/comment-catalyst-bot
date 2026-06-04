@@ -49,6 +49,72 @@ const allFeatures: { icon: any; title: string; desc: string; tag: string }[] = [
 
 const featureTags = ['Todos', 'Análise', 'Conteúdo', 'Vídeo', 'Workspace'] as const;
 
+// === Persuasive "how each feature makes you money" blocks ===
+const moneyFeatures: {
+  icon: any;
+  badge: string;
+  title: string;
+  problem: string;
+  solution: string;
+  money: string;
+  bullets: string[];
+}[] = [
+  {
+    icon: Brain,
+    badge: '🧠 Inteligência de audiência',
+    title: 'Descubra o que sua audiência implora para comprar',
+    problem: 'Você gasta horas criando produtos e conteúdos no escuro, torcendo para acertar — e a maioria não vende.',
+    solution: 'A IA lê centenas de comentários reais do YouTube e entrega o avatar completo: dores, desejos, objeções e até as palavras exatas que seu público usa.',
+    money: 'Com o avatar na mão, você cria ofertas que vendem sozinhas porque falam a língua de quem compra. Menos achismo, mais conversão.',
+    bullets: ['Pare de adivinhar o que vender', 'Crie ofertas irresistíveis baseadas em dados reais', 'Antecipe objeções antes da venda'],
+  },
+  {
+    icon: BarChart3,
+    badge: '📊 Análise de sentimento',
+    title: 'Saiba exatamente o tom que faz seu público comprar',
+    problem: 'Um único conteúdo no tom errado afasta clientes e queima a sua autoridade.',
+    solution: 'Veja na hora a proporção de comentários positivos, neutros e negativos e entenda o clima emocional da sua audiência.',
+    money: 'Ajuste a comunicação para o tom que gera conexão e confiança — e confiança é o que faz o cartão sair do bolso.',
+    bullets: ['Identifique gatilhos emocionais que convertem', 'Evite conteúdos que afastam compradores', 'Construa autoridade com a mensagem certa'],
+  },
+  {
+    icon: Wand2,
+    badge: '✍️ Geração de conteúdo',
+    title: 'Roteiros e legendas que vendem, prontos em segundos',
+    problem: 'Ficar travado na frente da tela em branco custa tempo — e tempo parado é dinheiro que você deixa na mesa.',
+    solution: 'A IA gera roteiros, legendas, hashtags e CTAs sob medida para Instagram, TikTok, YouTube e LinkedIn, já alinhados ao avatar da sua audiência.',
+    money: 'Produza em minutos o que levaria dias. Poste mais, alcance mais e venda mais — escalando seu faturamento sem contratar uma equipe.',
+    bullets: ['Conteúdo diário sem bloqueio criativo', 'CTAs persuasivos que convertem seguidor em cliente', 'Escale sua produção sem aumentar custos'],
+  },
+  {
+    icon: Film,
+    badge: '🎬 Editor de vídeo com IA',
+    title: 'Transforme ideias em vídeos prontos para viralizar',
+    problem: 'Contratar editor é caro e demorado, e softwares profissionais têm curva de aprendizado gigante.',
+    solution: 'Monte cenas com texto, imagens, narração automática, trilha sonora e transições direto no navegador — e exporte para Reels, Shorts e TikTok.',
+    money: 'Vídeo é o formato que mais vende hoje. Produza conteúdo profissional todos os dias e multiplique seu alcance — mais visualizações, mais clientes, mais vendas.',
+    bullets: ['Economize milhares em edição terceirizada', 'Publique em todas as redes sem sair da plataforma', 'Aproveite o formato que mais converte: vídeo'],
+  },
+  {
+    icon: ImageIcon,
+    badge: '🎨 Imagens com IA',
+    title: 'Capas e visuais que param o dedo do seu cliente',
+    problem: 'Uma capa fraca faz o conteúdo perfeito ser ignorado no feed.',
+    solution: 'Gere capas e visuais únicos com IA, uma imagem por cena, prontos para a timeline do seu vídeo.',
+    money: 'Capas que chamam atenção aumentam cliques e retenção — e mais gente assistindo significa mais gente comprando.',
+    bullets: ['Aumente a taxa de cliques (CTR)', 'Tenha identidade visual profissional', 'Nunca dependa de banco de imagens genérico'],
+  },
+  {
+    icon: FolderOpen,
+    badge: '🚀 Workspace completo',
+    title: 'Sua máquina de conteúdo organizada num só lugar',
+    problem: 'Trabalho espalhado em mil ferramentas faz você perder tempo, arquivos e oportunidades.',
+    solution: 'Projetos, rascunhos com versões, créditos em tempo real, marca personalizada e painel admin — tudo centralizado e seguro.',
+    money: 'Mais organização = mais entregas no prazo. E quem entrega rápido e com consistência cobra mais e fideliza clientes.',
+    bullets: ['Trabalhe como agência, sozinho', 'Use white-label e revenda para clientes', 'Nunca mais perca um projeto ou ideia'],
+  },
+];
+
 const socialProof = [
   { icon: Users, label: '+2.500', desc: 'criadores ativos' },
   { icon: MessageSquare, label: '+1,2 mi', desc: 'comentários processados' },
@@ -113,6 +179,7 @@ const Index = () => {
         </div>
         <div className="flex items-center gap-3">
           <a href="#recursos" className="hidden md:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Recursos</a>
+          <a href="#ganhar-dinheiro" className="hidden md:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Ganhe dinheiro</a>
           <a href="#planos" className="hidden md:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Planos</a>
           <a href="#pacotes" className="hidden md:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Pacotes</a>
           {user ? (
@@ -234,8 +301,76 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Como cada recurso vira dinheiro */}
+      <section id="ganhar-dinheiro" className="px-6 lg:px-12 py-16 max-w-6xl mx-auto scroll-mt-20">
+        <div className="text-center mb-14">
+          <Badge variant="outline" className="mb-3 border-primary/40 text-primary">
+            <Coins size={12} className="mr-1" /> Do recurso ao faturamento
+          </Badge>
+          <h2 className="font-heading text-3xl lg:text-4xl font-bold">
+            Como cada recurso te ajuda a <span className="gradient-text">ganhar dinheiro</span>
+          </h2>
+          <p className="mt-3 text-muted-foreground max-w-2xl mx-auto">
+            Não vendemos botões e funcionalidades. Vendemos atalhos para você vender mais, gastar menos e crescer mais rápido. Veja na prática:
+          </p>
+        </div>
+
+        <div className="space-y-10 lg:space-y-16">
+          {moneyFeatures.map((f, i) => (
+            <div
+              key={i}
+              className={`flex flex-col lg:flex-row items-stretch gap-6 lg:gap-10 ${i % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}
+            >
+              {/* Visual side */}
+              <div className="lg:w-2/5 flex">
+                <Card className="glass w-full p-8 flex flex-col justify-center items-center text-center border-primary/20 bg-gradient-to-br from-primary/10 via-card to-card">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 mb-5">
+                    <f.icon className="text-primary" size={40} />
+                  </div>
+                  <Badge variant="outline" className="border-primary/40 text-primary text-xs">{f.badge}</Badge>
+                  <h3 className="font-heading text-xl font-bold mt-4 leading-snug">{f.title}</h3>
+                </Card>
+              </div>
+
+              {/* Copy side */}
+              <div className="lg:w-3/5 flex flex-col justify-center space-y-4">
+                <div className="flex gap-3">
+                  <span className="text-destructive font-bold text-sm mt-0.5">✗</span>
+                  <p className="text-sm text-muted-foreground"><strong className="text-foreground">O problema:</strong> {f.problem}</p>
+                </div>
+                <div className="flex gap-3">
+                  <Check size={18} className="text-primary shrink-0 mt-0.5" />
+                  <p className="text-sm text-muted-foreground"><strong className="text-foreground">A solução:</strong> {f.solution}</p>
+                </div>
+                <div className="flex gap-3 rounded-xl bg-success/10 border border-success/20 p-4">
+                  <Coins size={18} className="text-success shrink-0 mt-0.5" />
+                  <p className="text-sm text-foreground"><strong>Como vira dinheiro:</strong> {f.money}</p>
+                </div>
+                <ul className="grid sm:grid-cols-2 gap-2 pt-1">
+                  {f.bullets.map((b, j) => (
+                    <li key={j} className="flex gap-2 text-xs text-muted-foreground">
+                      <Check size={14} className="text-primary shrink-0 mt-0.5" /> {b}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="text-center mt-14">
+          <Link to="/register">
+            <Button size="lg" className="glow-primary">
+              Quero faturar mais com IA <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
+          <p className="mt-3 text-xs text-muted-foreground">✓ Comece grátis hoje · ✓ Sem cartão de crédito</p>
+        </div>
+      </section>
+
       {/* Depoimentos */}
       <section className="px-6 lg:px-12 py-16 max-w-6xl mx-auto">
+
         <div className="text-center mb-10">
           <Badge variant="outline" className="mb-3 border-primary/40 text-primary">
             <Star size={12} className="mr-1 fill-primary" /> Histórias reais
