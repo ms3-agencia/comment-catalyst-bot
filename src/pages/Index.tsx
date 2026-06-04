@@ -49,6 +49,72 @@ const allFeatures: { icon: any; title: string; desc: string; tag: string }[] = [
 
 const featureTags = ['Todos', 'Análise', 'Conteúdo', 'Vídeo', 'Workspace'] as const;
 
+// === Persuasive "how each feature makes you money" blocks ===
+const moneyFeatures: {
+  icon: any;
+  badge: string;
+  title: string;
+  problem: string;
+  solution: string;
+  money: string;
+  bullets: string[];
+}[] = [
+  {
+    icon: Brain,
+    badge: '🧠 Inteligência de audiência',
+    title: 'Descubra o que sua audiência implora para comprar',
+    problem: 'Você gasta horas criando produtos e conteúdos no escuro, torcendo para acertar — e a maioria não vende.',
+    solution: 'A IA lê centenas de comentários reais do YouTube e entrega o avatar completo: dores, desejos, objeções e até as palavras exatas que seu público usa.',
+    money: 'Com o avatar na mão, você cria ofertas que vendem sozinhas porque falam a língua de quem compra. Menos achismo, mais conversão.',
+    bullets: ['Pare de adivinhar o que vender', 'Crie ofertas irresistíveis baseadas em dados reais', 'Antecipe objeções antes da venda'],
+  },
+  {
+    icon: BarChart3,
+    badge: '📊 Análise de sentimento',
+    title: 'Saiba exatamente o tom que faz seu público comprar',
+    problem: 'Um único conteúdo no tom errado afasta clientes e queima a sua autoridade.',
+    solution: 'Veja na hora a proporção de comentários positivos, neutros e negativos e entenda o clima emocional da sua audiência.',
+    money: 'Ajuste a comunicação para o tom que gera conexão e confiança — e confiança é o que faz o cartão sair do bolso.',
+    bullets: ['Identifique gatilhos emocionais que convertem', 'Evite conteúdos que afastam compradores', 'Construa autoridade com a mensagem certa'],
+  },
+  {
+    icon: Wand2,
+    badge: '✍️ Geração de conteúdo',
+    title: 'Roteiros e legendas que vendem, prontos em segundos',
+    problem: 'Ficar travado na frente da tela em branco custa tempo — e tempo parado é dinheiro que você deixa na mesa.',
+    solution: 'A IA gera roteiros, legendas, hashtags e CTAs sob medida para Instagram, TikTok, YouTube e LinkedIn, já alinhados ao avatar da sua audiência.',
+    money: 'Produza em minutos o que levaria dias. Poste mais, alcance mais e venda mais — escalando seu faturamento sem contratar uma equipe.',
+    bullets: ['Conteúdo diário sem bloqueio criativo', 'CTAs persuasivos que convertem seguidor em cliente', 'Escale sua produção sem aumentar custos'],
+  },
+  {
+    icon: Film,
+    badge: '🎬 Editor de vídeo com IA',
+    title: 'Transforme ideias em vídeos prontos para viralizar',
+    problem: 'Contratar editor é caro e demorado, e softwares profissionais têm curva de aprendizado gigante.',
+    solution: 'Monte cenas com texto, imagens, narração automática, trilha sonora e transições direto no navegador — e exporte para Reels, Shorts e TikTok.',
+    money: 'Vídeo é o formato que mais vende hoje. Produza conteúdo profissional todos os dias e multiplique seu alcance — mais visualizações, mais clientes, mais vendas.',
+    bullets: ['Economize milhares em edição terceirizada', 'Publique em todas as redes sem sair da plataforma', 'Aproveite o formato que mais converte: vídeo'],
+  },
+  {
+    icon: ImageIcon,
+    badge: '🎨 Imagens com IA',
+    title: 'Capas e visuais que param o dedo do seu cliente',
+    problem: 'Uma capa fraca faz o conteúdo perfeito ser ignorado no feed.',
+    solution: 'Gere capas e visuais únicos com IA, uma imagem por cena, prontos para a timeline do seu vídeo.',
+    money: 'Capas que chamam atenção aumentam cliques e retenção — e mais gente assistindo significa mais gente comprando.',
+    bullets: ['Aumente a taxa de cliques (CTR)', 'Tenha identidade visual profissional', 'Nunca dependa de banco de imagens genérico'],
+  },
+  {
+    icon: FolderOpen,
+    badge: '🚀 Workspace completo',
+    title: 'Sua máquina de conteúdo organizada num só lugar',
+    problem: 'Trabalho espalhado em mil ferramentas faz você perder tempo, arquivos e oportunidades.',
+    solution: 'Projetos, rascunhos com versões, créditos em tempo real, marca personalizada e painel admin — tudo centralizado e seguro.',
+    money: 'Mais organização = mais entregas no prazo. E quem entrega rápido e com consistência cobra mais e fideliza clientes.',
+    bullets: ['Trabalhe como agência, sozinho', 'Use white-label e revenda para clientes', 'Nunca mais perca um projeto ou ideia'],
+  },
+];
+
 const socialProof = [
   { icon: Users, label: '+2.500', desc: 'criadores ativos' },
   { icon: MessageSquare, label: '+1,2 mi', desc: 'comentários processados' },
