@@ -23,17 +23,17 @@ type Plan = { plan: 'free' | 'pro' | 'enterprise'; display_name: string; monthly
 // === Top 3 highlight features (hero section) ===
 const features = [
   { icon: Youtube, title: 'Extração em segundos', desc: 'Cole os links e nós trazemos centenas de comentários para você analisar.' },
-  { icon: Brain, title: 'Perfil de avatar com IA', desc: 'Descubra dores, desejos e linguagem da sua audiência sem fazer pesquisa.' },
-  { icon: Film, title: 'Editor de vídeo com IA', desc: 'Transforme o conteúdo gerado em vídeos prontos para Reels, Shorts e TikTok.' },
+  { icon: Brain, title: 'Perfil de avatar com YCaptura', desc: 'Descubra dores, desejos e linguagem da sua audiência sem fazer pesquisa.' },
+  { icon: Film, title: 'Editor de vídeo com YCaptura', desc: 'Transforme o conteúdo gerado em vídeos prontos para Reels, Shorts e TikTok.' },
 ];
 
 // === Full feature catalog (everything the platform does today) ===
 const allFeatures: { icon: any; title: string; desc: string; tag: string }[] = [
   { tag: 'Análise', icon: Youtube, title: 'Extração de comentários do YouTube', desc: 'Cole até dezenas de links e importamos comentários, autores, curtidas e datas em segundos.' },
-  { tag: 'Análise', icon: Brain, title: 'Perfil de avatar com IA', desc: 'A IA lê os comentários e gera o perfil completo: dores, desejos, objeções e linguagem real da audiência.' },
+  { tag: 'Análise', icon: Brain, title: 'Perfil de avatar com YCaptura', desc: 'A YCaptura lê os comentários e gera o perfil completo: dores, desejos, objeções e linguagem real da audiência.' },
   { tag: 'Análise', icon: BarChart3, title: 'Análise de sentimento', desc: 'Veja a proporção de comentários positivos, neutros e negativos para guiar o tom do conteúdo.' },
-  { tag: 'Conteúdo', icon: Wand2, title: 'Geração de conteúdo por IA', desc: 'Roteiros, legendas, hashtags e CTAs sob medida para Instagram, TikTok, YouTube e LinkedIn.' },
-  { tag: 'Conteúdo', icon: ImageIcon, title: 'Geração de imagens', desc: 'Crie capas e visuais únicos com IA — uma imagem por cena, prontas para a timeline do vídeo.' },
+  { tag: 'Conteúdo', icon: Wand2, title: 'Geração de conteúdo por YCaptura', desc: 'Roteiros, legendas, hashtags e CTAs sob medida para Instagram, TikTok, YouTube e LinkedIn.' },
+  { tag: 'Conteúdo', icon: ImageIcon, title: 'Geração de imagens', desc: 'Crie capas e visuais únicos com YCaptura — uma imagem por cena, prontas para a timeline do vídeo.' },
   { tag: 'Vídeo', icon: Film, title: 'Editor de vídeo no navegador', desc: 'Monte cenas com texto, imagens, efeitos de zoom/pan e exporte em WebM ou MP4 sem instalar nada.' },
   { tag: 'Vídeo', icon: Layers, title: 'Transições drag & drop', desc: 'Fade, slide, zoom, wipe e mais — arraste para o quadro entre cenas e veja o efeito no preview.' },
   { tag: 'Vídeo', icon: Mic, title: 'Narração automática (TTS)', desc: 'Escolha a voz uma vez e ela vale para o vídeo todo. Ducking automático com a trilha sonora.' },
@@ -64,7 +64,7 @@ const moneyFeatures: {
     badge: '🧠 Inteligência de audiência',
     title: 'Descubra o que sua audiência implora para comprar',
     problem: 'Você gasta horas criando produtos e conteúdos no escuro, torcendo para acertar — e a maioria não vende.',
-    solution: 'A IA lê centenas de comentários reais do YouTube e entrega o avatar completo: dores, desejos, objeções e até as palavras exatas que seu público usa.',
+    solution: 'A YCaptura lê centenas de comentários reais do YouTube e entrega o avatar completo: dores, desejos, objeções e até as palavras exatas que seu público usa.',
     money: 'Com o avatar na mão, você cria ofertas que vendem sozinhas porque falam a língua de quem compra. Menos achismo, mais conversão.',
     bullets: ['Pare de adivinhar o que vender', 'Crie ofertas irresistíveis baseadas em dados reais', 'Antecipe objeções antes da venda'],
   },
@@ -82,13 +82,13 @@ const moneyFeatures: {
     badge: '✍️ Geração de conteúdo',
     title: 'Roteiros e legendas que vendem, prontos em segundos',
     problem: 'Ficar travado na frente da tela em branco custa tempo — e tempo parado é dinheiro que você deixa na mesa.',
-    solution: 'A IA gera roteiros, legendas, hashtags e CTAs sob medida para Instagram, TikTok, YouTube e LinkedIn, já alinhados ao avatar da sua audiência.',
+    solution: 'A YCaptura gera roteiros, legendas, hashtags e CTAs sob medida para Instagram, TikTok, YouTube e LinkedIn, já alinhados ao avatar da sua audiência.',
     money: 'Produza em minutos o que levaria dias. Poste mais, alcance mais e venda mais — escalando seu faturamento sem contratar uma equipe.',
     bullets: ['Conteúdo diário sem bloqueio criativo', 'CTAs persuasivos que convertem seguidor em cliente', 'Escale sua produção sem aumentar custos'],
   },
   {
     icon: Film,
-    badge: '🎬 Editor de vídeo com IA',
+    badge: '🎬 Editor de vídeo com YCaptura',
     title: 'Transforme ideias em vídeos prontos para viralizar',
     problem: 'Contratar editor é caro e demorado, e softwares profissionais têm curva de aprendizado gigante.',
     solution: 'Monte cenas com texto, imagens, narração automática, trilha sonora e transições direto no navegador — e exporte para Reels, Shorts e TikTok.',
@@ -100,7 +100,7 @@ const moneyFeatures: {
     badge: '🎨 Imagens com IA',
     title: 'Capas e visuais que param o dedo do seu cliente',
     problem: 'Uma capa fraca faz o conteúdo perfeito ser ignorado no feed.',
-    solution: 'Gere capas e visuais únicos com IA, uma imagem por cena, prontos para a timeline do seu vídeo.',
+    solution: 'Gere capas e visuais únicos com YCaptura, uma imagem por cena, prontos para a timeline do seu vídeo.',
     money: 'Capas que chamam atenção aumentam cliques e retenção — e mais gente assistindo significa mais gente comprando.',
     bullets: ['Aumente a taxa de cliques (CTR)', 'Tenha identidade visual profissional', 'Nunca dependa de banco de imagens genérico'],
   },
@@ -361,7 +361,7 @@ const Index = () => {
         <div className="text-center mt-14">
           <Link to="/register">
             <Button size="lg" className="glow-primary">
-              Quero faturar mais com IA <ArrowRight className="ml-2 h-4 w-4" />
+              Quero faturar mais com YCaptura <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </Link>
           <p className="mt-3 text-xs text-muted-foreground">✓ Comece grátis hoje · ✓ Sem cartão de crédito</p>
@@ -414,7 +414,7 @@ const Index = () => {
                     <li className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> <strong>{p.monthly_credits.toLocaleString('pt-BR')}</strong> créditos por mês</li>
                     {(p.features && p.features.length > 0
                       ? p.features
-                      : ['Extração de comentários do YouTube', 'Perfil de avatar com IA', 'Relatórios e análise de sentimento']
+                      : ['Extração de comentários do YouTube', 'Perfil de avatar com YCaptura', 'Relatórios e análise de sentimento']
                     ).map((feat, i) => (
                       <li key={i} className="flex gap-2"><Check size={16} className="text-success shrink-0 mt-0.5" /> {feat}</li>
                     ))}
@@ -557,7 +557,7 @@ const Index = () => {
           <Sparkles className="mx-auto text-primary mb-4" size={32} />
           <h2 className="font-heading text-3xl lg:text-4xl font-bold">Cada dia sem {branding.site_name} é um <span className="gradient-text">insight perdido</span></h2>
           <p className="mt-4 text-muted-foreground max-w-xl mx-auto">
-            Seus concorrentes já estão usando IA para entender a audiência. Comece grátis hoje e descubra o que está deixando passar.
+            Seus concorrentes já estão usando YCaptura para entender a audiência. Comece grátis hoje e descubra o que está deixando passar.
           </p>
           <Link to="/register">
             <Button size="lg" className="glow-primary mt-6">
