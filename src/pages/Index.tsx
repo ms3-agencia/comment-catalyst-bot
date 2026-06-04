@@ -179,6 +179,7 @@ const Index = () => {
         </div>
         <div className="flex items-center gap-3">
           <a href="#recursos" className="hidden md:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Recursos</a>
+          <a href="#ganhar-dinheiro" className="hidden md:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Ganhe dinheiro</a>
           <a href="#planos" className="hidden md:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Planos</a>
           <a href="#pacotes" className="hidden md:inline-block text-sm text-muted-foreground hover:text-foreground transition-colors">Pacotes</a>
           {user ? (
