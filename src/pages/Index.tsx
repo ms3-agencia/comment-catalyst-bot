@@ -202,7 +202,7 @@ const Index = () => {
           Transforme comentários do YouTube no <span className="gradient-text">avatar perfeito</span> da sua audiência
         </h1>
         <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
-          Pare de adivinhar o que sua audiência quer. Extraia comentários, gere perfis com IA e descubra exatamente o que vender, escrever e postar — em minutos.
+          Pare de adivinhar o que sua audiência quer. Extraia comentários, gere perfis com YCaptura e descubra exatamente o que vender, escrever e postar — em minutos.
         </p>
         <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
           <Link to="/register">
